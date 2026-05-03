@@ -39,6 +39,7 @@ type Options struct {
 	IncludeFootnotes         bool
 	IncludeVerseNumbers      bool
 	IncludePassageReferences bool
+	IncludeWordOfChrist      bool
 }
 
 // Result is a verbatim ESV API response.
@@ -68,6 +69,11 @@ func (c *Client) Fetch(ctx context.Context, q string, opts Options) (*Result, er
 	params.Set("include-footnotes", boolParam(opts.IncludeFootnotes))
 	params.Set("include-verse-numbers", boolParam(opts.IncludeVerseNumbers))
 	params.Set("include-passage-references", boolParam(opts.IncludePassageReferences))
+	params.Set("include-word-of-christ", boolParam(opts.IncludeWordOfChrist))
+	// Audio playback is a Non-goal in specs/passage-reader.md; ESV's
+	// passage/html defaults this to true and would otherwise emit a
+	// <a class="mp3link">Listen</a> link in every payload.
+	params.Set("include-audio-link", "false")
 	u.RawQuery = params.Encode()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)

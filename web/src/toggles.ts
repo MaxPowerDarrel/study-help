@@ -6,6 +6,7 @@ export type Toggles = {
   include_footnotes: boolean;
   include_verse_numbers: boolean;
   include_passage_references: boolean;
+  include_word_of_christ: boolean;
 };
 
 export const DEFAULT_TOGGLES: Toggles = {
@@ -13,6 +14,7 @@ export const DEFAULT_TOGGLES: Toggles = {
   include_footnotes: true,
   include_verse_numbers: true,
   include_passage_references: true,
+  include_word_of_christ: true,
 };
 
 const STORAGE_KEY = "reader.toggles";
@@ -41,5 +43,6 @@ export function togglesToQuery(t: Toggles): string {
   params.set("include_footnotes", String(t.include_footnotes));
   params.set("include_verse_numbers", String(t.include_verse_numbers));
   params.set("include_passage_references", String(t.include_passage_references));
+  params.set("include_word_of_christ", String(t.include_word_of_christ));
   return params.toString();
 }

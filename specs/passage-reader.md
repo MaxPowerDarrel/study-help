@@ -48,8 +48,9 @@ UX). Next/Previous navigation continues across book boundaries (e.g.
 Malachi 4 → Matthew 1) and the relevant control is hidden at the canon
 edges (no Previous on Genesis 1; no Next on Revelation 22). The user
 can toggle which formatting elements appear: section headings,
-footnotes, verse numbers, and the passage reference header. Toggle
-state persists in browser localStorage (per device). While a passage
+footnotes, verse numbers, the passage reference header, and the
+words of Christ rendered in red. Toggle state persists in browser
+localStorage (per device). While a passage
 loads, the reading surface shows a centered spinner. On ESV
 rate-limit (429) the toast says "Service is busy, try again in a
 moment"; on other proxy failures or timeouts the toast says
@@ -60,7 +61,7 @@ moment"; on other proxy failures or timeouts the toast says
 High-level shape only:
 
 - New package `internal/esv/` — HTTP client wrapping `api.esv.org`. Server-side only (§4: ESV API key never reaches the client).
-- New handler in `internal/server` for `GET /api/passage?q=<reference>` — free-form ESV reference syntax in `q`; server validates `q` against an allow-list (book names + `chapter:verse` + ranges) and rejects malformed input with 400 before consuming an ESV API call; valid requests proxy through `internal/esv` and return the ESV HTML payload. Formatting toggles surface as query params (`include_headings`, `include_footnotes`, `include_verse_numbers`, `include_passage_references`) and are forwarded to ESV. Each successful ESV call increments an in-process counter and emits a structured log line; the counter is exposed on a `/metrics` HTTP endpoint (Prometheus-style exposition) bound to a localhost-only port (e.g. `127.0.0.1:9090`), separate from the public `/api/passage` listener, so a dashboard can scrape it without exposing internal counters publicly.
+- New handler in `internal/server` for `GET /api/passage?q=<reference>` — free-form ESV reference syntax in `q`; server validates `q` against an allow-list (book names + `chapter:verse` + ranges) and rejects malformed input with 400 before consuming an ESV API call; valid requests proxy through `internal/esv` and return the ESV HTML payload. Formatting toggles surface as query params (`include_headings`, `include_footnotes`, `include_verse_numbers`, `include_passage_references`, `include_word_of_christ`) and are forwarded to ESV. Each successful ESV call increments an in-process counter and emits a structured log line; the counter is exposed on a `/metrics` HTTP endpoint (Prometheus-style exposition) bound to a localhost-only port (e.g. `127.0.0.1:9090`), separate from the public `/api/passage` listener, so a dashboard can scrape it without exposing internal counters publicly.
 - Canon (66 books + chapter counts) is hard-coded in the React bundle; no `/api/canon` endpoint at v1.
 - No new DB tables for the reader itself; highlights and notes will get their own specs and migrations.
 - Client surface: React SPA in `web/` built with Vite (static build output served by the Go server). Renders the picker + reading surface and calls `/api/passage`. Must load as a static bundle inside a WebView (§4 Frontend is decoupled).
@@ -111,6 +112,10 @@ under **Decisions** and leave a pointer here (don't delete the question
 - [x] Should the spec name the `ToggleStore` key namespace (e.g. `reader.toggles.*`) so a future native shell substitution has a contract, or is that left to the implementing PR? — *resolved 2026-05-03 (see Decisions; deliberately not pinned at spec level)*
 - [x] Is the `/metrics` surface explicitly counter-only at v1, or is the implementing PR free to add request-duration histograms? — *resolved 2026-05-03 (see Decisions)*
 - [x] The toggle round-trip Verification claims attribution holds "across all 16 toggle combinations (2⁴)" but the test as described is per-toggle (4 pairs = 8 requests). Is the 16-combination claim asserted by a separate combinatorial sub-test, or is it an inference the per-toggle assertions don't actually establish? — *resolved 2026-05-03 (see Decisions; over-promise dropped from Verification line)*
+- [ ] Should the User-facing behavior section name the default state of each formatting toggle (headings, footnotes, verse numbers, passage references, words of Christ) so first-load UX is pinned at spec level?
+- [ ] Should Verification assert the red-letter styling itself (e.g. computed color on `<span class="woc">` matches the chosen red), or is presence of the `woc` span considered sufficient and styling left entirely to the implementing PR?
+- [ ] Does the SPA need to expose the words-of-Christ red color as a theme/contrast concern (accessibility — color-only signal) at v1, or is that deferred?
+- [ ] Should the Decisions entry record that the `include-word-of-christ` ESV API param name uses hyphens upstream while the proxy query param uses underscores (`include_word_of_christ`), matching the existing four toggles' naming convention, so the mapping is explicit?
 
 ## Decisions
 
@@ -155,6 +160,9 @@ if a decision is reversed, add a new entry that supersedes it.
 - 2026-05-03: Three round-4 follow-ups are deliberately **not** pinned in the spec — implementing PR decides each: (a) `/metrics` scrape contract (metric name, type, exposition line shape); (b) latency-check measurement reference; (c) `ToggleStore` key namespace. Reason: each is an implementation detail that doesn't affect user-visible behavior or constitutional alignment; pinning would over-constrain the PR without buying real durability.
 - 2026-05-03: `/metrics` is counter-only at v1 (the ESV-call counter); request-duration histograms deferred. Reason: the synthetic latency check covers latency observability already, and histograms add cardinality + library complexity without solving a known problem at v1. Revisit if production needs prove otherwise.
 - 2026-05-03: Toggle round-trip Verification dropped the "all 16 toggle combinations (2⁴)" claim; the line now asserts only what the per-toggle pair test actually establishes (attribution present in both responses for each pair). Reason: the prior wording over-promised relative to the described test; combinatorial coverage can be added later if a real bug surfaces it.
+- 2026-05-03: Added `include_word_of_christ` as a 5th formatting toggle, default on. Server forwards it to ESV's `include-word-of-christ` param; ESV emits `<span class="woc">…</span>` around Jesus's spoken words; the SPA styles those spans red. Toggle persists via `ToggleStore` exactly like the existing four. Reason: traditional red-letter reading aid that supports §3 Study-first UX; ESV-published markup, so §3 Respect the text holds (no user mutation of scripture). Constitutionally aligned with §4 (still server-proxied HTML, still behind `ToggleStore`).
+- 2026-05-03: With the 5th toggle the combinatorial toggle space grows to 2⁵ = 32; Verification posture is unchanged — coverage stays per-toggle (5 pairs), not combinatorial. Reason: same trade-off as the prior round (per-toggle catches the regression cheaply; combinatorial coverage can be added if a real bug surfaces it). Supersedes nothing — extends the prior dropped-claim decision to the 5-toggle world.
+- 2026-05-03: Server unconditionally sets `include-audio-link=false` on every ESV request. Reason: enforces the existing audio Non-goal (ESV's `passage/html` defaults the param to true and would otherwise inject `<a class="mp3link">Listen</a>` into every payload). No client toggle — audio is out of scope at v1, period. If audio ever becomes in-scope, it gets its own spec.
 
 ## Verification
 
@@ -165,7 +173,7 @@ How we'll know it's working: tests, manual flows, metrics, screenshots.
 - [ ] Latency check: synthetic measurement (3 priming requests against 3 distinct passages — e.g. Genesis 1, Psalm 23, John 3 — discarded per run) confirms server-side p50 < 150ms and p95 < 500ms warm against the production ESV upstream.
 - [ ] Canon-edge & book-boundary navigation: clicking Previous on Genesis 1 has no effect (control hidden); clicking Next on Revelation 22 has no effect (control hidden); Next from Malachi 4 advances to Matthew 1.
 - [ ] Allow-list rejection: malformed `q` (e.g. `q=!!!`, `q=Booga+99`, empty `q=`) returns 400 from `/api/passage` and the ESV upstream request count for that test is 0.
-- [ ] Toggle round-trip — asserted per toggle individually: for each of `include_headings`, `include_footnotes`, `include_verse_numbers`, `include_passage_references`, fetch the same reference twice (`=true` / `=false`) and assert the `false` response omits the corresponding markup category (section-heading element / footnote marker / verse-number marker / passage-reference header) while the `true` response includes it. Selectors pinned in the test fixture by the implementing PR. ESV attribution markup remains present in both responses for each pair.
+- [ ] Toggle round-trip — asserted per toggle individually: for each of `include_headings`, `include_footnotes`, `include_verse_numbers`, `include_passage_references`, `include_word_of_christ`, fetch the same reference twice (`=true` / `=false`) and assert the `false` response omits the corresponding markup category (section-heading element / footnote marker / verse-number marker / passage-reference header / `<span class="woc">` element) while the `true` response includes it. Selectors pinned in the test fixture by the implementing PR. ESV attribution markup remains present in both responses for each pair.
 - [ ] ESV-call counter: a successful request to `/api/passage` with valid `q` increments the in-process counter by exactly 1; a 400-rejected request leaves the counter unchanged.
 - [ ] Error-toast rendering: a simulated upstream 429 surfaces the exact string "Service is busy, try again in a moment"; a simulated upstream 5xx/timeout surfaces "Something went wrong, try again".
 

@@ -28,6 +28,7 @@ func passageHandler(client *esv.Client, counter *ESVCallCounter) http.HandlerFun
 			IncludeFootnotes:         boolParam(r, "include_footnotes", true),
 			IncludeVerseNumbers:      boolParam(r, "include_verse_numbers", true),
 			IncludePassageReferences: boolParam(r, "include_passage_references", true),
+			IncludeWordOfChrist:      boolParam(r, "include_word_of_christ", true),
 		}
 
 		result, err := client.Fetch(r.Context(), q, opts)

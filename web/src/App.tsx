@@ -128,6 +128,7 @@ export function App() {
               ["include_footnotes", "Footnotes"],
               ["include_verse_numbers", "Verse numbers"],
               ["include_passage_references", "Passage reference"],
+              ["include_word_of_christ", "Words of Christ"],
             ] as const
           ).map(([key, label]) => (
             <label key={key}>

@@ -159,6 +159,16 @@ body {
   margin-right: 0.15em;
 }
 
+.passage .woc {
+  color: #c0392b;
+}
+
+@media (prefers-color-scheme: dark) {
+  .passage .woc {
+    color: #ff6b5b;
+  }
+}
+
 .spinner {
   position: absolute;
   top: 50%;
