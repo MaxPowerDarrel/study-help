@@ -1,0 +1,191 @@
+:root {
+  font-family: Georgia, "Times New Roman", serif;
+  color-scheme: light dark;
+  --bg: #fdfcf8;
+  --fg: #1a1a1a;
+  --muted: #6a6a6a;
+  --accent: #4a3a2a;
+  --rule: #e3dfd4;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14130f;
+    --fg: #ece8de;
+    --muted: #999488;
+    --accent: #d4c8a8;
+    --rule: #2a2823;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  min-height: 100vh;
+}
+
+.picker {
+  border-right: 1px solid var(--rule);
+  padding: 1.5rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 0.9rem;
+}
+
+.picker h1 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.picker label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.picker select,
+.picker input[type="number"] {
+  background: transparent;
+  color: var(--fg);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  padding: 0.4rem;
+  font: inherit;
+}
+
+.picker fieldset {
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  padding: 0.5rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.picker fieldset legend {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  padding: 0 0.25rem;
+}
+
+.picker .range {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.picker .range input {
+  width: 4rem;
+}
+
+.picker .toggles label {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.4rem;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 0.85rem;
+  color: var(--fg);
+}
+
+.picker .chapter-nav {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: auto;
+}
+
+.picker button {
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  padding: 0.4rem 0.6rem;
+  font: inherit;
+  cursor: pointer;
+}
+
+.picker button:hover { border-color: var(--accent); }
+
+.reading-surface {
+  position: relative;
+  padding: 3rem 2rem;
+  overflow-y: auto;
+  display: flex;
+  justify-content: center;
+}
+
+.passage {
+  max-width: 38rem;
+  width: 100%;
+  font-size: 1.125rem;
+  line-height: 1.7;
+}
+
+.passage h2,
+.passage h3 {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: var(--muted);
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 2.5rem;
+}
+
+.passage .verse-num {
+  color: var(--muted);
+  font-size: 0.7em;
+  vertical-align: super;
+  margin-right: 0.15em;
+}
+
+.spinner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 28px;
+  height: 28px;
+  margin: -14px 0 0 -14px;
+  border: 2px solid var(--rule);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.toast {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--fg);
+  color: var(--bg);
+  padding: 0.6rem 1rem;
+  border-radius: 4px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 0.9rem;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+}

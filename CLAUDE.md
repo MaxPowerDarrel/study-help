@@ -5,14 +5,17 @@ Project direction, principles, guardrails, and non-goals live in [`PROJECT_CONST
 
 ## Status
 
-Early scaffolding. The HTTP server boots and serves one health endpoint; no feature endpoints, no migrations, no client, no tests yet.
+Reader feature shipped per `specs/passage-reader.md`. The Go server proxies ESV passage requests, exposes a Prometheus counter on a localhost-only metrics port, and serves the React SPA from an embedded Vite build. No DB-backed features yet (highlights/notes still pending their own specs).
 
 **Layout:**
 
-- `main.go` — wires config → DB → server, with graceful SIGINT/SIGTERM shutdown.
+- `main.go` — wires config → DB → public server + private metrics server, with graceful SIGINT/SIGTERM shutdown.
 - `internal/config/` — `Config` struct loaded from env vars: `ADDR` (default `:8080`), `DATABASE_URL` (default `./sqlite.db`), `SESSION_SECRET` (required), `ESV_API_KEY` (required).
 - `internal/db/` — opens SQLite (WAL, foreign keys, 5s busy timeout) via `modernc.org/sqlite` (pure-Go, no CGO) and runs goose migrations from the embedded `migrations/` directory. **No migrations exist yet** (only `.gitkeep`).
-- `internal/server/` — `*http.Server` with stdlib `http.ServeMux`, logging middleware, sensible timeouts. Currently exposes only `GET /healthz` (DB ping → JSON).
+- `internal/server/` — public `*http.Server` (stdlib `http.ServeMux`) exposing `GET /healthz`, `GET /api/passage`, and the embedded SPA at `/`. Plus a private metrics server bound to `127.0.0.1:9090` exposing `GET /metrics` (Prometheus text exposition, counter-only).
+- `internal/esv/` — server-side ESV API client (`api.esv.org/v3/passage/html/`) and the canon-aware `q` allow-list validator. The ESV API key never reaches the browser (constitution §4).
+- `internal/web/` — embeds the Vite build output (`internal/web/dist/`) into the Go binary. The directory is populated by `npm run build` in `web/`.
+- `web/` — React SPA (Vite + TypeScript). Picker pane, reading surface with formatting toggles, localStorage-backed `ToggleStore` at `web/src/platform/ToggleStore.ts` (the §4 platform-abstraction substitution point for a future native shell).
 
 **Other repo artifacts:**
 
@@ -21,14 +24,14 @@ Early scaffolding. The HTTP server boots and serves one health endpoint; no feat
 - [`specs/`](./specs/) — living feature specs. One markdown file per feature. Index in `specs/README.md`.
 - `.env.example` — template for required env vars.
 
-There is no frontend, no static assets, no `sqlc`-generated code, and no tests yet. When code is added, update this file with the actual structure — do not invent content describing things that do not exist.
-
 ## Commands
 
-- Build: `go build ./...`
-- Run: `go run .`
-- Test (once tests exist): `go test ./...`
+- Build SPA: `cd web && npm install && npm run build` (outputs to `internal/web/dist/`)
+- Build server: `go build ./...`
+- Run: `go run .` (also serves the embedded SPA; metrics on `127.0.0.1:9090`)
+- Test: `go test ./...`
 - Run a single test: `go test -run TestName ./path/to/pkg`
+- SPA dev mode: `cd web && npm run dev` (proxies `/api` to `localhost:8080`)
 
 ## Workflow
 

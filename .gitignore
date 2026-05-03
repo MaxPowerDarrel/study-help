@@ -17,3 +17,10 @@ sqlite.db-shm
 # Editors
 .idea/
 .vscode/
+
+# Web bundle output (built by web/ via Vite, embedded by internal/web)
+internal/web/dist/*
+!internal/web/dist/.gitkeep
+
+# Node
+node_modules/

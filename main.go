@@ -14,6 +14,8 @@ import (
 	"study-help/internal/server"
 )
 
+const metricsAddr = "127.0.0.1:9090"
+
 func main() {
 	cfg := config.Load()
 
@@ -23,7 +25,9 @@ func main() {
 	}
 	defer database.Close()
 
-	srv := server.New(cfg, database)
+	counter := &server.ESVCallCounter{}
+	srv := server.New(cfg, database, counter)
+	metricsSrv := server.NewMetricsServer(metricsAddr, counter)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
@@ -35,6 +39,13 @@ func main() {
 		}
 	}()
 
+	go func() {
+		log.Printf("metrics listening on %s", metricsSrv.Addr)
+		if err := metricsSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Fatalf("metrics server: %v", err)
+		}
+	}()
+
 	<-ctx.Done()
 	log.Print("shutting down")
 
@@ -42,5 +53,8 @@ func main() {
 	defer cancel()
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		log.Fatalf("shutdown: %v", err)
+	}
+	if err := metricsSrv.Shutdown(shutdownCtx); err != nil {
+		log.Printf("metrics shutdown: %v", err)
 	}
 }
