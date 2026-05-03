@@ -1,0 +1,93 @@
+/*
+ * Design tokens — single source of truth for color, spacing, type
+ * scale, and radii. Light is the default; dark is applied when the
+ * user chose dark explicitly OR (no explicit choice AND the system
+ * prefers dark).
+ */
+
+:root,
+:root[data-theme="light"] {
+  --color-bg: #fdfcf8;
+  --color-fg: #1a1a1a;
+  --color-muted: #6a6a6a;
+  --color-accent: #4a3a2a;
+  --color-rule: #e3dfd4;
+  --color-woc: #c0392b;
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+
+  --text-xs: 0.7rem;
+  --text-sm: 0.85rem;
+  --text-base: 0.9rem;
+  --text-md: 1rem;
+  --text-lg: 1.125rem;
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+
+  /* iPad/Safari tap-target floor (Apple HIG, WCAG 2.5.5). */
+  --tap-target: 44px;
+
+  --font-serif: Georgia, "Times New Roman", serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --color-bg: #14130f;
+  --color-fg: #ece8de;
+  --color-muted: #999488;
+  --color-accent: #d4c8a8;
+  --color-rule: #2a2823;
+  --color-woc: #ff6b5b;
+
+  color-scheme: dark;
+}
+
+/*
+ * System-follow path: only apply when the user has not made an
+ * explicit choice (no `data-theme` attribute set).
+ */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]):not([data-theme="dark"]) {
+    --color-bg: #14130f;
+    --color-fg: #ece8de;
+    --color-muted: #999488;
+    --color-accent: #d4c8a8;
+    --color-rule: #2a2823;
+    --color-woc: #ff6b5b;
+
+    color-scheme: dark;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-fg);
+  font-family: var(--font-serif);
+}
+
+/*
+ * iPad Safari: keep text inputs at >=16px so iOS doesn't zoom on
+ * focus. Applied globally; component-level type sizes use the type
+ * scale tokens above for non-input text.
+ */
+input,
+select,
+textarea,
+button {
+  font-size: 16px;
+}

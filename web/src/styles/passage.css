@@ -1,0 +1,34 @@
+/*
+ * Global styles for the ESV-rendered HTML inside the .passage
+ * container. The class names here (h2/h3, .verse-num, .woc) are
+ * emitted by the ESV API, not by our React tree, so they can't be
+ * scoped via CSS Modules.
+ */
+
+.passage {
+  max-width: 38rem;
+  width: 100%;
+  font-size: var(--text-lg);
+  line-height: 1.7;
+}
+
+.passage h2,
+.passage h3 {
+  font-family: var(--font-sans);
+  color: var(--color-muted);
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: var(--space-6);
+}
+
+.passage .verse-num {
+  color: var(--color-muted);
+  font-size: 0.7em;
+  vertical-align: super;
+  margin-right: 0.15em;
+}
+
+.passage .woc {
+  color: var(--color-woc);
+}

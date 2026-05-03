@@ -15,7 +15,7 @@ Reader feature shipped per `specs/passage-reader.md`. The Go server proxies ESV 
 - `internal/server/` — public `*http.Server` (stdlib `http.ServeMux`) exposing `GET /healthz`, `GET /api/passage`, and the embedded SPA at `/`. Plus a private metrics server bound to `127.0.0.1:9090` exposing `GET /metrics` (Prometheus text exposition, counter-only).
 - `internal/esv/` — server-side ESV API client (`api.esv.org/v3/passage/html/`) and the canon-aware `q` allow-list validator. The ESV API key never reaches the browser (constitution §4).
 - `internal/web/` — embeds the Vite build output (`internal/web/dist/`) into the Go binary. The directory is populated by `npm run build` in `web/`.
-- `web/` — React SPA (Vite + TypeScript). Picker pane, reading surface with formatting toggles, localStorage-backed `ToggleStore` at `web/src/platform/ToggleStore.ts` (the §4 platform-abstraction layer for browser APIs).
+- `web/` — React SPA (Vite + TypeScript). Picker pane, reading surface with formatting toggles, light/dark/system theme. Component styles live in `*.module.css` (CSS Modules); design tokens in `web/src/styles/tokens.css`; ESV-rendered HTML styled globally in `web/src/styles/passage.css`. Theme persistence at `web/src/theme.ts`, wired through the localStorage-backed `ToggleStore` at `web/src/platform/ToggleStore.ts` (the §4 platform-abstraction layer for browser APIs).
 
 **Other repo artifacts:**
 
