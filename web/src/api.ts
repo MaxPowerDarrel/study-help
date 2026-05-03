@@ -7,7 +7,10 @@ export type FetchResult =
 
 type EsvJson = { canonical?: string; passages?: string[] };
 
-export async function fetchPassage(q: string, toggles: Toggles): Promise<FetchResult> {
+export async function fetchPassage(
+  q: string,
+  toggles: Toggles,
+): Promise<FetchResult> {
   const params = new URLSearchParams(togglesToQuery(toggles));
   params.set("q", q);
   let resp: Response;

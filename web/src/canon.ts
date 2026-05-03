@@ -96,7 +96,10 @@ export function prevChapter(ref: ChapterRef): ChapterRef | null {
   return null;
 }
 
-export function refToQuery(ref: ChapterRef, range?: { start: number; end: number }): string {
+export function refToQuery(
+  ref: ChapterRef,
+  range?: { start: number; end: number },
+): string {
   const book = CANON[ref.bookIndex].name;
   if (range) {
     return `${book} ${ref.chapter}:${range.start}-${range.end}`;

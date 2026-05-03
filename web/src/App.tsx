@@ -11,7 +11,9 @@ import { useToggles } from "./toggles";
 
 export function App() {
   const [ref, setRef] = useState<ChapterRef>({ bookIndex: 42, chapter: 3 }); // John 3
-  const [range, setRange] = useState<{ start: number; end: number } | null>(null);
+  const [range, setRange] = useState<{ start: number; end: number } | null>(
+    null,
+  );
   const [toggles, setToggles] = useToggles();
   const [html, setHtml] = useState<string>("");
   const [loading, setLoading] = useState(false);
@@ -97,7 +99,10 @@ export function App() {
                 setRange(null);
                 return;
               }
-              setRange({ start, end: range?.end && range.end >= start ? range.end : start });
+              setRange({
+                start,
+                end: range?.end && range.end >= start ? range.end : start,
+              });
             }}
           />
           <span>–</span>

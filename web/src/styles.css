@@ -18,7 +18,9 @@
   }
 }
 
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+}
 
 body {
   margin: 0;
@@ -125,7 +127,9 @@ body {
   cursor: pointer;
 }
 
-.picker button:hover { border-color: var(--accent); }
+.picker button:hover {
+  border-color: var(--accent);
+}
 
 .reading-surface {
   position: relative;
@@ -183,7 +187,9 @@ body {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .toast {

@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "f=$(jq -r '.tool_input.file_path // empty'); case \"$f\" in *.go) PATH=\"$(go env GOPATH)/bin:$PATH\" goimports -w \"$f\" ;; esac"
+            "command": "f=$(jq -r '.tool_input.file_path // empty'); case \"$f\" in *.go) PATH=\"$(go env GOPATH)/bin:$PATH\" goimports -w \"$f\" ;; esac; case \"$f\" in */study-help/web/*.ts|*/study-help/web/*.tsx|*/study-help/web/*.js|*/study-help/web/*.jsx|*/study-help/web/*.css|*/study-help/web/*.json|*/study-help/web/*.html|*/study-help/web/*.md) (cd /Users/darrel/GolandProjects/study-help/web && npx prettier --write \"$f\") ;; esac"
           }
         ]
       }

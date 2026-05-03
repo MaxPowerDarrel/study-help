@@ -42,7 +42,10 @@ export function togglesToQuery(t: Toggles): string {
   params.set("include_headings", String(t.include_headings));
   params.set("include_footnotes", String(t.include_footnotes));
   params.set("include_verse_numbers", String(t.include_verse_numbers));
-  params.set("include_passage_references", String(t.include_passage_references));
+  params.set(
+    "include_passage_references",
+    String(t.include_passage_references),
+  );
   params.set("include_word_of_christ", String(t.include_word_of_christ));
   return params.toString();
 }
