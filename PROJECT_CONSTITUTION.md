@@ -31,7 +31,7 @@ The product exists to support careful, slow reading — not to be a search engin
 
 These exist primarily to preserve the *web-now, native-shell-later* portability requirement. Violating them costs us the iPad path.
 
-- **Backend is a JSON API.** The Go server returns data, not views. No server-rendered HTML for app content. The API surface is the contract a future native client will share with the web client.
+- **Backend is a JSON API.** The application API surface returns data, not views — no server-rendered HTML for app content. This is the contract a future native client will share with the web client. Operational and observability endpoints (e.g. `/healthz`, `/metrics`) are not part of this surface and may use formats appropriate to their tooling (text exposition, plain JSON, etc.); they should be bound to a non-public listener whenever practical.
 - **Frontend is decoupled.** The web client makes no assumptions about Node-only or server-only runtime APIs. It must be loadable as a static bundle inside a WebView.
 - **Platform features behind an abstraction.** Anything platform-touching — local storage, notifications, biometrics, share sheets, file pickers — goes through a thin interface so a native shell can substitute its own implementation without touching feature code.
 - **Secrets stay server-side.** The ESV API key, session secrets, and database credentials never reach the client. The server proxies scripture requests; the client never calls `api.esv.org` directly.
