@@ -32,20 +32,58 @@ var Canon = []Book{
 	{"Jude", 1}, {"Revelation", 22},
 }
 
+// bookAliases maps short forms (as they appear in daily-reader.md and
+// other common references) to their canonical Canon names.
+var bookAliases = map[string]string{
+	"psalm":         "Psalms",
+	"song of songs": "Song of Solomon",
+	"1 sam.":        "1 Samuel",
+	"2 sam.":        "2 Samuel",
+	"1 chron.":      "1 Chronicles",
+	"2 chron.":      "2 Chronicles",
+	"lev.":          "Leviticus",
+	"num.":          "Numbers",
+	"deut.":         "Deuteronomy",
+	"prov.":         "Proverbs",
+	"eccl.":         "Ecclesiastes",
+	"jer.":          "Jeremiah",
+	"lam.":          "Lamentations",
+	"zeph.":         "Zephaniah",
+	"matt.":         "Matthew",
+	"rev.":          "Revelation",
+	"1 cor.":        "1 Corinthians",
+	"2 cor.":        "2 Corinthians",
+	"gal.":          "Galatians",
+	"eph.":          "Ephesians",
+	"philip.":       "Philippians",
+	"col.":          "Colossians",
+	"1 thess.":      "1 Thessalonians",
+	"2 thess.":      "2 Thessalonians",
+	"2 tim.":        "2 Timothy",
+	"heb.":          "Hebrews",
+}
+
 // canonByName indexes Canon by lowercased book name plus accepted aliases.
 var canonByName = func() map[string]Book {
 	m := make(map[string]Book, len(Canon)*2)
 	for _, b := range Canon {
 		m[strings.ToLower(b.Name)] = b
 	}
-	// "Psalm" (singular) is a common shorthand for a single psalm.
-	m["psalm"] = Book{Name: "Psalms", Chapters: 150}
+	for alias, name := range bookAliases {
+		for _, b := range Canon {
+			if b.Name == name {
+				m[alias] = b
+				break
+			}
+		}
+	}
 	return m
 }()
 
 // ValidateQuery checks that q matches an allow-listed reference shape:
 //
 //	"<book> <chapter>"
+//	"<book> <chapter>-<chapter>"
 //	"<book> <chapter>:<verse>"
 //	"<book> <chapter>:<verse>-<verse>"
 //
@@ -82,8 +120,26 @@ func ValidateQuery(q string) error {
 		return fmt.Errorf("unknown book: %q", bookName)
 	}
 
-	// tail = "<chapter>" or "<chapter>:<verse>" or "<chapter>:<verse>-<verse>"
+	// tail = "<chapter>" or "<chapter>-<chapter>" or "<chapter>:<verse>" or "<chapter>:<verse>-<verse>"
 	chapterStr, verseSpec, hasColon := strings.Cut(tail, ":")
+	if !hasColon && strings.Contains(chapterStr, "-") {
+		startStr, endStr, _ := strings.Cut(chapterStr, "-")
+		startCh, err := parsePositiveInt(startStr)
+		if err != nil {
+			return fmt.Errorf("invalid chapter: %w", err)
+		}
+		endCh, err := parsePositiveInt(endStr)
+		if err != nil {
+			return fmt.Errorf("invalid chapter range end: %w", err)
+		}
+		if startCh < 1 || endCh > book.Chapters {
+			return fmt.Errorf("chapter range %d-%d out of range for %s (1-%d)", startCh, endCh, book.Name, book.Chapters)
+		}
+		if endCh < startCh {
+			return errors.New("chapter range end before start")
+		}
+		return nil
+	}
 	chapter, err := parsePositiveInt(chapterStr)
 	if err != nil {
 		return fmt.Errorf("invalid chapter: %w", err)

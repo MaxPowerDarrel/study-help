@@ -9,6 +9,8 @@ import (
 	"syscall"
 	"time"
 
+	_ "time/tzdata"
+
 	"study-help/internal/config"
 	"study-help/internal/db"
 	"study-help/internal/server"
@@ -26,8 +28,9 @@ func main() {
 	defer database.Close()
 
 	counter := &server.ESVCallCounter{}
-	srv := server.New(cfg, database, counter)
-	metricsSrv := server.NewMetricsServer(metricsAddr, counter)
+	dailyCounter := &server.DailyCounter{}
+	srv := server.New(cfg, database, counter, dailyCounter)
+	metricsSrv := server.NewMetricsServer(metricsAddr, counter, dailyCounter)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
