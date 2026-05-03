@@ -3,7 +3,7 @@
 **Status:** Draft <!-- Draft | In Progress | Shipped | Deprecated -->
 **Created:** 2026-05-02
 **Last updated:** 2026-05-03
-**Owner:** unassigned
+**Owner:** Darrel
 
 ## Why
 
@@ -60,11 +60,11 @@ moment"; on other proxy failures or timeouts the toast says
 High-level shape only:
 
 - New package `internal/esv/` — HTTP client wrapping `api.esv.org`. Server-side only (§4: ESV API key never reaches the client).
-- New handler in `internal/server` for `GET /api/passage?q=<reference>` — free-form ESV reference syntax in `q`; server validates `q` against an allow-list (book names + `chapter:verse` + ranges) and rejects malformed input with 400 before consuming an ESV API call; valid requests proxy through `internal/esv` and return the ESV HTML payload. Formatting toggles surface as query params (`include_headings`, `include_footnotes`, `include_verse_numbers`, `include_passage_references`) and are forwarded to ESV. Each successful ESV call increments an in-process counter and emits a structured log line so quota usage is visible without extra alerting infrastructure at v1.
+- New handler in `internal/server` for `GET /api/passage?q=<reference>` — free-form ESV reference syntax in `q`; server validates `q` against an allow-list (book names + `chapter:verse` + ranges) and rejects malformed input with 400 before consuming an ESV API call; valid requests proxy through `internal/esv` and return the ESV HTML payload. Formatting toggles surface as query params (`include_headings`, `include_footnotes`, `include_verse_numbers`, `include_passage_references`) and are forwarded to ESV. Each successful ESV call increments an in-process counter and emits a structured log line; the counter is exposed on a `/metrics` HTTP endpoint (Prometheus-style exposition) bound to a localhost-only port (e.g. `127.0.0.1:9090`), separate from the public `/api/passage` listener, so a dashboard can scrape it without exposing internal counters publicly.
 - Canon (66 books + chapter counts) is hard-coded in the React bundle; no `/api/canon` endpoint at v1.
 - No new DB tables for the reader itself; highlights and notes will get their own specs and migrations.
 - Client surface: React SPA in `web/` built with Vite (static build output served by the Go server). Renders the picker + reading surface and calls `/api/passage`. Must load as a static bundle inside a WebView (§4 Frontend is decoupled).
-- Client persistence: localStorage access for formatting toggles sits behind a thin `ToggleStore` interface (get/set/remove) so a future native-shell WebView can substitute its own implementation without touching the reading-surface component (§4 platform abstraction).
+- Client persistence: localStorage access for formatting toggles sits behind a thin `ToggleStore` interface at `web/src/platform/ToggleStore.ts` (get/set/remove) so a future native-shell WebView can substitute its own implementation without touching the reading-surface component (§4 platform abstraction).
 
 Pointers, not full designs. The spec is durable; the design notes can
 stay in the PR.
@@ -101,11 +101,16 @@ under **Decisions** and leave a pointer here (don't delete the question
 - [x] Verification: does the suite confirm canon-edge UX (no Previous on Genesis 1, no Next on Revelation 22) and book-boundary navigation (e.g. Malachi 4 → Matthew 1)? Both are user-facing decisions made this round and currently unchecked. — *resolved 2026-05-03 (adopted as Verification line item)*
 - [x] Verification: does the suite confirm `/api/passage` rejects malformed `q` with 400 *before* consuming an ESV API call? This is the central abuse-prevention claim and currently unchecked. — *resolved 2026-05-03 (adopted as Verification line item)*
 - [x] Verification: does the suite confirm formatting-toggle query params (`include_headings`, `include_footnotes`, `include_verse_numbers`, `include_passage_references`) round-trip end-to-end, and that ESV attribution markup is preserved verbatim in the proxied HTML? — *resolved 2026-05-03 (adopted as Verification line item)*
-- [ ] Should the synthetic latency check's 3 priming requests target the *same* passage or 3 distinct passages? ESV-side caching could make the two materially different.
-- [ ] Where does the `ToggleStore` interface live in `web/` (e.g. `web/src/platform/`) so the future native-shell substitution point is discoverable, or is the location left to the implementing PR?
-- [ ] Is the per-request ESV counter process-local only (resets on restart), and is that acceptable for the "dashboard to read" goal — or does it need an export path (`/metrics`, log aggregation) to be useful?
-- [ ] Does the user-facing error-toast copy ("Service is busy, try again in a moment" / "Something went wrong, try again") need i18n hooks at v1, or is English-only locked in?
-- [ ] Verification covers attribution markup preservation under toggle combinations but not under 429/5xx error paths — should the error-toast Verification line also assert attribution markup is *not* required when the body never reaches the user?
+- [x] Should the synthetic latency check's 3 priming requests target the *same* passage or 3 distinct passages? ESV-side caching could make the two materially different. — *resolved 2026-05-03 (see Decisions)*
+- [x] Where does the `ToggleStore` interface live in `web/` (e.g. `web/src/platform/`) so the future native-shell substitution point is discoverable, or is the location left to the implementing PR? — *resolved 2026-05-03 (see Decisions)*
+- [x] Is the per-request ESV counter process-local only (resets on restart), and is that acceptable for the "dashboard to read" goal — or does it need an export path (`/metrics`, log aggregation) to be useful? — *resolved 2026-05-03 (see Decisions and STACK.md)*
+- [x] Does the user-facing error-toast copy ("Service is busy, try again in a moment" / "Something went wrong, try again") need i18n hooks at v1, or is English-only locked in? — *resolved 2026-05-03 (see Decisions)*
+- [x] Verification covers attribution markup preservation under toggle combinations but not under 429/5xx error paths — should the error-toast Verification line also assert attribution markup is *not* required when the body never reaches the user? — *resolved 2026-05-03 (see Decisions; no new Verification line)*
+- [ ] Should Verification include a check that `/metrics` exposes the ESV-call counter in the agreed Prometheus exposition format (metric name, type, sample line shape) so a dashboard scrape contract is pinned before implementation drift?
+- [ ] Should the latency-check Decision pin the *measurement* reference too, or is "a fixed reference" left to the implementing PR? The priming list is named (Genesis 1, Psalm 23, John 3); the measurement reference is not — asymmetry worth resolving.
+- [ ] Should the spec name the `ToggleStore` key namespace (e.g. `reader.toggles.*`) so a future native shell substitution has a contract, or is that left to the implementing PR?
+- [ ] Is the `/metrics` surface explicitly counter-only at v1, or is the implementing PR free to add request-duration histograms?
+- [ ] The toggle round-trip Verification claims attribution holds "across all 16 toggle combinations (2⁴)" but the test as described is per-toggle (4 pairs = 8 requests). Is the 16-combination claim asserted by a separate combinatorial sub-test, or is it an inference the per-toggle assertions don't actually establish?
 
 ## Decisions
 
@@ -139,6 +144,13 @@ if a decision is reversed, add a new entry that supersedes it.
 - 2026-05-03: Error toast distinguishes ESV rate-limit (429) from other upstream failures: 429 → "Service is busy, try again in a moment"; 5xx/timeout → generic "Something went wrong, try again". Reason: the no-cache + no-rate-limit posture makes 429 foreseeable, and a retry-friendly message reduces user-side retry storms. Resolves Open question on error toast granularity.
 - 2026-05-03: React SPA tooling is Vite. Reason: fastest path to a clean static build that loads inside a WebView, minimal config, no server-only runtime APIs (§4). Recorded in STACK.md alongside the React choice. Resolves Open question on SPA framework choice.
 - 2026-05-03: Three verification gaps surfaced this round are adopted as Verification line items rather than left as open questions: canon-edge UX + book-boundary navigation; allow-list 400 rejection without an ESV call; formatting-toggle round-trip + ESV attribution preserved. Resolves the three verification-gap Open questions.
+- 2026-05-03: Synthetic latency check primes with 3 distinct passages (e.g. Genesis 1, Psalm 23, John 3) per measurement run, then measures against a fixed reference. Reason: per-reference ESV-side caching could otherwise under-report p95 if priming and measurement share the same passage. Resolves Open question on priming scope.
+- 2026-05-03: `ToggleStore` lives at `web/src/platform/ToggleStore.ts`. Reason: a dedicated `platform/` directory makes the WebView substitution boundary discoverable and signals "thin platform abstraction" to readers. Resolves Open question on `ToggleStore` location.
+- 2026-05-03: ESV-call counter is process-local (resets on restart) and exposed on a `/metrics` HTTP endpoint in Prometheus-style exposition format alongside the structured log line per call. Reason: log search alone makes ad-hoc rollups slow; a metrics endpoint keeps observability real-time without persistent state. Library choice deferred to the implementing PR; recorded in STACK.md. Resolves Open question on counter scope.
+- 2026-05-03: Error-toast copy is English-only at v1; no i18n hook layer. Reason: matches the v1 simplicity posture; revisit when localization becomes a real requirement. Resolves Open question on i18n hooks.
+- 2026-05-03: ESV attribution markup is not asserted in error paths because the response body is not rendered to the user when the proxy returns 429/5xx (the toast replaces the reading surface). The existing toggle-round-trip Verification line covers attribution under all 16 success-path toggle combinations. Resolves Open question on attribution under error paths.
+- 2026-05-03: `/metrics` binds to a localhost-only port (e.g. `127.0.0.1:9090`), separate from the public `/api/passage` listener. Reason: prevents accidental public exposure of internal counters; matches Prometheus convention where exporters bind locally and a sidecar/in-host scraper consumes them. Resolves Open question on `/metrics` exposure posture.
+- 2026-05-03: Owner assigned to Darrel.
 
 ## Verification
 
@@ -146,7 +158,7 @@ How we'll know it's working: tests, manual flows, metrics, screenshots.
 
 - [ ] Smoke test: `GET /api/passage?q=John+3` returns 200 with ESV HTML.
 - [ ] Range render test: `GET /api/passage?q=John+3:1-21` returns the right verses.
-- [ ] Latency check: synthetic measurement (3 priming requests discarded per run) confirms server-side p50 < 150ms and p95 < 500ms warm against the production ESV upstream.
+- [ ] Latency check: synthetic measurement (3 priming requests against 3 distinct passages — e.g. Genesis 1, Psalm 23, John 3 — discarded per run) confirms server-side p50 < 150ms and p95 < 500ms warm against the production ESV upstream.
 - [ ] Canon-edge & book-boundary navigation: clicking Previous on Genesis 1 has no effect (control hidden); clicking Next on Revelation 22 has no effect (control hidden); Next from Malachi 4 advances to Matthew 1.
 - [ ] Allow-list rejection: malformed `q` (e.g. `q=!!!`, `q=Booga+99`, empty `q=`) returns 400 from `/api/passage` and the ESV upstream request count for that test is 0.
 - [ ] Toggle round-trip — asserted per toggle individually: for each of `include_headings`, `include_footnotes`, `include_verse_numbers`, `include_passage_references`, fetch the same reference twice (`=true` / `=false`) and assert the `false` response omits the corresponding markup category (section-heading element / footnote marker / verse-number marker / passage-reference header) while the `true` response includes it. Selectors pinned in the test fixture by the implementing PR. ESV attribution markup remains present in both responses across all 16 toggle combinations (2⁴).

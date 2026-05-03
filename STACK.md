@@ -19,6 +19,7 @@ This document records the backend and client technology choices for `study-help`
 | Deployment target | **Single static binary** + SQLite file on disk | Implicit consequence of the above. Specific host (Fly.io / Railway / VPS) deferred. |
 | Client framework | **React** (SPA in `web/`) | Familiar tooling; clean static-bundle target that loads inside a WebView (§4 Frontend is decoupled). Decided in `specs/passage-reader.md`. |
 | Client bundler | **[Vite](https://vitejs.dev)** | Fast dev server, no server-only runtime APIs, clean static build output for WebView. Decided in `specs/passage-reader.md`. |
+| Metrics | **`/metrics` endpoint, Prometheus-style exposition** | Real-time visibility into ESV-call volume without persistent state. Library (e.g. `prometheus/client_golang`) decided in implementing PR. |
 
 ## Explicitly NOT chosen
 
