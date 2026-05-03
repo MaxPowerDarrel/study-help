@@ -37,7 +37,7 @@ Read `PROJECT_CONSTITUTION.md`. Check:
 
 - Any constitution section numbers cited in the spec (`§2`, `§3`, etc.) actually exist and say what the spec claims they say.
 - The feature does not conflict with **§5 Non-goals**. If it does, that is always a **Critical** finding.
-- The Implementation outline does not violate **§4 Architectural Guardrails** — e.g. server-rendered HTML for app content, secrets shipped to the client, scripture mutation, browser-only auth without a WebView fallback.
+- The Implementation outline does not violate **§4 Architectural Guardrails** — e.g. server-rendered HTML for app content, secrets shipped to the client, scripture mutation, or platform-API access not routed through `web/src/platform/`.
 - The feature plausibly serves §3 Core Principles. If it doesn't, ask why.
 
 ### 3. Ambiguity
