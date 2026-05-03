@@ -1,5 +1,4 @@
 # CLAUDE.md
-let
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 Project direction, principles, guardrails, and non-goals live in [`PROJECT_CONSTITUTION.md`](./PROJECT_CONSTITUTION.md). Read it before proposing features or architectural changes.
@@ -30,3 +29,7 @@ There is no frontend, no static assets, no `sqlc`-generated code, and no tests y
 - Run: `go run .`
 - Test (once tests exist): `go test ./...`
 - Run a single test: `go test -run TestName ./path/to/pkg`
+
+## Workflow
+
+No feature work on `main`. Every change lands on a feature branch and merges via pull request.
