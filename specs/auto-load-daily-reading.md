@@ -2,7 +2,7 @@
 
 **Status:** Draft
 **Created:** 2026-05-03
-**Last updated:** 2026-05-03
+**Last updated:** 2026-05-03 (revised with open questions resolved)
 **Owner:** unassigned
 
 ---
@@ -38,23 +38,20 @@ A toggle in the settings pane labeled "Auto-load daily reading". When enabled:
 
 ## Implementation outline
 
-- **Backend:** New API endpoint `GET /api/daily-reading` that parses `daily-reader.md` and returns today's passages with book abbreviations as-is. Response: `[{book: 'Num.', chapters: '15-16', testament: 'OT'}, {book: 'Rev.', chapters: '20', testament: 'NT'}]`. Computed at request time or cached.
-- **Backend:** Parse `daily-reader.md` (markdown table with columns: `Date`, `OT Reading`, `NT Reading`). Match current date (MM/DD/YY format) to return today's row. Handle edge cases: dates with missing OT or NT reading (several dates have empty cells); return only non-null passages.
-- **Backend:** API endpoint `GET /api/daily-reading` response format: `[{book: 'Num.', chapters: '15-16', testament: 'OT'}, {book: 'Rev.', chapters: '20', testament: 'NT'}]`. Parse passage strings from daily-reader.md as-is.
-- **Backend:** Parsing strategy (caching vs. request-time) — open question below.
+- **Backend:** New endpoint `GET /api/daily-reading?tz=<timezone>` (e.g., `?tz=America/Los_Angeles`). Query param specifies client timezone for date lookup.
+- **Backend:** Parse `daily-reader.md` at request time (no caching). Markdown table with columns: `Date`, `OT Reading`, `NT Reading`. Match MM/DD/YY date to client's local date (adjusted by timezone).
+- **Backend:** Response format: `{passages: [{book: 'Num.', chapters: '15-16', testament: 'OT'}, {book: 'Rev.', chapters: '20', testament: 'NT'}]}`. If no match or both OT/NT empty, return `{passages: [], message: "No reading for today"}`.
+- **Backend:** Handle invalid timezone with 400 error; return graceful empty response if reading row missing.
 - **Frontend:** Toggle in the settings pane wired to `ToggleStore` (localStorage, client-only)
-- **Frontend:** On app startup (App.tsx or similar), check toggle and call `GET /api/daily-reading` in background (non-blocking). Show picker pane immediately while passages load.
-- **Frontend:** On successful load, display both OT and NT passages in tabs or side-by-side layout. User can switch between them.
-- **Frontend:** Graceful degradation if endpoint fails; user can still pick passages manually.
+- **Frontend:** On app startup, detect client timezone via `Intl.DateTimeFormat` or `navigator.language`; call `GET /api/daily-reading?tz=<detected-tz>` in background (non-blocking).
+- **Frontend:** Show picker pane immediately while passages load.
+- **Frontend:** On success, display both OT and NT passages in tabs or side-by-side layout.
+- **Frontend:** On failure or no passages, show error: "Daily reading unavailable; pick a passage manually." Allow user to proceed manually.
 - **Data:** `daily-reader.md` (confirmed to exist in project root; Bible in One Year 2026 plan in markdown table format)
 
 ## Open questions
 
-- [ ] Should we cache the daily-reader.md parse result server-side, or parse at request time? (Tradeoff: caching faster, but invalidation on file change)
-- [ ] How should we handle timezone edge cases when determining "today"? (e.g., user in PST, server in UTC)
-- [ ] Does toggling the setting on immediately trigger a load of today's reading, or does it only affect future app startups?
-- [ ] Should the frontend retry or gracefully degrade if `GET /api/daily-reading` fails at startup?
-- [ ] How will dates be matched to today? (Parse MM/DD/YY from daily-reader.md and compare to current date)
+(none — all resolved via decision)
 
 ## Decisions
 
@@ -64,6 +61,11 @@ A toggle in the settings pane labeled "Auto-load daily reading". When enabled:
 - 2026-05-03: `GET /api/daily-reading` returns book abbreviations as-is from daily-reader.md (e.g., 'Num.', 'Rev.'). Reason: Maintains data fidelity from source; no normalization overhead.
 - 2026-05-03: Both OT and NT passages display in tabs or side-by-side layout. Reason: Allows user to toggle between them without losing context.
 - 2026-05-03: Auto-load is opt-in (disabled by default). Reason: Respects user choice; non-disruptive to first-time users.
+- 2026-05-03: Parse daily-reader.md at request time (no server-side caching). Reason: Simple; file is small; ensures fresh data on each request; no invalidation logic needed.
+- 2026-05-03: Timezone handling uses client timezone (detected via browser `Intl.DateTimeFormat`). Backend receives client timezone and adjusts date lookup accordingly. Reason: Users expect "today" to match their local date, not server UTC.
+- 2026-05-03: Toggling auto-load only affects the next app startup. Reason: Simple behavior; no need to reload app state mid-session.
+- 2026-05-03: API failures show error message to user (e.g., "Daily reading unavailable; pick a passage manually"). Reason: User feedback; avoids silent failures; respects study-first UX (reading surface is the priority).
+- 2026-05-03: Date matching: Client detects timezone, backend compares MM/DD/YY from daily-reader.md against client's local date. Edge case: if row is missing or both OT/NT are empty, return empty array and show message. Reason: Respects user's local timezone; handles sparse reading plan gracefully.
 
 ## Verification
 
