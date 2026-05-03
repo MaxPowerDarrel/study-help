@@ -35,4 +35,4 @@ Reader feature shipped per `specs/passage-reader.md`. The Go server proxies ESV 
 
 ## Workflow
 
-No feature work on `main`. Every change lands on a feature branch and merges via pull request.
+No feature work on `main`. Every change lands on a feature branch and merges via pull request.  **Always create a branch before doing any work**
