@@ -1,8 +1,8 @@
 # Auto-load Daily Reading
 
-**Status:** Draft
+**Status:** Shipped
 **Created:** 2026-05-03
-**Last updated:** 2026-05-03 (open questions resolved)
+**Last updated:** 2026-05-03 (shipped)
 **Owner:** unassigned
 
 ---
