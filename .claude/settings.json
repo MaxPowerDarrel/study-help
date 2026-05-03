@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "f=$(jq -r '.tool_input.file_path // empty'); case \"$f\" in *.go) PATH=\"$(go env GOPATH)/bin:$PATH\" goimports -w \"$f\" ;; esac; case \"$f\" in */study-help/web/*.ts|*/study-help/web/*.tsx|*/study-help/web/*.js|*/study-help/web/*.jsx|*/study-help/web/*.css|*/study-help/web/*.json|*/study-help/web/*.html|*/study-help/web/*.md) (cd /Users/darrel/GolandProjects/study-help/web && npx prettier --write \"$f\") ;; esac"
+            "command": "f=$(jq -r '.tool_input.file_path // empty'); case \"$f\" in *.go) PATH=\"$(go env GOPATH)/bin:$PATH\" goimports -w \"$f\" ;; esac; case \"$f\" in \"$CLAUDE_PROJECT_DIR/web/\"*.ts|\"$CLAUDE_PROJECT_DIR/web/\"*.tsx|\"$CLAUDE_PROJECT_DIR/web/\"*.js|\"$CLAUDE_PROJECT_DIR/web/\"*.jsx|\"$CLAUDE_PROJECT_DIR/web/\"*.css|\"$CLAUDE_PROJECT_DIR/web/\"*.json|\"$CLAUDE_PROJECT_DIR/web/\"*.html|\"$CLAUDE_PROJECT_DIR/web/\"*.md) (cd \"$CLAUDE_PROJECT_DIR/web\" && npx prettier --write \"$f\") ;; esac"
           }
         ]
       }

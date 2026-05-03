@@ -16,6 +16,10 @@ func TestValidateQueryAccepts(t *testing.T) {
 		"3 John 1",
 		"Malachi 4",
 		"Obadiah 1",
+		"Genesis 1-3",
+		"Numbers 15-16",
+		"Revelation 21-22",
+		"1 Samuel 1-2",
 	}
 	for _, q := range cases {
 		if err := ValidateQuery(q); err != nil {
@@ -38,6 +42,11 @@ func TestValidateQueryRejects(t *testing.T) {
 		"John 3:abc",
 		"<script>",
 		"John 3; DROP TABLE",
+		"Genesis 0-3",
+		"Genesis 3-1",
+		"Genesis 1-51",
+		"Genesis 1-",
+		"Genesis -3",
 	}
 	for _, q := range cases {
 		if err := ValidateQuery(q); err == nil {

@@ -17,7 +17,7 @@ import (
 // New builds the public HTTP server: health, the passage proxy, and the
 // static SPA bundle. The /metrics endpoint runs on a separate localhost
 // listener — see NewMetricsServer.
-func New(cfg config.Config, db *sql.DB, counter *ESVCallCounter) *http.Server {
+func New(cfg config.Config, db *sql.DB, counter *ESVCallCounter, daily *DailyCounter) *http.Server {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
@@ -31,6 +31,7 @@ func New(cfg config.Config, db *sql.DB, counter *ESVCallCounter) *http.Server {
 
 	esvClient := esv.NewClient(cfg.ESVAPIKey)
 	mux.HandleFunc("GET /api/passage", passageHandler(esvClient, counter))
+	mux.HandleFunc("GET /api/daily-reading", dailyReadingHandler(daily))
 
 	mux.Handle("/", spaHandler(webclient.DistFS()))
 

@@ -159,7 +159,7 @@ func TestMetricsExposesCounter(t *testing.T) {
 	counter.Inc()
 	counter.Inc()
 
-	srv := NewMetricsServer("127.0.0.1:0", counter)
+	srv := NewMetricsServer("127.0.0.1:0", counter, &DailyCounter{})
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodGet, "/metrics", nil)
 	srv.Handler.ServeHTTP(w, r)
