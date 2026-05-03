@@ -1,6 +1,6 @@
 # study-help
 
-A Bible reader optimized for **focused study** of scripture a chapter or section at a time, with personal highlights and notes. Web-first, architected so a native iPad shell can wrap the same client without rework.
+A Bible reader optimized for **focused study** of scripture a chapter or section at a time, with personal highlights and notes. A web app, designed to be enjoyable in any modern browser — including Safari on iPad.
 
 See [`PROJECT_CONSTITUTION.md`](./PROJECT_CONSTITUTION.md) for purpose, principles, and non-goals, and [`STACK.md`](./STACK.md) for the tech choices.
 
@@ -58,7 +58,7 @@ cd web && npm run format
 - `internal/server/` — public `*http.Server` exposing `/healthz`, `/api/passage`, and the embedded SPA; plus the private metrics server.
 - `internal/esv/` — server-side ESV API client and the canon-aware `q` allow-list validator.
 - `internal/web/` — embeds the Vite build output (`internal/web/dist/`) into the Go binary.
-- `web/` — React SPA (Vite + TypeScript). Platform-touching code goes through `web/src/platform/` so a native shell can substitute its own implementation.
+- `web/` — React SPA (Vite + TypeScript). Platform-touching code (localStorage, timezone, etc.) goes through `web/src/platform/` to keep feature code portable and testable.
 - `specs/` — one markdown file per feature; index in [`specs/README.md`](./specs/README.md).
 
 ## Workflow
