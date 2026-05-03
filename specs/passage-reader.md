@@ -151,6 +151,7 @@ if a decision is reversed, add a new entry that supersedes it.
 - 2026-05-03: ESV attribution markup is not asserted in error paths because the response body is not rendered to the user when the proxy returns 429/5xx (the toast replaces the reading surface). The existing toggle-round-trip Verification line covers attribution under all 16 success-path toggle combinations. Resolves Open question on attribution under error paths.
 - 2026-05-03: `/metrics` binds to a localhost-only port (e.g. `127.0.0.1:9090`), separate from the public `/api/passage` listener. Reason: prevents accidental public exposure of internal counters; matches Prometheus convention where exporters bind locally and a sidecar/in-host scraper consumes them. Resolves Open question on `/metrics` exposure posture.
 - 2026-05-03: Owner assigned to Darrel.
+- 2026-05-03: `/metrics` (Prometheus text exposition) sits outside §4's "Backend is a JSON API" rule because §4 is about the *application* API surface a native client consumes, not internal observability. Constitution PR #2 (`chore/constitution-metrics-carveout`) writes that scoping into §4 explicitly. Resolves the §4 alignment question raised in round-4 review.
 
 ## Verification
 
