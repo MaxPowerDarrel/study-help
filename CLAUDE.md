@@ -32,6 +32,7 @@ Reader feature shipped per `specs/passage-reader.md`. The Go server proxies ESV 
 - Test: `go test ./...`
 - Run a single test: `go test -run TestName ./path/to/pkg`
 - SPA dev mode: `cd web && npm run dev` (proxies `/api` to `localhost:8080`)
+- Format SPA: `cd web && npm run format` (Prettier; also runs automatically via PostToolUse hook in `.claude/settings.json`)
 
 ## Workflow
 

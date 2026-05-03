@@ -9,4 +9,4 @@ landing), **Shipped** (user-visible), **Deprecated** (being removed).
 
 | Spec | Status | Summary |
 |---|---|---|
-| [passage-reader](./passage-reader.md) | Draft | Read a chapter or contiguous passage range; ESV proxied through the server |
+| [passage-reader](./passage-reader.md) | Shipped | Read a chapter or contiguous passage range; ESV proxied through the server |

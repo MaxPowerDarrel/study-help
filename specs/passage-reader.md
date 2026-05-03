@@ -1,6 +1,6 @@
 # Passage Reader
 
-**Status:** Draft <!-- Draft | In Progress | Shipped | Deprecated -->
+**Status:** Shipped <!-- Draft | In Progress | Shipped | Deprecated -->
 **Created:** 2026-05-02
 **Last updated:** 2026-05-03
 **Owner:** Darrel
@@ -163,6 +163,7 @@ if a decision is reversed, add a new entry that supersedes it.
 - 2026-05-03: Added `include_word_of_christ` as a 5th formatting toggle, default on. Server forwards it to ESV's `include-word-of-christ` param; ESV emits `<span class="woc">…</span>` around Jesus's spoken words; the SPA styles those spans red. Toggle persists via `ToggleStore` exactly like the existing four. Reason: traditional red-letter reading aid that supports §3 Study-first UX; ESV-published markup, so §3 Respect the text holds (no user mutation of scripture). Constitutionally aligned with §4 (still server-proxied HTML, still behind `ToggleStore`).
 - 2026-05-03: With the 5th toggle the combinatorial toggle space grows to 2⁵ = 32; Verification posture is unchanged — coverage stays per-toggle (5 pairs), not combinatorial. Reason: same trade-off as the prior round (per-toggle catches the regression cheaply; combinatorial coverage can be added if a real bug surfaces it). Supersedes nothing — extends the prior dropped-claim decision to the 5-toggle world.
 - 2026-05-03: Server unconditionally sets `include-audio-link=false` on every ESV request. Reason: enforces the existing audio Non-goal (ESV's `passage/html` defaults the param to true and would otherwise inject `<a class="mp3link">Listen</a>` into every payload). No client toggle — audio is out of scope at v1, period. If audio ever becomes in-scope, it gets its own spec.
+- 2026-05-03: Status transitioned Draft → Shipped. The reader is user-visible on `main` after PR #5 lands: book/chapter picker, contiguous range, formatting toggles (incl. words-of-Christ red letters), canon-edge handling, `/api/passage` proxy with allow-list 400s, and `/metrics` counter on the localhost-only port. The Verification checklist remains as-is (those are test artifacts to be added incrementally), and the four open follow-up questions logged this round (toggle defaults in spec, asserting computed `.woc` color, accessibility/contrast, hyphen↔underscore mapping note) carry forward post-Shipped.
 
 ## Verification
 
