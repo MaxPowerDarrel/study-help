@@ -1,6 +1,6 @@
 # Reader UI Refresh
 
-**Status:** Draft
+**Status:** In Progress
 **Created:** 2026-05-03
 **Last updated:** 2026-05-03
 **Owner:** unassigned
@@ -252,6 +252,24 @@ Lands in **two PRs**, in this order:
   Reason: Apple HIG and WCAG 2.5.5 both land at 44×44; using the
   industry standard makes the goal verifiable and removes the need
   for a project-specific number.
+- 2026-05-03: Toolchain bump (PR 1) implemented and lands on **Vite
+  8 + `@vitejs/plugin-react` 6 + React 19 + TypeScript 6** — the
+  current latest majors at install time, not the originally targeted
+  Vite 7. Reason: between spec drafting and implementation, Vite 8
+  and TypeScript 6 became the current stable; the spec's intent
+  ("absorb majors now while the surface is small, build runs against
+  the destination toolchain") applies more strongly with the newer
+  current. Build, `go build`, and `go test` all green. Supersedes
+  the earlier "Vite 7" portion of the toolchain Decision.
+- 2026-05-03: Added `web/src/vite-env.d.ts` with
+  `/// <reference types="vite/client" />`. Reason: TypeScript 6
+  rejects bare side-effect CSS imports (`import "./styles.css"`)
+  without ambient declarations; Vite's standard scaffold ships this
+  file but the project never had one. One-line fix; no behavior
+  change.
+- 2026-05-03: Status flipped **Draft → In Progress** with PR 1
+  (toolchain bump). Reason: real code is landing; per the skill's
+  Mode 4 rule, the spec's status moves with the work.
 
 ## Verification
 
