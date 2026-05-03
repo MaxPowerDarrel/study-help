@@ -53,94 +53,132 @@ persistence routes through the existing `web/src/platform/` abstraction).
   iPhone may benefit incidentally but isn't a goal.
 - **No accessibility audit beyond theme contrast.** — A11y is important
   but warrants its own focused spec. Don't try to bundle it.
-- **No Tailwind.** — *Provisional — see Open questions.* Default lean
-  is plain CSS / CSS modules with custom-property tokens.
+- **No Tailwind.** — Stylesheet strategy is CSS Modules for components
+  plus a single global `tokens.css` for custom properties.
 - **No CSS-in-JS migration.** — Runtime cost and toolchain weight don't
   pay back at this surface size.
 - **No new client-side state library.** — Theme state lives in
   `ToggleStore` like other toggles.
+- **No sepia / reading-mode at v1.** — Light + dark only. The token
+  layer makes sepia cheap to add later; bundling it here triples the
+  theme surface and turns a binary toggle into a 3-way picker.
 
 ## User-facing behavior
 
-- **First visit:** the app follows the system theme (light or dark via
-  `prefers-color-scheme`). No flash of incorrect theme on cold load.
+- **First visit:** the app quietly follows the system theme (light or
+  dark via `prefers-color-scheme`) — no prompt, no banner. The user
+  finds the explicit toggle in Settings if they want to override. No
+  flash of incorrect theme on cold load.
 - **Theme toggle:** lives in the **settings panel**, alongside the
   existing formatting toggles and the auto-load-daily-reading
   toggle. Once the user picks light or dark, that choice sticks
   across reloads. No header chrome added for it.
 - **iPad Safari:** the reader fills the viewport with safe-area insets
-  honored in both orientations. Tapping a verse / picker control
-  registers cleanly without zooming the page. Scrolling the passage
-  has the expected momentum / rubber-band feel.
+  honored in both orientations. All tappable controls (picker
+  buttons, settings toggles, theme toggle, any verse affordance) meet
+  a **44×44 CSS px** minimum. Tapping a control registers cleanly
+  without zooming the page. The passage container scrolls with iOS
+  Safari's native momentum.
 - **Desktop:** visual rhythm (spacing, type scale, colors) is
   consistent across the picker pane, reading surface, and settings.
   No more ad-hoc magic numbers.
 
 ## Implementation outline
 
-- **Toolchain bump (prerequisite):** `web/package.json` — **Vite 5 → 7**,
-  `@vitejs/plugin-react` to the matching major (5.x line), **React
-  18 → 19**, **TypeScript 5.6 → current**. React 19's behavior
-  changes (stricter Effects, ref-as-prop, removed legacy APIs) get
-  absorbed in this bump rather than deferred. Resolve any breakage;
-  rerun `npm run build` and verify the embedded SPA still renders.
-- **Design tokens:** new `web/src/styles/tokens.css` (or equivalent)
-  exporting CSS custom properties for color, spacing, type scale, and
-  radii. Two token sets keyed by `[data-theme="light"]` and
-  `[data-theme="dark"]` on `<html>`. Default selector follows
-  `prefers-color-scheme` until the user makes a choice.
-- **Theme persistence:** new `theme` key in the existing
-  `web/src/platform/ToggleStore.ts` (per §4 platform abstraction).
-  No new platform module.
-- **iPad Safari polish:** update the viewport meta to include
-  `viewport-fit=cover`, apply `env(safe-area-inset-*)` paddings on
-  the app shell, set `font-size: 16px` on text inputs to suppress
-  iOS zoom, apply `-webkit-overflow-scrolling: touch` (or the modern
-  equivalent) on scroll containers.
+Lands in **two PRs**, in this order:
+
+### PR 1 — Toolchain bump (prerequisite, no visual change)
+
+- `web/package.json`: **Vite 5 → 7**, `@vitejs/plugin-react` to the
+  matching major (5.x line), **React 18 → 19**, **TypeScript 5.6 →
+  current**. React 19's behavior changes (stricter Effects,
+  ref-as-prop, removed legacy APIs) get absorbed here.
+- Resolve any breakage in `web/`. Rerun `npm run build`; verify the
+  embedded SPA still renders identically.
+- Update `STACK.md` to reflect the new Vite / React / TS majors (per
+  the skill's "tech choice → update STACK.md" rule).
+- Goal of this PR: build is green on the new toolchain, no UI
+  changes. If something breaks, the blast radius is one PR.
+
+### PR 2 — UI refresh on the new toolchain
+
+- **Stylesheet strategy:** CSS Modules (`*.module.css`) for component
+  styles; one global `web/src/styles/tokens.css` for custom
+  properties. Vite supports CSS Modules natively — no extra deps.
+- **Design tokens:** `tokens.css` exports CSS custom properties for
+  color, spacing, type scale, and radii. Two token sets keyed by
+  `[data-theme="light"]` and `[data-theme="dark"]` on `<html>`.
+  Default selector follows `prefers-color-scheme` until the user
+  picks a theme.
+- **Theme persistence:** add a top-level `theme` key to
+  `web/src/platform/ToggleStore.ts` with values `"light" | "dark" |
+  "system"`, default `"system"`. No new platform module (per §4
+  platform abstraction).
+- **Theme toggle UI:** a 3-state control (System / Light / Dark) in
+  the existing settings panel.
+- **iPad Safari polish:**
+  - Viewport meta: `viewport-fit=cover`.
+  - App shell padding: `env(safe-area-inset-*)` for top/bottom/left/
+    right insets, both orientations.
+  - Inputs: `font-size: 16px` to suppress iOS zoom-on-focus.
+  - Scroll containers: rely on iOS Safari's native momentum (no
+    `-webkit-overflow-scrolling` — it's a no-op on current iOS).
+    Add `overscroll-behavior: contain` on the passage container so
+    rubber-banding doesn't leak to the page.
+  - Tap targets: minimum 44×44 CSS px on picker controls, toggle
+    buttons, and any verse affordance.
 - **Component touch-up:** picker controls, verse rows, and the
-  reading surface migrate to the new tokens. No new components — this
-  is a refactor of existing styles, not a redesign.
-- **STACK.md update:** record the bumped Vite / React / TS majors in
-  the same PR(s) (per the skill's "tech choice → update STACK.md"
-  rule).
+  reading surface migrate to the new tokens via CSS Modules. No new
+  components — refactor of existing styles, not a redesign.
 
 ## Open questions
 
-- [ ] CSS strategy: plain CSS files with tokens, CSS Modules, or
+- [x] CSS strategy: plain CSS files with tokens, CSS Modules, or
       something else? Rule-of-thumb is "the smallest thing that
       consolidates ad-hoc styles" — but pin the choice before
-      implementation.
+      implementation. — *resolved 2026-05-03 (see Decisions): CSS
+      Modules + global `tokens.css`.*
 - [x] Where does the theme toggle live in the UI — header, settings
       panel, picker pane, or a small floating control? — *resolved
       2026-05-03 (see Decisions): settings panel.*
-- [ ] Sepia / reading-mode in scope at v1, or hard-deferred to a
-      follow-up?
-- [ ] Auto-follow system theme by default, or explicit user choice
-      from first visit?
+- [x] Sepia / reading-mode in scope at v1, or hard-deferred to a
+      follow-up? — *resolved 2026-05-03 (see Decisions): deferred;
+      added to Non-goals.*
+- [x] Auto-follow system theme by default, or explicit user choice
+      from first visit? — *resolved 2026-05-03 (see Decisions):
+      auto-follow `prefers-color-scheme` quietly; no first-visit
+      prompt; explicit toggle in Settings.*
 - [x] Pin Vite to a specific major (6 or 7)? React 19 has known
       behavior changes (e.g. stricter `useEffect`, ref-as-prop) — do
       we want to absorb those now or stay on React 18 and only bump
       Vite + TS? — *resolved 2026-05-03 (see Decisions): Vite 7,
       React 19, TS current.*
-- [ ] What is the namespace for the theme key in `ToggleStore`
-      (e.g. `theme.mode` vs. `reader.theme`)?
+- [x] What is the namespace for the theme key in `ToggleStore`
+      (e.g. `theme.mode` vs. `reader.theme`)? — *resolved 2026-05-03
+      (see Decisions): top-level `theme`, values `"light" | "dark" |
+      "system"`, default `"system"`.*
 - [x] Concrete pass/fail for "no measurable performance regression" —
       lighthouse score, frame-time on chapter-switch, or qualitative
       smoke test? — *resolved 2026-05-03 (see Decisions): qualitative
       side-by-side smoke test on the same iPad.*
-- [ ] Does the toolchain bump land as one PR before the UI work, or
-      bundled into a single PR with the refresh?
+- [x] Does the toolchain bump land as one PR before the UI work, or
+      bundled into a single PR with the refresh? — *resolved
+      2026-05-03 (see Decisions): toolchain bump first as its own
+      PR; UI refresh second.*
 - [ ] Anything in the existing CSS that's load-bearing for the reader
-      (e.g. specific selectors used by tests or screenshots) and
-      shouldn't be churned?
-- [ ] Are there any existing CSS selectors that are load-bearing
-      (used by tests, screenshots, or external references) and must
-      not be churned?
-- [ ] Define the exact "modern equivalent" planned in place of
+      (e.g. specific selectors used by tests, screenshots, or
+      external references) and shouldn't be churned? *(Reviewer also
+      logged a duplicate of this; treated as one item.)*
+- [x] Define the exact "modern equivalent" planned in place of
       `-webkit-overflow-scrolling: touch`, since that property is
-      effectively a no-op on current iOS Safari.
-- [ ] Specify the minimum tap-target dimensions ("sized for touch")
-      so the iPad polish goal is verifiable.
+      effectively a no-op on current iOS Safari. — *resolved
+      2026-05-03 (see Decisions): drop the property entirely; rely
+      on iOS Safari's native momentum; add `overscroll-behavior:
+      contain` on the passage container.*
+- [x] Specify the minimum tap-target dimensions ("sized for touch")
+      so the iPad polish goal is verifiable. — *resolved 2026-05-03
+      (see Decisions): 44×44 CSS px floor, per Apple HIG and WCAG
+      2.5.5.*
 
 ## Decisions
 
@@ -177,6 +215,43 @@ persistence routes through the existing `web/src/platform/` abstraction).
   parity-not-numbers convention; instrumentation would be more
   work than the surface deserves at this stage. Resolves the Open
   question on the perf pass/fail bar.
+- 2026-05-03: Stylesheet strategy is **CSS Modules** (`*.module.css`)
+  for component styles plus a single global
+  `web/src/styles/tokens.css` for custom properties. Reason: Vite
+  supports CSS Modules natively (no extra deps), per-component
+  scoping prevents the small-app habit of selector creep, and tokens
+  in a single global keep the theme story simple. Resolves the Open
+  question on CSS strategy.
+- 2026-05-03: Sepia / reading-mode is **deferred** to a follow-up
+  spec; v1 ships **light + dark only**. Reason: the token layer
+  makes adding sepia later cheap; bundling it now triples theme
+  surface and turns a binary toggle into a 3-way picker.
+- 2026-05-03: First-visit behavior is to **quietly follow
+  `prefers-color-scheme`** with no prompt or banner. The user
+  finds the override in Settings if they want it. Reason: §3
+  "Study-first UX" — the reading surface should not be interrupted
+  by a theme prompt on first launch.
+- 2026-05-03: Theme key in `ToggleStore` is **top-level `theme`**
+  with values `"light" | "dark" | "system"`, default `"system"`.
+  Reason: theme is app-global (consumed by settings, picker, and
+  reader), so a top-level key is more honest than nesting under
+  `reader.*`. Three-state value preserves "follow system" as a
+  first-class option, distinct from a one-time pick of light/dark.
+- 2026-05-03: Toolchain bump (PR 1) lands **before** the UI refresh
+  (PR 2). Reason: smaller blast radius if either piece breaks; PR 1
+  is a no-visual-change bump easy to verify, PR 2 builds on a known-
+  green toolchain. Trade: two reviews instead of one.
+- 2026-05-03: `-webkit-overflow-scrolling: touch` is **dropped** with
+  no replacement; iOS Safari has native momentum on `overflow:
+  auto/scroll` since iOS 13. The passage container gets
+  `overscroll-behavior: contain` to keep rubber-banding scoped.
+  Reason: the property is a no-op on current iOS Safari; pretending
+  otherwise is cargo-cult.
+- 2026-05-03: Minimum tap-target dimension is **44×44 CSS px** for
+  picker controls, toggle buttons, and any verse affordance.
+  Reason: Apple HIG and WCAG 2.5.5 both land at 44×44; using the
+  industry standard makes the goal verifiable and removes the need
+  for a project-specific number.
 
 ## Verification
 
