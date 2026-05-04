@@ -10,6 +10,7 @@ type Config struct {
 	DatabaseURL   string
 	SessionSecret string
 	ESVAPIKey     string
+	Env           string
 }
 
 func Load() Config {
@@ -18,6 +19,7 @@ func Load() Config {
 		DatabaseURL:   envOr("DATABASE_URL", "./sqlite.db"),
 		SessionSecret: os.Getenv("SESSION_SECRET"),
 		ESVAPIKey:     os.Getenv("ESV_API_KEY"),
+		Env:           envOr("ENV", "prod"),
 	}
 	if cfg.SessionSecret == "" {
 		log.Fatal("SESSION_SECRET is required")
@@ -26,6 +28,12 @@ func Load() Config {
 		log.Fatal("ESV_API_KEY is required")
 	}
 	return cfg
+}
+
+// IsDev reports whether the app is running in development mode (ENV=dev).
+// Used to relax cookie attributes (e.g. drop Secure on plain-HTTP localhost).
+func (c Config) IsDev() bool {
+	return c.Env == "dev"
 }
 
 func envOr(key, fallback string) string {

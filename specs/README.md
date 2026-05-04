@@ -9,7 +9,7 @@ landing), **Shipped** (user-visible), **Deprecated** (being removed).
 
 | Spec | Status | Summary |
 |---|---|---|
-| [accounts](./accounts.md) | Draft | Email + password sign up / sign in / sign out; cookie sessions; foundation for highlights & notes |
+| [accounts](./accounts.md) | In Progress | Email + password sign up / sign in / sign out; cookie sessions; foundation for highlights & notes |
 | [auto-load-daily-reading](./auto-load-daily-reading.md) | Shipped | Auto-load a daily passage on startup; toggle in settings |
 | [docker](./docker.md) | Shipped | Package the app as a Docker image for reproducible, portable deployment |
 | [passage-reader](./passage-reader.md) | Shipped | Read a chapter or contiguous passage range; ESV proxied through the server |

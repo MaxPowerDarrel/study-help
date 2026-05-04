@@ -1,8 +1,8 @@
 # Accounts
 
-**Status:** Draft <!-- Draft | In Progress | Shipped | Deprecated -->
+**Status:** In Progress <!-- Draft | In Progress | Shipped | Deprecated -->
 **Created:** 2026-05-04
-**Last updated:** 2026-05-04 <!-- review pass 2026-05-04 -->
+**Last updated:** 2026-05-04 <!-- PR 1 (server) implementation 2026-05-04 -->
 **Owner:** unassigned
 
 ## Why
@@ -118,6 +118,17 @@ Append-only log. Most recent at the bottom. Never rewrite past entries; if a dec
 - 2026-05-04: Rate limiter is keyed off `RemoteAddr` per-IP for both auth POSTs (~10 / 15 min), with an additional per-account counter on signin (~5 failures / 15 min, keyed off submitted email). Trusted-proxy header (`X-Forwarded-For`) is future work. Reason: per-IP alone over-locks shared NAT; per-account counter prevents one user's failures from locking another sharing the same egress IP.
 - 2026-05-04: Cookie `Max-Age` mirrors the session row's sliding `expires_at` — set on signin and re-issued on each authenticated request that bumps the row. Reason: cookie expiry tracks server-side expiry exactly; avoids the subtle mismatch where the row is fresh but the cookie has aged out (or vice versa).
 - 2026-05-04: `POST /api/auth/signout` is idempotent and always returns `204 No Content`. Valid session: row deleted, cookie cleared, 204. Missing/expired/unknown: still 204. Reason: simplest client contract; safe to call defensively from the session-aware fetch wrapper without special-casing the "already signed out" state.
+- 2026-05-04 (PR 1): Email normalization is `strings.ToLower(strings.TrimSpace(...))` on input; stored normalized; `+`-aliases treated as distinct. Reason: simplest correct rule; no surprises for capitalized input or trailing whitespace.
+- 2026-05-04 (PR 1): `GET /api/auth/me` is treated as an authenticated request — the middleware bumps `last_seen_at`/`expires_at` and re-issues `Set-Cookie` on it. Reason: it's the cold-load hydration call; treating it as a heartbeat keeps active users signed in without extra requests.
+- 2026-05-04 (PR 1): Per-IP limiter covers only the two POSTs (`signup`, `signin`); `GET /api/auth/me` is excluded. Reason: `/me` is idempotent and low-cost; rate-limiting it would block legitimate cold-loads.
+- 2026-05-04 (PR 1): Session ID is 32 random bytes from `crypto/rand`, encoded `base64.RawURLEncoding` for the cookie value. Stored as `sha256(rawBytes)` (32-byte BLOB). Reason: hashing the *bytes* (not the encoded string) keeps storage independent of any future encoding change; 256 bits of entropy is well above guess-resistance needs.
+- 2026-05-04 (PR 1): Cookie attributes (concrete): `Name=sh_session`, `Path=/`, no `Domain` (host-only), `HttpOnly`, `SameSite=Lax`, `Secure=!IsDev`, `Expires`/`Max-Age` mirror the session row's sliding `expires_at`. Reason: host-only is correct for a same-origin SPA; Lax is the safe default.
+- 2026-05-04 (PR 1): Signup auto-signs the user in — the response carries Set-Cookie + user JSON in one round-trip (`201 Created`). Reason: matches the "signed in on success" goal without an extra signin call.
+- 2026-05-04 (PR 1): Signin error is deliberately ambiguous — `401 Unauthorized` with body `"invalid email or password"` regardless of whether the email exists. Signup duplicate-email remains explicit (`409 Conflict` with `"email already in use"`) — a known enumeration vector accepted as a UX tradeoff at v1.
+- 2026-05-04 (PR 1): `SESSION_SECRET` is *not* used by this PR. The cookie value is random and validated server-side via sha256 lookup — no HMAC needed. The env var stays plumbed for future signed-cookie / CSRF use.
+- 2026-05-04 (PR 1): Auth middleware is scoped to `/api/*` only (not the SPA). Reason: avoids per-asset session lookups on SPA cold loads; static assets don't care about identity. The middleware skips its cookie-refresh pass on the auth POSTs to avoid double `Set-Cookie` headers.
+- 2026-05-04 (PR 1): Single package `internal/auth/` houses user records, password hashing, sessions, rate limiter, middleware, and handlers — no separate `internal/accounts/`. The package is small (~10 files) and the boundary between "identity records" and "credentials/sessions" doesn't carry its weight at v1.
+- 2026-05-04 (PR 1): Existing-sessions on password change — out of scope here; intent recorded for the future password-change feature: it deletes all sessions for the affected user.
 
 ## Verification
 
