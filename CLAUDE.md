@@ -23,6 +23,7 @@ Reader feature shipped per `specs/passage-reader.md`. The Go server proxies ESV 
 - [`STACK.md`](./STACK.md) — current backend tech choices (Go 1.26, stdlib HTTP, SQLite, goose, sqlc planned, bcrypt, cookie sessions). Swappable; change via PR.
 - [`specs/`](./specs/) — living feature specs. One markdown file per feature. Index in `specs/README.md`.
 - `.env.example` — template for required env vars.
+- `Dockerfile`, `compose.yaml`, `.dockerignore` — three-stage build (Node SPA → Go binary → distroless runtime) for running the app locally without a host Go/Node toolchain. See [`specs/docker.md`](./specs/docker.md).
 
 ## Commands
 
@@ -33,6 +34,7 @@ Reader feature shipped per `specs/passage-reader.md`. The Go server proxies ESV 
 - Run a single test: `go test -run TestName ./path/to/pkg`
 - SPA dev mode: `cd web && npm run dev` (proxies `/api` to `localhost:8080`)
 - Format SPA: `cd web && npm run format` (Prettier; also runs automatically via PostToolUse hook in `.claude/settings.json`)
+- Build & run via Docker: `docker compose up --build` (set `ESV_API_KEY` and `SESSION_SECRET` in your shell first; override `APP_PORT` if 8080 is taken)
 
 ## Workflow
 
