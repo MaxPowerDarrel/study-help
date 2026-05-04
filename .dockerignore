@@ -1,0 +1,29 @@
+# Built fresh by stage 1 — never bring local copies into the build context.
+**/node_modules
+internal/web/dist
+
+# Local secrets and dev tooling.
+.env
+.git
+.idea
+.vscode
+.claude
+
+# Local SQLite database files.
+*.db
+*.db-shm
+*.db-wal
+*.db-journal
+
+# Locally-built binary.
+/study-help
+
+# Repo docs not needed for the image.
+specs
+README.md
+PROJECT_CONSTITUTION.md
+STACK.md
+CLAUDE.md
+Dockerfile
+.dockerignore
+docker-compose.yml
