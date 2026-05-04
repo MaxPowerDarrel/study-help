@@ -27,3 +27,4 @@ CLAUDE.md
 Dockerfile
 .dockerignore
 docker-compose.yml
+deploy.sh
