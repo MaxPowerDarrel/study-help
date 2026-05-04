@@ -44,10 +44,15 @@ export async function fetchPassage(
   return { kind: "ok", html, canonical: data.canonical ?? q };
 }
 
-export async function fetchDailyReading(tz: string): Promise<DailyResult> {
+export async function fetchDailyReading(
+  tz: string,
+  date?: string,
+): Promise<DailyResult> {
+  const params = new URLSearchParams({ tz });
+  if (date) params.set("date", date);
   let resp: Response;
   try {
-    resp = await fetch(`/api/daily-reading?tz=${encodeURIComponent(tz)}`);
+    resp = await fetch(`/api/daily-reading?${params.toString()}`);
   } catch {
     return { kind: "error" };
   }

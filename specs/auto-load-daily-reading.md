@@ -1,8 +1,8 @@
 # Auto-load Daily Reading
 
-**Status:** Shipped (redesigned 2026-05-03 — see "UI redesign" below)
+**Status:** Shipped (date navigation added 2026-05-04 — see "Date navigation" below)
 **Created:** 2026-05-03
-**Last updated:** 2026-05-03 (UI redesign: tab-based, toggle removed)
+**Last updated:** 2026-05-04 (date navigation: date picker + prev/next buttons)
 **Owner:** unassigned
 
 ---
@@ -166,6 +166,34 @@ gated behind a hidden setting.
 - [ ] Manual: switching OT ↔ NT swaps content without re-fetching.
 - [ ] Manual: Settings pane has no auto-load row; theme controls intact.
 - [ ] `npm run build` and `go test ./...` pass.
+
+## Date navigation (2026-05-04)
+
+Users wanted to read past or future daily readings, not just today's.
+
+**Changes:**
+
+- **Date picker + prev/next buttons.** The Daily-mode header gains a ← `<input type="date">` → row above the date display. The date input defaults to today (detected via `en-CA` locale + user timezone). Clicking ← or → offsets by one day; typing directly in the input jumps to any date.
+- **Backend: optional `date` param.** `GET /api/daily-reading` now accepts an optional `date=YYYY-MM-DD` query param. When present and valid, the handler uses that date instead of `time.Now()`. Invalid format returns 400. No changes to `dailyreader.go` — its `Today(tz, time.Time)` signature already accepted an arbitrary time.
+- **Re-fetch on date change.** A `selectedDate` React state drives both the date input value and the fetch. A reset effect sets `daily` back to `"idle"` whenever `selectedDate` changes, which re-triggers the existing lazy-load effect. A ref-based fetch ID (`dailyFetchId`) prevents stale fetches from overwriting results when the user navigates rapidly.
+- **Nav visible in empty/error states.** When a selected date has no reading ("No reading for this day.") or the fetch fails, the ← / → buttons remain visible so the user can navigate away.
+
+**Decisions:**
+
+- 2026-05-04: Use a native `<input type="date">` rather than a custom calendar widget. Reason: zero dependencies; browser-native date validation; keyboard-accessible out of the box.
+- 2026-05-04: `date` param is optional on the backend (falls back to `time.Now()`). Reason: backwards-compatible; existing clients without the param continue to work.
+- 2026-05-04: Use a ref-based fetch ID for stale-result prevention rather than the `cancelled`-flag/cleanup pattern. Reason: the dep array includes `daily.kind`; adding a cleanup function caused the effect's own re-run (triggered by setting `kind` to `"loading"`) to cancel the in-flight fetch before it could resolve.
+- 2026-05-04: `selectedDate` is kept out of the daily load effect's dep array; re-fetches are triggered via the `daily.kind → "idle"` transition. Reason: keeps a single load path; avoids needing to guard against re-fetch when switching back to the Daily tab without changing the date.
+
+**Verification (date navigation):**
+
+- [ ] Manual: Daily tab date input shows today's date on first load.
+- [ ] Manual: ← navigates to the previous day's reading; → navigates to the next day's reading.
+- [ ] Manual: Typing a date directly in the input loads that day's reading.
+- [ ] Manual: Navigating to a date with no reading shows "No reading for this day." with nav buttons still present.
+- [ ] Manual: Rapidly clicking ← multiple times shows only the final date's reading (no flash of intermediate results).
+- [ ] Manual: Switching to Read tab and back preserves the last selected date; no re-fetch occurs.
+- [ ] `go test ./internal/server/` passes `TestDailyHandlerDateParam` and `TestDailyHandlerInvalidDateParam`.
 
 ## Related
 
