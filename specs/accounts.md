@@ -1,8 +1,8 @@
 # Accounts
 
-**Status:** In Progress <!-- Draft | In Progress | Shipped | Deprecated -->
+**Status:** Shipped <!-- Draft | In Progress | Shipped | Deprecated -->
 **Created:** 2026-05-04
-**Last updated:** 2026-05-04 <!-- PR 1 (server) implementation 2026-05-04 -->
+**Last updated:** 2026-05-04 <!-- PR 2 (client) shipped; feature complete 2026-05-04 -->
 **Owner:** unassigned
 
 ## Why
@@ -129,6 +129,11 @@ Append-only log. Most recent at the bottom. Never rewrite past entries; if a dec
 - 2026-05-04 (PR 1): Auth middleware is scoped to `/api/*` only (not the SPA). Reason: avoids per-asset session lookups on SPA cold loads; static assets don't care about identity. The middleware skips its cookie-refresh pass on the auth POSTs to avoid double `Set-Cookie` headers.
 - 2026-05-04 (PR 1): Single package `internal/auth/` houses user records, password hashing, sessions, rate limiter, middleware, and handlers — no separate `internal/accounts/`. The package is small (~10 files) and the boundary between "identity records" and "credentials/sessions" doesn't carry its weight at v1.
 - 2026-05-04 (PR 1): Existing-sessions on password change — out of scope here; intent recorded for the future password-change feature: it deletes all sessions for the affected user.
+- 2026-05-04 (PR 2): Auth panel reuses the SettingsPane slide-in-from-right pattern (overlay + safe-area insets + dvh). Reason: already iPad-Safari-tested; visually consistent with the gear settings panel; avoids introducing a popover/modal primitive the codebase doesn't have.
+- 2026-05-04 (PR 2): Single panel with Sign in default + "Create one" link to flip to sign-up mode. Reason: returning users hit sign-in immediately; one form surface; matches "simplicity over breadth" (§3).
+- 2026-05-04 (PR 2): User state owned by a `useUser()` hook at App level (mirrors `useTheme()` / `useToggles()`). On mount calls `GET /api/auth/me` to hydrate; signin/signup/signout actions update local state and call the API. No React Context; no global store. Reason: the codebase has no existing context pattern, prop drilling is one level deep, and the hook is the smallest abstraction that does the job.
+- 2026-05-04 (PR 2): Signed-in chip menu has a click-outside / Escape-to-close handler implemented inline in `AuthChip.tsx` (no shared popover primitive). Reason: only consumer at v1; promoting to a shared primitive would be premature.
+- 2026-05-04 (PR 2): vitest + @testing-library/react added to `web/` for the auth flows. Reason: auth UI is the most touched surface in the SPA going forward (highlights/notes will sit on top of it); locking in regression safety now.
 
 ## Verification
 

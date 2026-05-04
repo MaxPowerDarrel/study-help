@@ -5,7 +5,7 @@ Project direction, principles, guardrails, and non-goals live in [`PROJECT_CONST
 
 ## Status
 
-Reader feature shipped per `specs/passage-reader.md`. The Go server proxies ESV passage requests, exposes a Prometheus counter on a localhost-only metrics port, and serves the React SPA from an embedded Vite build. Accounts server (signup / signin / signout / me, cookie sessions, per-IP + per-account rate limiting) shipped per `specs/accounts.md` PR 1; client UI follows in PR 2. Highlights/notes still pending their own specs.
+Reader feature shipped per `specs/passage-reader.md`. The Go server proxies ESV passage requests, exposes a Prometheus counter on a localhost-only metrics port, and serves the React SPA from an embedded Vite build. Accounts shipped per `specs/accounts.md`: server (signup / signin / signout / me, cookie sessions, per-IP + per-account rate limiting) + client (top-right chip, slide-in sign-in / create-account panel, sign-out menu). Highlights/notes still pending their own specs.
 
 **Layout:**
 
@@ -16,7 +16,7 @@ Reader feature shipped per `specs/passage-reader.md`. The Go server proxies ESV 
 - `internal/auth/` — accounts package: bcrypt password hashing (12-char minimum), SQLite-backed sessions with sha256-hashed cookie tokens (raw token never stored), 30-day sliding window, dual-bucket in-memory rate limiter (per-IP + per-account; resets on restart), session-lookup middleware. Surfaces `POST /api/auth/{signup,signin,signout}` and `GET /api/auth/me`.
 - `internal/esv/` — server-side ESV API client (`api.esv.org/v3/passage/html/`) and the canon-aware `q` allow-list validator. The ESV API key never reaches the browser (constitution §4).
 - `internal/web/` — embeds the Vite build output (`internal/web/dist/`) into the Go binary. The directory is populated by `npm run build` in `web/`.
-- `web/` — React SPA (Vite + TypeScript). Picker pane, reading surface with formatting toggles, light/dark/system theme. Component styles live in `*.module.css` (CSS Modules); design tokens in `web/src/styles/tokens.css`; ESV-rendered HTML styled globally in `web/src/styles/passage.css`. Theme persistence at `web/src/theme.ts`, wired through the localStorage-backed `ToggleStore` at `web/src/platform/ToggleStore.ts` (the §4 platform-abstraction layer for browser APIs).
+- `web/` — React SPA (Vite + TypeScript). Picker pane, reading surface with formatting toggles, light/dark/system theme, accounts UI. Component styles live in `*.module.css` (CSS Modules); design tokens in `web/src/styles/tokens.css`; ESV-rendered HTML styled globally in `web/src/styles/passage.css`. Theme persistence at `web/src/theme.ts`, wired through the localStorage-backed `ToggleStore` at `web/src/platform/ToggleStore.ts` (the §4 platform-abstraction layer for browser APIs). Auth client lives in `web/src/auth/`: `api.ts` (discriminated-union fetchers for the four `/api/auth/*` endpoints), `useUser.ts` (cold-load `/me` hydration + signin/signup/signout actions), `AuthChip.tsx` (top-right chip + sign-out menu), `AuthPanel.tsx` (slide-in panel with sign-in default + create-account toggle). Tests via vitest + @testing-library/react: `npm test` in `web/`.
 
 **Other repo artifacts:**
 
@@ -34,6 +34,7 @@ Reader feature shipped per `specs/passage-reader.md`. The Go server proxies ESV 
 - Test: `go test ./...`
 - Run a single test: `go test -run TestName ./path/to/pkg`
 - SPA dev mode: `cd web && npm run dev` (proxies `/api` to `localhost:8080`)
+- SPA tests: `cd web && npm test` (vitest + @testing-library/react; jsdom environment)
 - Format SPA: `cd web && npm run format` (Prettier; also runs automatically via PostToolUse hook in `.claude/settings.json`)
 - Build & run via Docker: `docker compose up --build` (set `ESV_API_KEY` and `SESSION_SECRET` in your shell first; override `APP_PORT` if 8080 is taken)
 
