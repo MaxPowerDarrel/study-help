@@ -63,6 +63,16 @@ var bookAliases = map[string]string{
 	"heb.":          "Hebrews",
 }
 
+// LookupBook returns the canonical Book for name, accepting case
+// variants and known aliases. ok is false if name isn't in the canon.
+// Highlights uses this for body validation; ValidateQuery uses it
+// for query strings — both share canonByName so the canon stays a
+// single source of truth.
+func LookupBook(name string) (Book, bool) {
+	b, ok := canonByName[strings.ToLower(strings.TrimSpace(name))]
+	return b, ok
+}
+
 // canonByName indexes Canon by lowercased book name plus accepted aliases.
 var canonByName = func() map[string]Book {
 	m := make(map[string]Book, len(Canon)*2)

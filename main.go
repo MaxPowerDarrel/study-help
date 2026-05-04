@@ -14,6 +14,7 @@ import (
 	"study-help/internal/auth"
 	"study-help/internal/config"
 	"study-help/internal/db"
+	"study-help/internal/highlights"
 	"study-help/internal/server"
 )
 
@@ -35,7 +36,8 @@ func main() {
 		SessionTTL: 30 * 24 * time.Hour,
 	})
 	authLimiter := auth.NewLimiter()
-	srv := server.New(cfg, database, counter, dailyCounter, authSvc, authLimiter)
+	highlightsSvc := highlights.NewService(database, highlights.Config{})
+	srv := server.New(cfg, database, counter, dailyCounter, authSvc, authLimiter, highlightsSvc)
 	metricsSrv := server.NewMetricsServer(metricsAddr, counter, dailyCounter)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
