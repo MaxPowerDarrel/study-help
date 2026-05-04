@@ -11,6 +11,7 @@ import (
 
 	_ "time/tzdata"
 
+	"study-help/internal/auth"
 	"study-help/internal/config"
 	"study-help/internal/db"
 	"study-help/internal/server"
@@ -29,7 +30,12 @@ func main() {
 
 	counter := &server.ESVCallCounter{}
 	dailyCounter := &server.DailyCounter{}
-	srv := server.New(cfg, database, counter, dailyCounter)
+	authSvc := auth.NewService(database, auth.Config{
+		IsDev:      cfg.IsDev(),
+		SessionTTL: 30 * 24 * time.Hour,
+	})
+	authLimiter := auth.NewLimiter()
+	srv := server.New(cfg, database, counter, dailyCounter, authSvc, authLimiter)
 	metricsSrv := server.NewMetricsServer(metricsAddr, counter, dailyCounter)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)

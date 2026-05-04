@@ -9,15 +9,16 @@ import (
 	"strings"
 	"time"
 
+	"study-help/internal/auth"
 	"study-help/internal/config"
 	"study-help/internal/esv"
 	webclient "study-help/internal/web"
 )
 
-// New builds the public HTTP server: health, the passage proxy, and the
-// static SPA bundle. The /metrics endpoint runs on a separate localhost
-// listener — see NewMetricsServer.
-func New(cfg config.Config, db *sql.DB, counter *ESVCallCounter, daily *DailyCounter) *http.Server {
+// New builds the public HTTP server: health, the passage proxy, the
+// auth endpoints, and the static SPA bundle. The /metrics endpoint
+// runs on a separate localhost listener — see NewMetricsServer.
+func New(cfg config.Config, db *sql.DB, counter *ESVCallCounter, daily *DailyCounter, authSvc *auth.Service, authLimiter *auth.Limiter) *http.Server {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
@@ -29,9 +30,19 @@ func New(cfg config.Config, db *sql.DB, counter *ESVCallCounter, daily *DailyCou
 		_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 	})
 
+	// API routes share the auth middleware so the session cookie is
+	// looked up once per request and the user is attached to the
+	// context. SPA static assets bypass this — they don't need the
+	// per-request session lookup.
+	apiMux := http.NewServeMux()
 	esvClient := esv.NewClient(cfg.ESVAPIKey)
-	mux.HandleFunc("GET /api/passage", passageHandler(esvClient, counter))
-	mux.HandleFunc("GET /api/daily-reading", dailyReadingHandler(daily))
+	apiMux.HandleFunc("GET /api/passage", passageHandler(esvClient, counter))
+	apiMux.HandleFunc("GET /api/daily-reading", dailyReadingHandler(daily))
+	apiMux.HandleFunc("POST /api/auth/signup", authSvc.HandleSignup(authLimiter))
+	apiMux.HandleFunc("POST /api/auth/signin", authSvc.HandleSignin(authLimiter))
+	apiMux.HandleFunc("POST /api/auth/signout", authSvc.HandleSignout())
+	apiMux.HandleFunc("GET /api/auth/me", authSvc.HandleMe())
+	mux.Handle("/api/", authSvc.Middleware(apiMux))
 
 	mux.Handle("/", spaHandler(webclient.DistFS()))
 

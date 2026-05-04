@@ -5,14 +5,15 @@ Project direction, principles, guardrails, and non-goals live in [`PROJECT_CONST
 
 ## Status
 
-Reader feature shipped per `specs/passage-reader.md`. The Go server proxies ESV passage requests, exposes a Prometheus counter on a localhost-only metrics port, and serves the React SPA from an embedded Vite build. No DB-backed features yet (highlights/notes still pending their own specs).
+Reader feature shipped per `specs/passage-reader.md`. The Go server proxies ESV passage requests, exposes a Prometheus counter on a localhost-only metrics port, and serves the React SPA from an embedded Vite build. Accounts server (signup / signin / signout / me, cookie sessions, per-IP + per-account rate limiting) shipped per `specs/accounts.md` PR 1; client UI follows in PR 2. Highlights/notes still pending their own specs.
 
 **Layout:**
 
-- `main.go` — wires config → DB → public server + private metrics server, with graceful SIGINT/SIGTERM shutdown.
-- `internal/config/` — `Config` struct loaded from env vars: `ADDR` (default `:8080`), `DATABASE_URL` (default `./sqlite.db`), `SESSION_SECRET` (required), `ESV_API_KEY` (required).
-- `internal/db/` — opens SQLite (WAL, foreign keys, 5s busy timeout) via `modernc.org/sqlite` (pure-Go, no CGO) and runs goose migrations from the embedded `migrations/` directory. **No migrations exist yet** (only `.gitkeep`).
-- `internal/server/` — public `*http.Server` (stdlib `http.ServeMux`) exposing `GET /healthz`, `GET /api/passage`, and the embedded SPA at `/`. Plus a private metrics server bound to `127.0.0.1:9090` exposing `GET /metrics` (Prometheus text exposition, counter-only).
+- `main.go` — wires config → DB → auth service → public server + private metrics server, with graceful SIGINT/SIGTERM shutdown.
+- `internal/config/` — `Config` struct loaded from env vars: `ADDR` (default `:8080`), `DATABASE_URL` (default `./sqlite.db`), `SESSION_SECRET` (required), `ESV_API_KEY` (required), `ENV` (default `prod`; set to `dev` to drop the `Secure` cookie flag for plain-HTTP localhost).
+- `internal/db/` — opens SQLite (WAL, foreign keys, 5s busy timeout) via `modernc.org/sqlite` (pure-Go, no CGO) and runs goose migrations from the embedded `migrations/` directory. Migrations: `00001_users.sql`, `00002_sessions.sql`.
+- `internal/server/` — public `*http.Server` (stdlib `http.ServeMux`) exposing `GET /healthz`, `GET /api/passage`, `GET /api/daily-reading`, the four `/api/auth/*` endpoints, and the embedded SPA at `/`. The auth middleware is mounted on `/api/*` (not the SPA) so static assets don't trigger session lookups. Plus a private metrics server bound to `127.0.0.1:9090` exposing `GET /metrics` (Prometheus text exposition, counter-only).
+- `internal/auth/` — accounts package: bcrypt password hashing (12-char minimum), SQLite-backed sessions with sha256-hashed cookie tokens (raw token never stored), 30-day sliding window, dual-bucket in-memory rate limiter (per-IP + per-account; resets on restart), session-lookup middleware. Surfaces `POST /api/auth/{signup,signin,signout}` and `GET /api/auth/me`.
 - `internal/esv/` — server-side ESV API client (`api.esv.org/v3/passage/html/`) and the canon-aware `q` allow-list validator. The ESV API key never reaches the browser (constitution §4).
 - `internal/web/` — embeds the Vite build output (`internal/web/dist/`) into the Go binary. The directory is populated by `npm run build` in `web/`.
 - `web/` — React SPA (Vite + TypeScript). Picker pane, reading surface with formatting toggles, light/dark/system theme. Component styles live in `*.module.css` (CSS Modules); design tokens in `web/src/styles/tokens.css`; ESV-rendered HTML styled globally in `web/src/styles/passage.css`. Theme persistence at `web/src/theme.ts`, wired through the localStorage-backed `ToggleStore` at `web/src/platform/ToggleStore.ts` (the §4 platform-abstraction layer for browser APIs).
