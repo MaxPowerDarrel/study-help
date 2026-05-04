@@ -11,6 +11,9 @@ import { useToggles } from "./toggles";
 import { useTheme } from "./theme";
 import { defaultTimezoneProvider } from "./platform/TimezoneProvider";
 import { SettingsPane } from "./SettingsPane";
+import { AuthChip } from "./auth/AuthChip";
+import { AuthPanel } from "./auth/AuthPanel";
+import { useUser } from "./auth/useUser";
 import styles from "./App.module.css";
 
 type Tab = "read" | "daily";
@@ -49,6 +52,8 @@ export function App() {
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [authOpen, setAuthOpen] = useState(false);
+  const userState = useUser();
   const [daily, setDaily] = useState<DailyLoad>({ kind: "idle" });
   const [selectedDate, setSelectedDate] = useState<string>(todayString());
   const dailyFetchId = useRef(0);
@@ -209,20 +214,33 @@ export function App() {
             Daily
           </button>
         </nav>
-        <button
-          type="button"
-          className={styles.gear}
-          aria-label="Settings"
-          onClick={() => setSettingsOpen((v) => !v)}
-        >
-          ⚙
-        </button>
+        <div className={styles.headerRight}>
+          <AuthChip
+            user={userState.user}
+            onOpenSignin={() => setAuthOpen(true)}
+            onSignout={() => userState.signout()}
+          />
+          <button
+            type="button"
+            className={styles.gear}
+            aria-label="Settings"
+            onClick={() => setSettingsOpen((v) => !v)}
+          >
+            ⚙
+          </button>
+        </div>
       </header>
       <SettingsPane
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
         theme={theme}
         setTheme={setTheme}
+      />
+      <AuthPanel
+        open={authOpen}
+        onClose={() => setAuthOpen(false)}
+        signin={userState.signin}
+        signup={userState.signup}
       />
       <div
         className={

@@ -73,6 +73,13 @@
   color: var(--color-fg);
 }
 
+.headerRight {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  justify-self: end;
+}
+
 .gear {
   background: transparent;
   border: 1px solid var(--color-rule);
@@ -82,7 +89,6 @@
   min-width: var(--tap-target);
   min-height: var(--tap-target);
   cursor: pointer;
-  justify-self: end;
 }
 
 .gear:hover {
