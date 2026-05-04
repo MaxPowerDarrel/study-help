@@ -4,8 +4,6 @@ import styles from "./SettingsPane.module.css";
 type Props = {
   open: boolean;
   onClose: () => void;
-  autoLoad: boolean;
-  setAutoLoad: (v: boolean) => void;
   theme: ThemeChoice;
   setTheme: (c: ThemeChoice) => void;
 };
@@ -16,14 +14,7 @@ const THEME_OPTIONS: { value: ThemeChoice; label: string }[] = [
   { value: "dark", label: "Dark" },
 ];
 
-export function SettingsPane({
-  open,
-  onClose,
-  autoLoad,
-  setAutoLoad,
-  theme,
-  setTheme,
-}: Props) {
+export function SettingsPane({ open, onClose, theme, setTheme }: Props) {
   if (!open) return null;
   return (
     <div className={styles.overlay} role="dialog" aria-label="Settings">
@@ -61,15 +52,6 @@ export function SettingsPane({
             ))}
           </div>
         </div>
-
-        <label className={styles.toggle}>
-          <input
-            type="checkbox"
-            checked={autoLoad}
-            onChange={(e) => setAutoLoad(e.target.checked)}
-          />
-          Auto-load daily reading
-        </label>
       </div>
     </div>
   );
