@@ -9,8 +9,10 @@ import {
 import { DailyPassage, fetchDailyReading, fetchPassage } from "./api";
 import { useToggles } from "./toggles";
 import { useAutoLoad } from "./autoload";
+import { useTheme } from "./theme";
 import { defaultTimezoneProvider } from "./platform/TimezoneProvider";
 import { SettingsPane } from "./SettingsPane";
+import styles from "./App.module.css";
 
 type Tab = "OT" | "NT";
 
@@ -34,6 +36,7 @@ export function App() {
   );
   const [toggles, setToggles] = useToggles();
   const [autoLoad, setAutoLoad] = useAutoLoad();
+  const [theme, setTheme] = useTheme();
   const [html, setHtml] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -141,12 +144,12 @@ export function App() {
   }
 
   return (
-    <div className="app">
-      <header className="app-header">
-        <div className="app-title">study-help</div>
+    <div className={styles.app}>
+      <header className={styles.appHeader}>
+        <div className={styles.appTitle}>study-help</div>
         <button
           type="button"
-          className="gear"
+          className={styles.gear}
           aria-label="Settings"
           onClick={() => setSettingsOpen((v) => !v)}
         >
@@ -158,9 +161,11 @@ export function App() {
         onClose={() => setSettingsOpen(false)}
         autoLoad={autoLoad}
         setAutoLoad={setAutoLoad}
+        theme={theme}
+        setTheme={setTheme}
       />
-      <div className="layout">
-        <aside className="picker">
+      <div className={styles.layout}>
+        <aside className={styles.picker}>
           <label>
             Book
             <select
@@ -200,7 +205,7 @@ export function App() {
             </select>
           </label>
 
-          <fieldset className="range">
+          <fieldset className={styles.range}>
             <legend>Verse range</legend>
             <input
               type="number"
@@ -239,6 +244,7 @@ export function App() {
             {range && (
               <button
                 type="button"
+                className={styles.clearBtn}
                 onClick={() => flipToManual(() => setRange(null))}
               >
                 Clear
@@ -246,7 +252,7 @@ export function App() {
             )}
           </fieldset>
 
-          <fieldset className="toggles">
+          <fieldset className={styles.toggles}>
             <legend>Show</legend>
             {(
               [
@@ -270,10 +276,11 @@ export function App() {
             ))}
           </fieldset>
 
-          <nav className="chapter-nav">
+          <nav className={styles.chapterNav}>
             {prev && (
               <button
                 type="button"
+                className={styles.navBtn}
                 onClick={() =>
                   flipToManual(() => {
                     setRef(prev);
@@ -287,6 +294,7 @@ export function App() {
             {next && (
               <button
                 type="button"
+                className={styles.navBtn}
                 onClick={() =>
                   flipToManual(() => {
                     setRef(next);
@@ -300,10 +308,12 @@ export function App() {
           </nav>
         </aside>
 
-        <main className="reading-surface">
+        <main className={styles.readingSurface}>
           {mode === "manual" ? (
             <>
-              {loading && <div className="spinner" aria-label="loading" />}
+              {loading && (
+                <div className={styles.spinner} aria-label="loading" />
+              )}
               {!loading && html && (
                 <article
                   className="passage"
@@ -315,7 +325,7 @@ export function App() {
             daily && <DailyView state={daily} setState={setDaily} />
           )}
           {toast && (
-            <div className="toast" role="alert">
+            <div className={styles.toast} role="alert">
               {toast}
             </div>
           )}
@@ -344,14 +354,16 @@ function DailyView({
 
   return (
     <>
-      <nav className="ot-nt-tabs" role="tablist">
+      <nav className={styles.otNtTabs} role="tablist">
         {tabs.map((t) => (
           <button
             key={t}
             type="button"
             role="tab"
             aria-selected={active === t}
-            className={active === t ? "tab active" : "tab"}
+            className={
+              active === t ? `${styles.tab} ${styles.tabActive}` : styles.tab
+            }
             onClick={() =>
               setState((prev) => (prev ? { ...prev, activeTab: t } : prev))
             }
@@ -360,7 +372,9 @@ function DailyView({
           </button>
         ))}
       </nav>
-      {activeState?.loading && <div className="spinner" aria-label="loading" />}
+      {activeState?.loading && (
+        <div className={styles.spinner} aria-label="loading" />
+      )}
       {activeState && !activeState.loading && activeState.html && (
         <article
           className="passage"
@@ -368,7 +382,7 @@ function DailyView({
         />
       )}
       {activeState?.error && (
-        <div className="toast" role="alert">
+        <div className={styles.toast} role="alert">
           {activeState.error}
         </div>
       )}

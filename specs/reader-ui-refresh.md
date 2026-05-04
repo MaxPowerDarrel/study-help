@@ -1,6 +1,6 @@
 # Reader UI Refresh
 
-**Status:** In Progress
+**Status:** Shipped
 **Created:** 2026-05-03
 **Last updated:** 2026-05-03
 **Owner:** unassigned
@@ -165,10 +165,12 @@ Lands in **two PRs**, in this order:
       bundled into a single PR with the refresh? — *resolved
       2026-05-03 (see Decisions): toolchain bump first as its own
       PR; UI refresh second.*
-- [ ] Anything in the existing CSS that's load-bearing for the reader
+- [x] Anything in the existing CSS that's load-bearing for the reader
       (e.g. specific selectors used by tests, screenshots, or
       external references) and shouldn't be churned? *(Reviewer also
-      logged a duplicate of this; treated as one item.)*
+      logged a duplicate of this; treated as one item.)* — *resolved
+      2026-05-03 (see Decisions): audit found nothing load-bearing
+      outside the ESV-rendered HTML; safe to refactor freely.*
 - [x] Define the exact "modern equivalent" planned in place of
       `-webkit-overflow-scrolling: touch`, since that property is
       effectively a no-op on current iOS Safari. — *resolved
@@ -270,6 +272,37 @@ Lands in **two PRs**, in this order:
 - 2026-05-03: Status flipped **Draft → In Progress** with PR 1
   (toolchain bump). Reason: real code is landing; per the skill's
   Mode 4 rule, the spec's status moves with the work.
+- 2026-05-03: Load-bearing CSS audit complete. `grep` for class-name
+  references in `*.go`, `*.test.ts*`, `*.spec.ts` returned no
+  matches; only ESV-rendered HTML class names (`verse-num`, `woc`,
+  `passage`, `h2/h3` inside `.passage`) are load-bearing, and those
+  are kept under a global stylesheet (`web/src/styles/passage.css`)
+  not a CSS Module. Resolves the last Open question.
+- 2026-05-03: FOUC prevention: a synchronous inline script in
+  `index.html` reads `localStorage.getItem("theme")` and sets
+  `<html data-theme="light|dark">` before the bundle loads. Reason:
+  without this, a user who picked "dark" sees a flash of light
+  theme on cold load. The script duplicates a tiny amount of logic
+  from `web/src/theme.ts` but is the simplest cross-browser fix
+  for FOUC and lives next to the `<head>` consumers.
+- 2026-05-03: Theme module shape: `web/src/theme.ts` exposes
+  `readTheme`, `writeTheme`, `applyTheme`, and a `useTheme()` hook.
+  `writeTheme` calls `applyTheme` so the DOM is updated on the same
+  tick as state. The hook is consumed once in `App.tsx` and the
+  resulting `[theme, setTheme]` is threaded into `SettingsPane` as
+  props. Reason: small surface, no new platform module, theme key
+  routes through the existing `ToggleStore`.
+- 2026-05-03: Tap-target floor enforced via a `--tap-target` token
+  (`44px`) used by every interactive control's `min-height` (and
+  `min-width` on icon buttons). Inputs/selects/buttons globally get
+  `font-size: 16px` in `tokens.css` to suppress iOS zoom-on-focus.
+  Reason: keeps the policy in one place; no per-component fudging.
+- 2026-05-03: Status flipped **In Progress → Shipped** with PR 2
+  (UI refresh). Reason: tokens, theme, theme toggle, CSS Modules
+  conversion, and iPad-Safari polish are all user-visible on
+  merge. Manual desktop and iPad verification remain in the PR's
+  test plan; any regression found post-merge becomes a follow-up
+  fix, not a status reversal.
 
 ## Verification
 

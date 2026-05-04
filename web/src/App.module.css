@@ -1,0 +1,239 @@
+/*
+ * App shell — container, header, layout, picker, reading surface,
+ * spinner, toast, daily OT/NT tabs. Tokens live in styles/tokens.css.
+ * The .passage container's children are styled globally in
+ * styles/passage.css (ESV markup is not under our control).
+ */
+
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  /* iPad Safari safe-area insets in both orientations. */
+  padding: env(safe-area-inset-top) env(safe-area-inset-right)
+    env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+.appHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-rule);
+  font-family: var(--font-sans);
+}
+
+.appTitle {
+  font-size: var(--text-base);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.gear {
+  background: transparent;
+  border: 1px solid var(--color-rule);
+  color: var(--color-accent);
+  border-radius: var(--radius-sm);
+  padding: 0;
+  min-width: var(--tap-target);
+  min-height: var(--tap-target);
+  cursor: pointer;
+}
+
+.gear:hover {
+  border-color: var(--color-accent);
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  flex: 1;
+  min-height: 0;
+}
+
+.picker {
+  border-right: 1px solid var(--color-rule);
+  padding: var(--space-5) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+}
+
+.picker label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.picker select {
+  background: transparent;
+  color: var(--color-fg);
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-sm);
+  padding: 0 var(--space-2);
+  min-height: var(--tap-target);
+  font-family: inherit;
+}
+
+.picker fieldset {
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.picker fieldset legend {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-muted);
+  padding: 0 var(--space-1);
+}
+
+.range {
+  flex-direction: row !important;
+  align-items: center;
+  gap: var(--space-2) !important;
+}
+
+.range input[type="number"] {
+  background: transparent;
+  color: var(--color-fg);
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-sm);
+  padding: 0 var(--space-2);
+  min-height: var(--tap-target);
+  width: 4.5rem;
+  font-family: inherit;
+}
+
+.toggles label {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-2);
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: var(--text-sm);
+  color: var(--color-fg);
+  min-height: var(--tap-target);
+}
+
+.toggles input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+}
+
+.chapterNav {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-top: auto;
+}
+
+.navBtn {
+  background: transparent;
+  color: var(--color-accent);
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-sm);
+  padding: 0 var(--space-3);
+  min-height: var(--tap-target);
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.navBtn:hover {
+  border-color: var(--color-accent);
+}
+
+.clearBtn {
+  background: transparent;
+  color: var(--color-accent);
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-sm);
+  padding: 0 var(--space-3);
+  min-height: var(--tap-target);
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.clearBtn:hover {
+  border-color: var(--color-accent);
+}
+
+.readingSurface {
+  position: relative;
+  padding: var(--space-7) var(--space-6);
+  overflow-y: auto;
+  /* Keep iOS rubber-banding inside the reader. */
+  overscroll-behavior: contain;
+  display: flex;
+  justify-content: center;
+}
+
+.spinner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 28px;
+  height: 28px;
+  margin: -14px 0 0 -14px;
+  border: 2px solid var(--color-rule);
+  border-top-color: var(--color-accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.toast {
+  position: fixed;
+  bottom: var(--space-5);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--color-fg);
+  color: var(--color-bg);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+}
+
+.otNtTabs {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-5);
+  font-family: var(--font-sans);
+}
+
+.tab {
+  background: transparent;
+  border: 1px solid var(--color-rule);
+  color: var(--color-muted);
+  border-radius: var(--radius-sm);
+  padding: 0 var(--space-4);
+  min-height: var(--tap-target);
+  font-family: inherit;
+  font-size: var(--text-sm);
+  letter-spacing: 0.05em;
+  cursor: pointer;
+}
+
+.tabActive {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
