@@ -1,8 +1,8 @@
 # Auto-load Daily Reading
 
-**Status:** Shipped
+**Status:** Shipped (redesigned 2026-05-03 — see "UI redesign" below)
 **Created:** 2026-05-03
-**Last updated:** 2026-05-03 (shipped)
+**Last updated:** 2026-05-03 (UI redesign: tab-based, toggle removed)
 **Owner:** unassigned
 
 ---
@@ -106,7 +106,70 @@ All resolved on 2026-05-03 — see Decisions below for each resolution.
 - [ ] Performance: picker interactive within 250ms of startup; passages rendered within 2s on a typical connection
 - [ ] Metrics: `hit`, `empty`, and `error` counter outcomes all observable on `127.0.0.1:9090/metrics`
 
+## UI redesign (2026-05-03)
+
+User feedback: the auto-load UI looked plain (bare OT/NT tabs), gave no
+context about what today's reading is, and the picker pane competed for
+attention even in daily mode. The "auto-load" toggle was the wrong primitive
+— users wanted Daily to be a place they could go, not a startup behavior
+gated behind a hidden setting.
+
+**Changes:**
+
+- **Daily becomes a top-level tab.** The header gains `Read` / `Daily`
+  tabs. Read is the manual picker + reading surface (unchanged). Daily
+  hides the picker entirely and renders the daily reading full-width.
+- **Daily-mode header card.** The reading surface in daily mode opens
+  with: today's local date, the plan name ("Bible in One Year"), and the
+  OT/NT switcher restyled as **pills with the passage refs inside**
+  (e.g. "Numbers 15–16 · OT", "Revelation 20 · NT") instead of bare
+  "OT"/"NT" letters.
+- **Auto-load toggle removed.** Daily fetches **lazily on first
+  activation** of the Daily tab, then caches for the session. The app
+  always opens in Read mode. No persistent "open in Daily on launch"
+  preference at v1.
+- **Settings pane** keeps the theme control; the auto-load toggle and
+  its `ToggleStore` key are gone.
+
+**Decisions:**
+
+- 2026-05-03: Replace the auto-load toggle with a Read/Daily tab in the
+  header. Reason: user feedback ("let's create a tab for daily reading
+  within the main app"); §3 study-first UX is better served by a visible
+  navigational affordance than a hidden settings toggle that mutates
+  startup behavior.
+- 2026-05-03: Daily mode hides the picker pane entirely. Reason: the
+  picker is irrelevant when reading the day's plan, and removing it lets
+  the reading surface use the full viewport — directly addresses the
+  "picker competes for attention" feedback.
+- 2026-05-03: OT/NT switch becomes pills with the passage refs inside,
+  preceded by a date + plan-name header card. Reason: surfaces the
+  daily-reading context that was missing; users no longer have to read
+  the passage text to know what they're looking at.
+- 2026-05-03: Daily fetch is lazy (on first tab activation), not on
+  startup. Reason: with no auto-load preference, eager-fetching on
+  startup would waste a request for users who never click Daily.
+  Trade-off: ~1s spinner on first Daily click instead of background-load
+  before they ask.
+- 2026-05-03: No "remember last tab" preference at v1. Every launch
+  starts in Read mode. Reason: simplicity; no persistent state to
+  manage. If users miss the auto-open behavior, revisit with a
+  `defaultTab` setting.
+
+**Verification (redesign):**
+
+- [ ] Manual: header shows `Read` / `Daily` tabs; clicking switches the
+      view. Picker pane visible in Read, hidden in Daily.
+- [ ] Manual: Daily tab on first click shows a spinner, then renders the
+      header card (date + "Bible in One Year") and OT/NT pills with
+      passage refs.
+- [ ] Manual: switching OT ↔ NT swaps content without re-fetching.
+- [ ] Manual: Settings pane has no auto-load row; theme controls intact.
+- [ ] `npm run build` and `go test ./...` pass.
+
 ## Related
 
 - `[passage-reader](./passage-reader.md)` — base reading feature this extends
+- `[reader-ui-refresh](./reader-ui-refresh.md)` — design tokens and theme
+  layer this builds on
 - `PROJECT_CONSTITUTION.md §2` (in-scope) — §3 (Study-first UX)
