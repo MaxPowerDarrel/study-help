@@ -361,3 +361,39 @@
   text-align: center;
   padding: var(--space-6) 0;
 }
+
+.dailyNav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.dailyNavBtn {
+  background: transparent;
+  color: var(--color-accent);
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-sm);
+  padding: 0 var(--space-3);
+  min-width: var(--tap-target);
+  min-height: var(--tap-target);
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.dailyNavBtn:hover {
+  border-color: var(--color-accent);
+}
+
+.dailyDateInput {
+  background: transparent;
+  color: var(--color-fg);
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-sm);
+  padding: 0 var(--space-2);
+  min-height: var(--tap-target);
+  font-family: inherit;
+  font-size: 16px; /* prevent iOS zoom on focus */
+  flex: 1;
+  max-width: 10rem;
+}

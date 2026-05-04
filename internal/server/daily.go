@@ -32,7 +32,21 @@ func dailyReadingHandler(c *DailyCounter) http.HandlerFunc {
 			log.Printf("daily_reading tz=\"\" outcome=error reason=missing")
 			return
 		}
-		lookup, err := dailyreader.Today(tz, time.Now())
+		dateStr := r.URL.Query().Get("date")
+		var now time.Time
+		if dateStr == "" {
+			now = time.Now()
+		} else {
+			parsed, err := time.Parse("2006-01-02", dateStr)
+			if err != nil {
+				c.IncError()
+				http.Error(w, "invalid date", http.StatusBadRequest)
+				log.Printf("daily_reading tz=%q outcome=error reason=invalid_date date=%q", tz, dateStr)
+				return
+			}
+			now = parsed
+		}
+		lookup, err := dailyreader.Today(tz, now)
 		if err != nil {
 			c.IncError()
 			if errors.Is(err, dailyreader.ErrInvalidTZ) {

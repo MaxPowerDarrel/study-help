@@ -69,6 +69,40 @@ func TestDailyHandlerMissingTZ(t *testing.T) {
 	}
 }
 
+func TestDailyHandlerDateParam(t *testing.T) {
+	c := &DailyCounter{}
+	h := dailyReadingHandler(c)
+	req := httptest.NewRequest(http.MethodGet, "/api/daily-reading?tz=UTC&date=2026-01-01", nil)
+	w := httptest.NewRecorder()
+	h(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body=%s", w.Code, w.Body.String())
+	}
+	var got dailyResp
+	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
+		t.Fatalf("json: %v; body=%s", err, w.Body.String())
+	}
+	if len(got.Passages) == 0 {
+		t.Errorf("expected passages for 2026-01-01, got none")
+	}
+}
+
+func TestDailyHandlerInvalidDateParam(t *testing.T) {
+	c := &DailyCounter{}
+	h := dailyReadingHandler(c)
+	req := httptest.NewRequest(http.MethodGet, "/api/daily-reading?tz=UTC&date=not-a-date", nil)
+	w := httptest.NewRecorder()
+	h(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want 400", w.Code)
+	}
+	if c.Errors() != 1 {
+		t.Errorf("error counter = %d, want 1", c.Errors())
+	}
+}
+
 func TestMetricsExposesDailyCounter(t *testing.T) {
 	esvCounter := &ESVCallCounter{}
 	dailyCounter := &DailyCounter{}

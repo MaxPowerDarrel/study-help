@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   CANON,
   ChapterRef,
@@ -50,6 +50,8 @@ export function App() {
   const [toast, setToast] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [daily, setDaily] = useState<DailyLoad>({ kind: "idle" });
+  const [selectedDate, setSelectedDate] = useState<string>(todayString());
+  const dailyFetchId = useRef(0);
 
   const q = useMemo(() => refToQuery(ref, range ?? undefined), [ref, range]);
 
@@ -79,14 +81,18 @@ export function App() {
     };
   }, [q, toggles, tab]);
 
-  // Daily-tab lazy load: fires the first time the user activates Daily,
-  // then caches for the session. Re-clicking Daily does not refetch.
+  // Daily-tab lazy load: fires when daily.kind is "idle" (first activation or
+  // after a date change). selectedDate and toggles are intentionally read from
+  // closure rather than as dependencies — re-runs are triggered by daily.kind
+  // transitioning to "idle" (via the selectedDate reset effect below).
   useEffect(() => {
     if (tab !== "daily") return;
     if (daily.kind !== "idle") return;
+    const fetchId = ++dailyFetchId.current;
     setDaily({ kind: "loading" });
     const tz = defaultTimezoneProvider.get();
-    fetchDailyReading(tz).then((result) => {
+    fetchDailyReading(tz, selectedDate).then((result) => {
+      if (dailyFetchId.current !== fetchId) return;
       if (result.kind === "error") {
         setDaily({ kind: "error" });
         return;
@@ -129,6 +135,7 @@ export function App() {
       t: typeof toggles,
     ) {
       fetchPassage(assembleQ(p), t).then((res) => {
+        if (dailyFetchId.current !== fetchId) return;
         setDaily((prev) => {
           if (prev.kind !== "ready") return prev;
           const cur = prev.state[slot];
@@ -156,10 +163,15 @@ export function App() {
         });
       });
     }
-    // toggles snapshot is intentional; daily uses the toggles in effect at
-    // first activation and doesn't refetch on subsequent toggle changes.
+    // selectedDate and toggles are snapshot intentionally; see comment above.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, daily.kind]);
+
+  // When the user picks a different date, reset daily to idle so the load
+  // effect above re-triggers for the new date.
+  useEffect(() => {
+    setDaily({ kind: "idle" });
+  }, [selectedDate]);
 
   const next = nextChapter(ref);
   const prev = prevChapter(ref);
@@ -366,7 +378,12 @@ export function App() {
               )}
             </>
           ) : (
-            <DailyPanel daily={daily} setDaily={setDaily} />
+            <DailyPanel
+              daily={daily}
+              setDaily={setDaily}
+              selectedDate={selectedDate}
+              setSelectedDate={setSelectedDate}
+            />
           )}
           {toast && (
             <div className={styles.toast} role="alert">
@@ -387,41 +404,100 @@ function formatChapters(chapters: string): string {
   return chapters.replace(/-/g, "–");
 }
 
-function formatToday(): string {
+function todayString(): string {
   const tz = defaultTimezoneProvider.get();
+  try {
+    return new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(
+      new Date(),
+    );
+  } catch {
+    return new Intl.DateTimeFormat("en-CA").format(new Date());
+  }
+}
+
+function offsetDate(dateStr: string, days: number): string {
+  const d = new Date(`${dateStr}T00:00:00`);
+  d.setDate(d.getDate() + days);
+  return new Intl.DateTimeFormat("en-CA").format(d);
+}
+
+function formatDate(dateStr: string): string {
+  const tz = defaultTimezoneProvider.get();
+  const d = new Date(`${dateStr}T00:00:00`);
   try {
     return new Intl.DateTimeFormat(undefined, {
       weekday: "long",
       month: "long",
       day: "numeric",
       timeZone: tz,
-    }).format(new Date());
+    }).format(d);
   } catch {
     return new Intl.DateTimeFormat(undefined, {
       weekday: "long",
       month: "long",
       day: "numeric",
-    }).format(new Date());
+    }).format(d);
   }
 }
 
 function DailyPanel({
   daily,
   setDaily,
+  selectedDate,
+  setSelectedDate,
 }: {
   daily: DailyLoad;
   setDaily: (updater: (prev: DailyLoad) => DailyLoad) => void;
+  selectedDate: string;
+  setSelectedDate: (date: string) => void;
 }) {
+  const dateNav = (
+    <nav className={styles.dailyNav} aria-label="Date navigation">
+      <button
+        type="button"
+        className={styles.dailyNavBtn}
+        aria-label="Previous day"
+        onClick={() => setSelectedDate(offsetDate(selectedDate, -1))}
+      >
+        ←
+      </button>
+      <input
+        type="date"
+        className={styles.dailyDateInput}
+        value={selectedDate}
+        onChange={(e) => {
+          if (e.target.value) setSelectedDate(e.target.value);
+        }}
+      />
+      <button
+        type="button"
+        className={styles.dailyNavBtn}
+        aria-label="Next day"
+        onClick={() => setSelectedDate(offsetDate(selectedDate, 1))}
+      >
+        →
+      </button>
+    </nav>
+  );
+
   if (daily.kind === "loading" || daily.kind === "idle") {
     return <div className={styles.spinner} aria-label="loading" />;
   }
   if (daily.kind === "empty") {
-    return <div className={styles.dailyMessage}>No reading for today.</div>;
+    return (
+      <div className={styles.dailyContainer}>
+        {dateNav}
+        <div className={styles.dailyMessage}>No reading for this day.</div>
+      </div>
+    );
   }
   if (daily.kind === "error") {
     return (
-      <div className={styles.dailyMessage}>
-        Daily reading unavailable. Try again later.
+      <div className={styles.dailyContainer}>
+        {dateNav}
+        <div className={styles.dailyMessage}>
+          Daily reading unavailable. Try again later.
+        </div>
       </div>
     );
   }
@@ -435,7 +511,8 @@ function DailyPanel({
   return (
     <div className={styles.dailyContainer}>
       <header className={styles.dailyHeader}>
-        <div className={styles.dailyDate}>{formatToday()}</div>
+        {dateNav}
+        <div className={styles.dailyDate}>{formatDate(selectedDate)}</div>
         <div className={styles.dailyPlan}>Bible in One Year</div>
       </header>
       <nav
