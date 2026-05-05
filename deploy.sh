@@ -71,6 +71,7 @@ docker run -d \
   -e "ESV_API_KEY=$ESV_API_KEY" \
   -e "SESSION_SECRET=$SESSION_SECRET" \
   -e "DATABASE_URL=/data/sqlite.db" \
+  -e "ENV=dev" \
   -v "$(pwd)/$DATABASE_DIR:/data" \
   "$IMAGE_NAME:$IMAGE_TAG"
 
