@@ -46,6 +46,8 @@ export function togglesToQuery(t: Toggles): string {
     "include_passage_references",
     String(t.include_passage_references),
   );
-  params.set("include_word_of_christ", String(t.include_word_of_christ));
+  // include_word_of_christ is intentionally not sent: ESV's /passage/html/
+  // endpoint does not support an upstream toggle for it. The toggle is
+  // applied client-side by suppressing .woc styling (see passage.css).
   return params.toString();
 }

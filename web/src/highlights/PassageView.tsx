@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useState, type RefObject } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type RefObject,
+} from "react";
 import {
   defaultSelectionAdapter,
   type SelectionAdapter,
@@ -17,6 +23,7 @@ type Props = {
   book: string;
   chapter: number;
   isSignedIn: boolean;
+  showWordsOfChrist: boolean;
   onGuestSignin: () => void;
   onAddNote: (tuple: ToolbarTuple) => void;
   articleRef: RefObject<HTMLElement | null>;
@@ -32,6 +39,7 @@ export function PassageView({
   book,
   chapter,
   isSignedIn,
+  showWordsOfChrist,
   onGuestSignin,
   onAddNote,
   articleRef,
@@ -205,12 +213,17 @@ export function PassageView({
     setMode({ kind: "idle" });
   }, [mode, onAddNote, selectionAdapter]);
 
+  // Memoized so React's dangerouslySetInnerHTML diff sees a stable
+  // object across renders. Without this, every render re-applies
+  // innerHTML and wipes the <mark> spans that applyHighlights added.
+  const dangerousHtml = useMemo(() => ({ __html: html }), [html]);
+
   return (
     <>
       <article
         ref={articleRef}
-        className="passage"
-        dangerouslySetInnerHTML={{ __html: html }}
+        className={showWordsOfChrist ? "passage" : "passage no-woc"}
+        dangerouslySetInnerHTML={dangerousHtml}
       />
       <HighlightToolbar
         mode={mode}

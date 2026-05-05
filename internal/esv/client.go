@@ -34,12 +34,15 @@ func NewClient(apiKey string) *Client {
 
 // Options selects which formatting elements ESV should include in its
 // rendered HTML. Each toggle maps to a query param on api.esv.org.
+//
+// Note: ESV's /passage/html/ endpoint has no upstream toggle for the
+// words-of-Christ markup — <span class="woc"> is always emitted. The
+// client-facing words-of-Christ toggle is applied by the SPA via CSS.
 type Options struct {
 	IncludeHeadings          bool
 	IncludeFootnotes         bool
 	IncludeVerseNumbers      bool
 	IncludePassageReferences bool
-	IncludeWordOfChrist      bool
 }
 
 // Result is a verbatim ESV API response.
@@ -69,7 +72,6 @@ func (c *Client) Fetch(ctx context.Context, q string, opts Options) (*Result, er
 	params.Set("include-footnotes", boolParam(opts.IncludeFootnotes))
 	params.Set("include-verse-numbers", boolParam(opts.IncludeVerseNumbers))
 	params.Set("include-passage-references", boolParam(opts.IncludePassageReferences))
-	params.Set("include-words-of-christ", boolParam(opts.IncludeWordOfChrist))
 	// Audio playback is a Non-goal in specs/passage-reader.md; ESV's
 	// passage/html defaults this to true and would otherwise emit a
 	// <a class="mp3link">Listen</a> link in every payload.
