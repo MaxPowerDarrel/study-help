@@ -13,9 +13,9 @@ func TestInsertAndListRoundTrip(t *testing.T) {
 	ctx := context.Background()
 	now := time.Date(2026, 5, 4, 12, 0, 0, 0, time.UTC)
 
-	h1 := Highlight{Book: "John", Chapter: 3, StartVerse: 16, StartOffset: 0, EndVerse: 16, EndOffset: 30}
-	h2 := Highlight{Book: "John", Chapter: 3, StartVerse: 17, StartOffset: 5, EndVerse: 17, EndOffset: 20}
-	h3 := Highlight{Book: "John", Chapter: 4, StartVerse: 1, StartOffset: 0, EndVerse: 1, EndOffset: 10}
+	h1 := Highlight{Translation: "ESV", Book: "John", Chapter: 3, StartVerse: 16, StartOffset: 0, EndVerse: 16, EndOffset: 30}
+	h2 := Highlight{Translation: "ESV", Book: "John", Chapter: 3, StartVerse: 17, StartOffset: 5, EndVerse: 17, EndOffset: 20}
+	h3 := Highlight{Translation: "ESV", Book: "John", Chapter: 4, StartVerse: 1, StartOffset: 0, EndVerse: 1, EndOffset: 10}
 
 	for _, h := range []Highlight{h1, h2, h3} {
 		if _, err := insertHighlight(ctx, hSvc.db, user.ID, h, now); err != nil {
@@ -23,7 +23,7 @@ func TestInsertAndListRoundTrip(t *testing.T) {
 		}
 	}
 
-	got, err := listHighlights(ctx, hSvc.db, user.ID, "John", 3)
+	got, err := listHighlights(ctx, hSvc.db, user.ID, "ESV", "John", 3)
 	if err != nil {
 		t.Fatalf("listHighlights: %v", err)
 	}
@@ -43,7 +43,7 @@ func TestInsertAndListRoundTrip(t *testing.T) {
 	}
 
 	other, _ := signupUser(t, authSvc, "bob@example.com")
-	otherList, err := listHighlights(ctx, hSvc.db, other.ID, "John", 3)
+	otherList, err := listHighlights(ctx, hSvc.db, other.ID, "ESV", "John", 3)
 	if err != nil {
 		t.Fatalf("listHighlights for other user: %v", err)
 	}
@@ -59,7 +59,7 @@ func TestDeleteOnlyOwnedRow(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now()
 
-	h := Highlight{Book: "John", Chapter: 3, StartVerse: 16, StartOffset: 0, EndVerse: 16, EndOffset: 10}
+	h := Highlight{Translation: "ESV", Book: "John", Chapter: 3, StartVerse: 16, StartOffset: 0, EndVerse: 16, EndOffset: 10}
 	saved, err := insertHighlight(ctx, hSvc.db, alice.ID, h, now)
 	if err != nil {
 		t.Fatalf("insert: %v", err)
@@ -68,7 +68,7 @@ func TestDeleteOnlyOwnedRow(t *testing.T) {
 	if err := deleteHighlight(ctx, hSvc.db, bob.ID, saved.ID); !errors.Is(err, ErrNotFound) {
 		t.Errorf("cross-user delete: err=%v, want ErrNotFound", err)
 	}
-	stillThere, _ := listHighlights(ctx, hSvc.db, alice.ID, "John", 3)
+	stillThere, _ := listHighlights(ctx, hSvc.db, alice.ID, "ESV", "John", 3)
 	if len(stillThere) != 1 {
 		t.Errorf("cross-user delete affected the row: alice now has %d highlights", len(stillThere))
 	}
@@ -76,7 +76,7 @@ func TestDeleteOnlyOwnedRow(t *testing.T) {
 	if err := deleteHighlight(ctx, hSvc.db, alice.ID, saved.ID); err != nil {
 		t.Errorf("owner delete: %v", err)
 	}
-	gone, _ := listHighlights(ctx, hSvc.db, alice.ID, "John", 3)
+	gone, _ := listHighlights(ctx, hSvc.db, alice.ID, "ESV", "John", 3)
 	if len(gone) != 0 {
 		t.Errorf("owner delete didn't remove row")
 	}
@@ -91,7 +91,7 @@ func TestUserDeletionCascades(t *testing.T) {
 	alice, _ := signupUser(t, authSvc, "alice@example.com")
 	ctx := context.Background()
 
-	h := Highlight{Book: "John", Chapter: 3, StartVerse: 16, StartOffset: 0, EndVerse: 16, EndOffset: 10}
+	h := Highlight{Translation: "ESV", Book: "John", Chapter: 3, StartVerse: 16, StartOffset: 0, EndVerse: 16, EndOffset: 10}
 	if _, err := insertHighlight(ctx, hSvc.db, alice.ID, h, time.Now()); err != nil {
 		t.Fatalf("insert: %v", err)
 	}

@@ -13,8 +13,8 @@ type dbtx interface {
 }
 
 func insertHighlight(ctx context.Context, tx dbtx, userID int64, h Highlight, now time.Time) (Highlight, error) {
-	const q = `INSERT INTO highlights (user_id, book, chapter, start_verse, start_offset, end_verse, end_offset, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-	res, err := tx.ExecContext(ctx, q, userID, h.Book, h.Chapter, h.StartVerse, h.StartOffset, h.EndVerse, h.EndOffset, now)
+	const q = `INSERT INTO highlights (user_id, translation, book, chapter, start_verse, start_offset, end_verse, end_offset, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	res, err := tx.ExecContext(ctx, q, userID, h.Translation, h.Book, h.Chapter, h.StartVerse, h.StartOffset, h.EndVerse, h.EndOffset, now)
 	if err != nil {
 		return Highlight{}, err
 	}
@@ -27,12 +27,12 @@ func insertHighlight(ctx context.Context, tx dbtx, userID int64, h Highlight, no
 	return h, nil
 }
 
-func listHighlights(ctx context.Context, tx dbtx, userID int64, book string, chapter int) ([]Highlight, error) {
-	const q = `SELECT id, book, chapter, start_verse, start_offset, end_verse, end_offset, created_at
+func listHighlights(ctx context.Context, tx dbtx, userID int64, translation, book string, chapter int) ([]Highlight, error) {
+	const q = `SELECT id, translation, book, chapter, start_verse, start_offset, end_verse, end_offset, created_at
 	FROM highlights
-	WHERE user_id = ? AND book = ? AND chapter = ?
+	WHERE user_id = ? AND translation = ? AND book = ? AND chapter = ?
 	ORDER BY start_verse, start_offset`
-	rows, err := tx.QueryContext(ctx, q, userID, book, chapter)
+	rows, err := tx.QueryContext(ctx, q, userID, translation, book, chapter)
 	if err != nil {
 		return nil, err
 	}
@@ -40,7 +40,7 @@ func listHighlights(ctx context.Context, tx dbtx, userID int64, book string, cha
 	out := []Highlight{}
 	for rows.Next() {
 		var h Highlight
-		if err := rows.Scan(&h.ID, &h.Book, &h.Chapter, &h.StartVerse, &h.StartOffset, &h.EndVerse, &h.EndOffset, &h.CreatedAt); err != nil {
+		if err := rows.Scan(&h.ID, &h.Translation, &h.Book, &h.Chapter, &h.StartVerse, &h.StartOffset, &h.EndVerse, &h.EndOffset, &h.CreatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, h)

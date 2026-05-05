@@ -17,11 +17,13 @@ import {
 } from "./HighlightToolbar";
 import { rangeToTuple } from "./parseSelection";
 import { useHighlights } from "./useHighlights";
+import type { TranslationID } from "../translations/catalog";
 
 type Props = {
   html: string;
   book: string;
   chapter: number;
+  translation: TranslationID;
   isSignedIn: boolean;
   showWordsOfChrist: boolean;
   onGuestSignin: () => void;
@@ -30,14 +32,18 @@ type Props = {
   selectionAdapter?: SelectionAdapter;
 };
 
-// PassageView owns the rendered ESV HTML, the highlights overlay, the
-// floating toolbar, and the selection event wiring. Extracted from
+// PassageView owns the rendered passage HTML, the highlights overlay,
+// the floating toolbar, and the selection event wiring. Extracted from
 // App.tsx so the highlight machinery has a stable container ref to
-// attach listeners to.
+// attach listeners to. Verse-anchor parsing in parseSelection.ts is
+// currently coupled to ESV's include-verse-anchors HTML format; future
+// providers either emit the same anchor shape or register a per-
+// TranslationID parser.
 export function PassageView({
   html,
   book,
   chapter,
+  translation,
   isSignedIn,
   showWordsOfChrist,
   onGuestSignin,
@@ -48,6 +54,7 @@ export function PassageView({
   const { highlights, create, remove } = useHighlights(
     book,
     chapter,
+    translation,
     isSignedIn,
   );
   const [mode, setMode] = useState<ToolbarMode>({ kind: "idle" });

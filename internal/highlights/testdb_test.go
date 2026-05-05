@@ -12,7 +12,27 @@ import (
 	"study-help/internal/auth"
 	"study-help/internal/config"
 	"study-help/internal/db"
+	"study-help/internal/scripture"
 )
+
+// fakeProvider lets tests register additional translation IDs without
+// pulling in the real ESV provider (which would need an API key).
+type fakeProvider struct{ id scripture.ID }
+
+func (f *fakeProvider) ID() scripture.ID    { return f.id }
+func (f *fakeProvider) DisplayName() string { return string(f.id) }
+func (f *fakeProvider) Fetch(_ context.Context, _ string, _ scripture.Options) (*scripture.Result, error) {
+	return nil, nil
+}
+
+// newTestRegistry registers ESV (the schema default) plus KJV so tests
+// can exercise cross-translation scoping.
+func newTestRegistry() *scripture.Registry {
+	return scripture.NewRegistry(scripture.ESV,
+		&fakeProvider{id: scripture.ESV},
+		&fakeProvider{id: scripture.ID("KJV")},
+	)
+}
 
 // newTestDB opens a temp-file SQLite via the production db.Open path so
 // the real migrations run (including 00003_highlights.sql).
@@ -43,7 +63,7 @@ func newTestStack(t *testing.T) (*Service, *auth.Service, *sql.DB) {
 		BcryptCost: bcrypt.MinCost,
 		SessionTTL: 30 * 24 * time.Hour,
 	})
-	hSvc := NewService(d, Config{})
+	hSvc := NewService(d, Config{Registry: newTestRegistry()})
 	return hSvc, authSvc, d
 }
 

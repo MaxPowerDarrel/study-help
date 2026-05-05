@@ -2,10 +2,9 @@ package dailyreader
 
 import (
 	"errors"
+	"study-help/internal/canon"
 	"testing"
 	"time"
-
-	"study-help/internal/esv"
 )
 
 func mustTime(t *testing.T, layout, value string) time.Time {
@@ -117,7 +116,7 @@ func TestRoundTripEveryRowValidates(t *testing.T) {
 				continue // empty cell is allowed
 			}
 			q := p.Book + " " + p.Chapters
-			if err := esv.ValidateQuery(q); err != nil {
+			if err := canon.ValidateQuery(q); err != nil {
 				t.Errorf("row %s %s %q: ValidateQuery=%v", key, cell.testament, q, err)
 			}
 		}

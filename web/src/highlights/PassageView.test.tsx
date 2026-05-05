@@ -7,6 +7,7 @@ import type { Highlight } from "./api";
 
 const sample: Highlight = {
   id: 42,
+  translation: "ESV",
   book: "John",
   chapter: 3,
   start_verse: 16,
@@ -45,6 +46,7 @@ describe("PassageView click-on-mark", () => {
         html={html}
         book="John"
         chapter={3}
+        translation="ESV"
         isSignedIn={true}
         showWordsOfChrist={true}
         onGuestSignin={() => {}}

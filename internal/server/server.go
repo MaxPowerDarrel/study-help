@@ -11,16 +11,16 @@ import (
 
 	"study-help/internal/auth"
 	"study-help/internal/config"
-	"study-help/internal/esv"
 	"study-help/internal/highlights"
 	"study-help/internal/notes"
+	"study-help/internal/scripture"
 	webclient "study-help/internal/web"
 )
 
 // New builds the public HTTP server: health, the passage proxy, the
 // auth endpoints, and the static SPA bundle. The /metrics endpoint
 // runs on a separate localhost listener — see NewMetricsServer.
-func New(cfg config.Config, db *sql.DB, counter *ESVCallCounter, daily *DailyCounter, authSvc *auth.Service, authLimiter *auth.Limiter, highlightsSvc *highlights.Service, notesSvc *notes.Service) *http.Server {
+func New(cfg config.Config, db *sql.DB, counter *ESVCallCounter, daily *DailyCounter, reg *scripture.Registry, authSvc *auth.Service, authLimiter *auth.Limiter, highlightsSvc *highlights.Service, notesSvc *notes.Service) *http.Server {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
@@ -37,13 +37,13 @@ func New(cfg config.Config, db *sql.DB, counter *ESVCallCounter, daily *DailyCou
 	// context. SPA static assets bypass this — they don't need the
 	// per-request session lookup.
 	apiMux := http.NewServeMux()
-	esvClient := esv.NewClient(cfg.ESVAPIKey)
-	apiMux.HandleFunc("GET /api/passage", passageHandler(esvClient, counter))
+	apiMux.HandleFunc("GET /api/passage", passageHandler(reg, counter))
 	apiMux.HandleFunc("GET /api/daily-reading", dailyReadingHandler(daily))
 	apiMux.HandleFunc("POST /api/auth/signup", authSvc.HandleSignup(authLimiter))
 	apiMux.HandleFunc("POST /api/auth/signin", authSvc.HandleSignin(authLimiter))
 	apiMux.HandleFunc("POST /api/auth/signout", authSvc.HandleSignout())
 	apiMux.HandleFunc("GET /api/auth/me", authSvc.HandleMe())
+	apiMux.HandleFunc("PATCH /api/auth/me", authSvc.HandleUpdateMe(reg))
 	apiMux.HandleFunc("GET /api/highlights", highlightsSvc.HandleList())
 	apiMux.HandleFunc("POST /api/highlights", highlightsSvc.HandleCreate())
 	apiMux.HandleFunc("DELETE /api/highlights/{id}", highlightsSvc.HandleDelete())

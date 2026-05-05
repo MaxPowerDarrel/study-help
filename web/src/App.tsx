@@ -20,6 +20,8 @@ import { PassageView } from "./highlights/PassageView";
 import { NotesDrawer } from "./notes/NotesDrawer";
 import { type Note } from "./notes/api";
 import { useNotes } from "./notes/useNotes";
+import { TRANSLATIONS, type TranslationID } from "./translations/catalog";
+import { useTranslation } from "./translations/useTranslation";
 import styles from "./App.module.css";
 
 type Tab = "read" | "daily";
@@ -63,6 +65,8 @@ export function App() {
   const [pendingTuple, setPendingTuple] = useState<ToolbarTuple | null>(null);
   const articleRef = useRef<HTMLElement | null>(null);
   const userState = useUser();
+  const translationState = useTranslation(userState.user, userState.applyUser);
+  const translation = translationState.translation;
   const [daily, setDaily] = useState<DailyLoad>({ kind: "idle" });
   const [selectedDate, setSelectedDate] = useState<string>(todayString());
   const dailyFetchId = useRef(0);
@@ -75,7 +79,7 @@ export function App() {
     let cancelled = false;
     setLoading(true);
     setToast(null);
-    fetchPassage(q, toggles).then((result) => {
+    fetchPassage(q, toggles, translation).then((result) => {
       if (cancelled) return;
       setLoading(false);
       switch (result.kind) {
@@ -93,7 +97,7 @@ export function App() {
     return () => {
       cancelled = true;
     };
-  }, [q, toggles, tab]);
+  }, [q, toggles, tab, translation]);
 
   // Daily-tab lazy load: fires when daily.kind is "idle" (first activation or
   // after a date change). selectedDate and toggles are intentionally read from
@@ -148,7 +152,7 @@ export function App() {
       slot: "ot" | "nt",
       t: typeof toggles,
     ) {
-      fetchPassage(assembleQ(p), t).then((res) => {
+      fetchPassage(assembleQ(p), t, translation).then((res) => {
         if (dailyFetchId.current !== fetchId) return;
         setDaily((prev) => {
           if (prev.kind !== "ready") return prev;
@@ -192,7 +196,7 @@ export function App() {
   const book = CANON[ref.bookIndex];
 
   const isSignedIn = userState.user !== null;
-  const notesApi = useNotes(book.name, ref.chapter, isSignedIn);
+  const notesApi = useNotes(book.name, ref.chapter, translation, isSignedIn);
 
   const handleAddNote = (tuple: ToolbarTuple) => {
     setPendingTuple(tuple);
@@ -335,6 +339,29 @@ export function App() {
         {tab === "read" && (
           <aside className={styles.picker}>
             <label>
+              Translation
+              <select
+                value={translation}
+                disabled={!isSignedIn}
+                onChange={(e) => {
+                  void translationState.setTranslation(
+                    e.target.value as TranslationID,
+                  );
+                }}
+              >
+                {TRANSLATIONS.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.id}
+                  </option>
+                ))}
+              </select>
+              {!isSignedIn && (
+                <span className={styles.translationHint}>
+                  Sign in to choose
+                </span>
+              )}
+            </label>
+            <label>
               Book
               <select
                 value={ref.bookIndex}
@@ -452,6 +479,7 @@ export function App() {
                   html={html}
                   book={book.name}
                   chapter={ref.chapter}
+                  translation={translation}
                   isSignedIn={isSignedIn}
                   showWordsOfChrist={toggles.include_word_of_christ}
                   onGuestSignin={() => setAuthOpen(true)}

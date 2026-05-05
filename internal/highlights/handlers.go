@@ -3,15 +3,18 @@ package highlights
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
 
 	"study-help/internal/auth"
-	"study-help/internal/esv"
+	"study-help/internal/canon"
+	"study-help/internal/scripture"
 )
 
 type createBody struct {
+	Translation string `json:"translation"`
 	Book        string `json:"book"`
 	Chapter     int    `json:"chapter"`
 	StartVerse  int    `json:"start_verse"`
@@ -20,16 +23,23 @@ type createBody struct {
 	EndOffset   int    `json:"end_char_offset"`
 }
 
-// HandleList returns the user's highlights for a passage.
+// HandleList returns the user's highlights for a passage in the active
+// translation. Translation comes from ?translation=, falling back to
+// the user's account preference.
 func (s *Service) HandleList() http.HandlerFunc {
 	return auth.RequireUser(func(w http.ResponseWriter, r *http.Request) {
 		user, _ := auth.UserFromContext(r.Context())
+		translation, err := resolveTranslation(r.URL.Query().Get("translation"), user, s.reg)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 		book, chapter, err := parsePassageQuery(r)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		items, err := listHighlights(r.Context(), s.db, user.ID, book.Name, chapter)
+		items, err := listHighlights(r.Context(), s.db, user.ID, string(translation), book.Name, chapter)
 		if err != nil {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			log.Printf("highlights list user_id=%d err=%v", user.ID, err)
@@ -40,6 +50,8 @@ func (s *Service) HandleList() http.HandlerFunc {
 }
 
 // HandleCreate inserts a new highlight or returns 409 on overlap.
+// Translation comes from the body, falling back to the user's account
+// preference; overlap is scoped per-translation.
 func (s *Service) HandleCreate() http.HandlerFunc {
 	return auth.RequireUser(func(w http.ResponseWriter, r *http.Request) {
 		user, _ := auth.UserFromContext(r.Context())
@@ -50,7 +62,12 @@ func (s *Service) HandleCreate() http.HandlerFunc {
 			http.Error(w, "invalid request body", http.StatusBadRequest)
 			return
 		}
-		book, ok := esv.LookupBook(body.Book)
+		translation, err := resolveTranslation(body.Translation, user, s.reg)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		book, ok := canon.LookupBook(body.Book)
 		if !ok {
 			http.Error(w, "unknown book", http.StatusBadRequest)
 			return
@@ -72,6 +89,7 @@ func (s *Service) HandleCreate() http.HandlerFunc {
 			return
 		}
 		h := Highlight{
+			Translation: string(translation),
 			Book:        book.Name,
 			Chapter:     body.Chapter,
 			StartVerse:  body.StartVerse,
@@ -79,7 +97,7 @@ func (s *Service) HandleCreate() http.HandlerFunc {
 			EndVerse:    body.EndVerse,
 			EndOffset:   body.EndOffset,
 		}
-		existing, err := listHighlights(r.Context(), s.db, user.ID, book.Name, body.Chapter)
+		existing, err := listHighlights(r.Context(), s.db, user.ID, string(translation), book.Name, body.Chapter)
 		if err != nil {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			log.Printf("highlights create lookup user_id=%d err=%v", user.ID, err)
@@ -125,22 +143,38 @@ func (s *Service) HandleDelete() http.HandlerFunc {
 	})
 }
 
-func parsePassageQuery(r *http.Request) (esv.Book, int, error) {
+// resolveTranslation picks the active translation for a request:
+// supplied (body field or ?translation=) wins; falls back to the user's
+// account preference. Unknown IDs return an error mapped to 400 by the
+// caller.
+func resolveTranslation(supplied string, user *auth.User, reg *scripture.Registry) (scripture.ID, error) {
+	s := supplied
+	if s == "" {
+		s = user.Translation
+	}
+	id := scripture.ID(s)
+	if !reg.Known(id) {
+		return "", fmt.Errorf("unknown translation %q", s)
+	}
+	return id, nil
+}
+
+func parsePassageQuery(r *http.Request) (canon.Book, int, error) {
 	bookParam := r.URL.Query().Get("book")
 	chapterStr := r.URL.Query().Get("chapter")
 	if bookParam == "" || chapterStr == "" {
-		return esv.Book{}, 0, errBadRequest("missing book or chapter")
+		return canon.Book{}, 0, errBadRequest("missing book or chapter")
 	}
 	chapter, err := strconv.Atoi(chapterStr)
 	if err != nil {
-		return esv.Book{}, 0, errBadRequest("invalid chapter")
+		return canon.Book{}, 0, errBadRequest("invalid chapter")
 	}
-	book, ok := esv.LookupBook(bookParam)
+	book, ok := canon.LookupBook(bookParam)
 	if !ok {
-		return esv.Book{}, 0, errBadRequest("unknown book")
+		return canon.Book{}, 0, errBadRequest("unknown book")
 	}
 	if chapter < 1 || chapter > book.Chapters {
-		return esv.Book{}, 0, errBadRequest("chapter out of range")
+		return canon.Book{}, 0, errBadRequest("chapter out of range")
 	}
 	return book, chapter, nil
 }

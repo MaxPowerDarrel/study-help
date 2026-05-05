@@ -5,6 +5,7 @@ import type { Note } from "./api";
 
 const note: Note = {
   id: 1,
+  translation: "ESV",
   book: "John",
   chapter: 3,
   start_verse: 16,

@@ -1,4 +1,8 @@
-package esv
+// Package canon is the translation-neutral 66-book Protestant canon
+// shared across translation providers. Every translation supported by
+// the app uses this canon and verse numbering — extending to canons
+// with deuterocanonical books is a future-spec problem.
+package canon
 
 import (
 	"errors"
@@ -13,7 +17,7 @@ type Book struct {
 	Chapters int
 }
 
-// Canon is the 66-book ESV canon in canonical order.
+// Canon is the 66-book Protestant canon in canonical order.
 var Canon = []Book{
 	{"Genesis", 50}, {"Exodus", 40}, {"Leviticus", 27}, {"Numbers", 36}, {"Deuteronomy", 34},
 	{"Joshua", 24}, {"Judges", 21}, {"Ruth", 4},
@@ -65,8 +69,7 @@ var bookAliases = map[string]string{
 
 // LookupBook returns the canonical Book for name, accepting case
 // variants and known aliases. ok is false if name isn't in the canon.
-// Highlights uses this for body validation; ValidateQuery uses it
-// for query strings — both share canonByName so the canon stays a
+// Shared with ValidateQuery via canonByName so the canon stays a
 // single source of truth.
 func LookupBook(name string) (Book, bool) {
 	b, ok := canonByName[strings.ToLower(strings.TrimSpace(name))]
@@ -98,9 +101,9 @@ var canonByName = func() map[string]Book {
 //	"<book> <chapter>:<verse>-<verse>"
 //
 // It does not validate that the chapter or verse exist beyond
-// "chapter <= book.Chapters" and "verse >= 1". ESV's grammar enforces
-// the rest. The point of this allow-list is to reject obvious garbage
-// before consuming an ESV API call.
+// "chapter <= book.Chapters" and "verse >= 1". The provider's grammar
+// enforces the rest. The point of this allow-list is to reject obvious
+// garbage before consuming an upstream API call.
 func ValidateQuery(q string) error {
 	q = strings.TrimSpace(q)
 	if q == "" {

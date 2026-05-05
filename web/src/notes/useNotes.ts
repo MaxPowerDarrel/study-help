@@ -10,6 +10,7 @@ import {
   listNotes,
   updateNote,
 } from "./api";
+import type { TranslationID } from "../translations/catalog";
 
 export type NotesState = {
   notes: Note[];
@@ -23,12 +24,13 @@ export type NotesActions = {
 };
 
 // useNotes owns the per-passage notes cache. It re-fetches on
-// (book, chapter, enabled) change and after every successful mutation;
-// no optimistic updates at v1. When `enabled` is false (guest), the
-// hook stays empty and never hits the network.
+// (book, chapter, translation, enabled) change and after every successful
+// mutation; no optimistic updates at v1. When `enabled` is false (guest),
+// the hook stays empty and never hits the network.
 export function useNotes(
   book: string | null,
   chapter: number | null,
+  translation: TranslationID,
   enabled: boolean,
 ): NotesState & NotesActions {
   const [notes, setNotes] = useState<Note[]>([]);
@@ -40,14 +42,14 @@ export function useNotes(
       return;
     }
     setLoading(true);
-    const res = await listNotes(book, chapter);
+    const res = await listNotes(book, chapter, translation);
     setLoading(false);
     if (res.kind === "ok") {
       setNotes(res.notes);
     } else {
       setNotes([]);
     }
-  }, [book, chapter, enabled]);
+  }, [book, chapter, translation, enabled]);
 
   useEffect(() => {
     let cancelled = false;
@@ -57,7 +59,7 @@ export function useNotes(
         return;
       }
       setLoading(true);
-      const res = await listNotes(book, chapter);
+      const res = await listNotes(book, chapter, translation);
       if (cancelled) return;
       setLoading(false);
       setNotes(res.kind === "ok" ? res.notes : []);
@@ -65,15 +67,15 @@ export function useNotes(
     return () => {
       cancelled = true;
     };
-  }, [book, chapter, enabled]);
+  }, [book, chapter, translation, enabled]);
 
   const create = useCallback(
     async (input: CreateInput): Promise<CreateResult> => {
-      const res = await createNote(input);
+      const res = await createNote(input, translation);
       if (res.kind === "ok") await fetchAll();
       return res;
     },
-    [fetchAll],
+    [fetchAll, translation],
   );
 
   const update = useCallback(

@@ -13,9 +13,9 @@ func TestInsertAndListRoundTrip(t *testing.T) {
 	ctx := context.Background()
 	now := time.Date(2026, 5, 4, 12, 0, 0, 0, time.UTC)
 
-	n1 := Note{Book: "John", Chapter: 3, StartVerse: 16, StartOffset: 0, EndVerse: 16, EndOffset: 30, Body: "for God so loved"}
-	n2 := Note{Book: "John", Chapter: 3, StartVerse: 17, StartOffset: 5, EndVerse: 17, EndOffset: 20, Body: "context for v16"}
-	n3 := Note{Book: "John", Chapter: 4, StartVerse: 1, StartOffset: 0, EndVerse: 1, EndOffset: 10, Body: "different chapter"}
+	n1 := Note{Translation: "ESV", Book: "John", Chapter: 3, StartVerse: 16, StartOffset: 0, EndVerse: 16, EndOffset: 30, Body: "for God so loved"}
+	n2 := Note{Translation: "ESV", Book: "John", Chapter: 3, StartVerse: 17, StartOffset: 5, EndVerse: 17, EndOffset: 20, Body: "context for v16"}
+	n3 := Note{Translation: "ESV", Book: "John", Chapter: 4, StartVerse: 1, StartOffset: 0, EndVerse: 1, EndOffset: 10, Body: "different chapter"}
 
 	for _, n := range []Note{n1, n2, n3} {
 		if _, err := insertNote(ctx, nSvc.db, user.ID, n, now); err != nil {
@@ -23,7 +23,7 @@ func TestInsertAndListRoundTrip(t *testing.T) {
 		}
 	}
 
-	got, err := listNotes(ctx, nSvc.db, user.ID, "John", 3)
+	got, err := listNotes(ctx, nSvc.db, user.ID, "ESV", "John", 3)
 	if err != nil {
 		t.Fatalf("listNotes: %v", err)
 	}
@@ -46,7 +46,7 @@ func TestInsertAndListRoundTrip(t *testing.T) {
 	}
 
 	other, _ := signupUser(t, authSvc, "bob@example.com")
-	otherList, err := listNotes(ctx, nSvc.db, other.ID, "John", 3)
+	otherList, err := listNotes(ctx, nSvc.db, other.ID, "ESV", "John", 3)
 	if err != nil {
 		t.Fatalf("listNotes for other user: %v", err)
 	}
@@ -63,7 +63,7 @@ func TestUpdateBodyBumpsUpdatedAt(t *testing.T) {
 	edited := created.Add(5 * time.Minute)
 
 	saved, err := insertNote(ctx, nSvc.db, user.ID,
-		Note{Book: "John", Chapter: 3, StartVerse: 16, StartOffset: 0, EndVerse: 16, EndOffset: 10, Body: "first"}, created)
+		Note{Translation: "ESV", Book: "John", Chapter: 3, StartVerse: 16, StartOffset: 0, EndVerse: 16, EndOffset: 10, Body: "first"}, created)
 	if err != nil {
 		t.Fatalf("insert: %v", err)
 	}
@@ -91,7 +91,7 @@ func TestUpdateAndGetCrossUserReturnNotFound(t *testing.T) {
 	now := time.Now()
 
 	saved, err := insertNote(ctx, nSvc.db, alice.ID,
-		Note{Book: "John", Chapter: 3, StartVerse: 16, StartOffset: 0, EndVerse: 16, EndOffset: 10, Body: "alice"}, now)
+		Note{Translation: "ESV", Book: "John", Chapter: 3, StartVerse: 16, StartOffset: 0, EndVerse: 16, EndOffset: 10, Body: "alice"}, now)
 	if err != nil {
 		t.Fatalf("insert: %v", err)
 	}
@@ -117,7 +117,7 @@ func TestDeleteOnlyOwnedRow(t *testing.T) {
 	now := time.Now()
 
 	saved, err := insertNote(ctx, nSvc.db, alice.ID,
-		Note{Book: "John", Chapter: 3, StartVerse: 16, StartOffset: 0, EndVerse: 16, EndOffset: 10, Body: "x"}, now)
+		Note{Translation: "ESV", Book: "John", Chapter: 3, StartVerse: 16, StartOffset: 0, EndVerse: 16, EndOffset: 10, Body: "x"}, now)
 	if err != nil {
 		t.Fatalf("insert: %v", err)
 	}
@@ -125,7 +125,7 @@ func TestDeleteOnlyOwnedRow(t *testing.T) {
 	if err := deleteNote(ctx, nSvc.db, bob.ID, saved.ID); !errors.Is(err, ErrNotFound) {
 		t.Errorf("cross-user delete: err=%v, want ErrNotFound", err)
 	}
-	stillThere, _ := listNotes(ctx, nSvc.db, alice.ID, "John", 3)
+	stillThere, _ := listNotes(ctx, nSvc.db, alice.ID, "ESV", "John", 3)
 	if len(stillThere) != 1 {
 		t.Errorf("cross-user delete affected the row: alice now has %d notes", len(stillThere))
 	}
@@ -133,7 +133,7 @@ func TestDeleteOnlyOwnedRow(t *testing.T) {
 	if err := deleteNote(ctx, nSvc.db, alice.ID, saved.ID); err != nil {
 		t.Errorf("owner delete: %v", err)
 	}
-	gone, _ := listNotes(ctx, nSvc.db, alice.ID, "John", 3)
+	gone, _ := listNotes(ctx, nSvc.db, alice.ID, "ESV", "John", 3)
 	if len(gone) != 0 {
 		t.Errorf("owner delete didn't remove row")
 	}
@@ -149,7 +149,7 @@ func TestUserDeletionCascades(t *testing.T) {
 	ctx := context.Background()
 
 	if _, err := insertNote(ctx, nSvc.db, alice.ID,
-		Note{Book: "John", Chapter: 3, StartVerse: 16, StartOffset: 0, EndVerse: 16, EndOffset: 10, Body: "x"}, time.Now()); err != nil {
+		Note{Translation: "ESV", Book: "John", Chapter: 3, StartVerse: 16, StartOffset: 0, EndVerse: 16, EndOffset: 10, Body: "x"}, time.Now()); err != nil {
 		t.Fatalf("insert: %v", err)
 	}
 

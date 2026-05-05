@@ -14,8 +14,10 @@ import (
 	"study-help/internal/auth"
 	"study-help/internal/config"
 	"study-help/internal/db"
+	"study-help/internal/esv"
 	"study-help/internal/highlights"
 	"study-help/internal/notes"
+	"study-help/internal/scripture"
 	"study-help/internal/server"
 )
 
@@ -32,14 +34,15 @@ func main() {
 
 	counter := &server.ESVCallCounter{}
 	dailyCounter := &server.DailyCounter{}
+	reg := scripture.NewRegistry(scripture.ESV, esv.NewProvider(cfg.ESVAPIKey))
 	authSvc := auth.NewService(database, auth.Config{
 		IsDev:      cfg.IsDev(),
 		SessionTTL: 30 * 24 * time.Hour,
 	})
 	authLimiter := auth.NewLimiter()
-	highlightsSvc := highlights.NewService(database, highlights.Config{})
-	notesSvc := notes.NewService(database, notes.Config{})
-	srv := server.New(cfg, database, counter, dailyCounter, authSvc, authLimiter, highlightsSvc, notesSvc)
+	highlightsSvc := highlights.NewService(database, highlights.Config{Registry: reg})
+	notesSvc := notes.NewService(database, notes.Config{Registry: reg})
+	srv := server.New(cfg, database, counter, dailyCounter, reg, authSvc, authLimiter, highlightsSvc, notesSvc)
 	metricsSrv := server.NewMetricsServer(metricsAddr, counter, dailyCounter)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)

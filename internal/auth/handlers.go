@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"study-help/internal/scripture"
 )
 
 type credentials struct {
@@ -121,6 +122,40 @@ func (s *Service) HandleSignout() http.HandlerFunc {
 func (s *Service) HandleMe() http.HandlerFunc {
 	return RequireUser(func(w http.ResponseWriter, r *http.Request) {
 		user, _ := UserFromContext(r.Context())
+		writeUserJSON(w, http.StatusOK, user)
+	})
+}
+
+// HandleUpdateMe applies a partial update to the authenticated user.
+// Currently the only mutable field is translation; absent fields are
+// no-ops, so the same endpoint can grow new preferences without forcing
+// the client to send everything every call.
+func (s *Service) HandleUpdateMe(reg *scripture.Registry) http.HandlerFunc {
+	return RequireUser(func(w http.ResponseWriter, r *http.Request) {
+		user, _ := UserFromContext(r.Context())
+		var body struct {
+			Translation *string `json:"translation"`
+		}
+		dec := json.NewDecoder(r.Body)
+		dec.DisallowUnknownFields()
+		if err := dec.Decode(&body); err != nil {
+			http.Error(w, "invalid request body", http.StatusBadRequest)
+			return
+		}
+		if body.Translation != nil {
+			id := scripture.ID(*body.Translation)
+			if !reg.Known(id) {
+				http.Error(w, "unknown translation", http.StatusBadRequest)
+				return
+			}
+			updated, err := updateUserTranslation(r.Context(), s.db, user.ID, string(id), s.now().UTC())
+			if err != nil {
+				http.Error(w, "internal error", http.StatusInternalServerError)
+				log.Printf("update_me user_id=%d outcome=error err=%v", user.ID, err)
+				return
+			}
+			user = updated
+		}
 		writeUserJSON(w, http.StatusOK, user)
 	})
 }

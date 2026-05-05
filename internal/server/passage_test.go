@@ -12,27 +12,27 @@ import (
 	"time"
 
 	"study-help/internal/esv"
+	"study-help/internal/scripture"
 )
 
-// newStubClient builds an esv.Client pointing at the given test handler
-// via reflection-free package-private knobs. Since esv.Client doesn't
-// expose its baseURL, we build our own request helper for tests by
-// going through the public NewClient and rewriting the URL via a
-// http.RoundTripper.
-func newStubClient(t *testing.T, handler http.HandlerFunc) (*esv.Client, *httptest.Server) {
+// newStubRegistry builds a scripture.Registry whose ESV provider is
+// backed by a stubbed esv.Client pointing at the given test handler.
+// The stub host rewriter swaps the upstream URL transparently so the
+// real Client's request shape (params, headers, error mapping) is
+// exercised end-to-end.
+func newStubRegistry(t *testing.T, handler http.HandlerFunc) (*scripture.Registry, *httptest.Server) {
 	t.Helper()
 	srv := httptest.NewServer(handler)
 	c := esv.NewClient("test-token")
-	// Swap the http.Client transport with one that rewrites the host
-	// to point at our stub.
 	rewriter := &hostRewriter{
 		target: srv.URL,
 		next:   http.DefaultTransport,
 	}
-	httpClient := clientHTTP(c)
+	httpClient := esv.HTTPClientForTest(c)
 	httpClient.Transport = rewriter
 	httpClient.Timeout = 5 * time.Second
-	return c, srv
+	reg := scripture.NewRegistry(scripture.ESV, esv.NewProviderFromClient(c))
+	return reg, srv
 }
 
 type hostRewriter struct {
@@ -58,11 +58,11 @@ func TestPassageHandlerRejectsMalformedQ(t *testing.T) {
 		called.Add(1)
 		w.WriteHeader(http.StatusOK)
 	}
-	client, srv := newStubClient(t, stub)
+	reg, srv := newStubRegistry(t, stub)
 	defer srv.Close()
 
 	counter := &ESVCallCounter{}
-	h := passageHandler(client, counter)
+	h := passageHandler(reg, counter)
 
 	for _, q := range []string{"!!!", "Booga 99", ""} {
 		req := httptest.NewRequest(http.MethodGet, "/api/passage?q="+url.QueryEscape(q), nil)
@@ -87,11 +87,11 @@ func TestPassageHandlerProxiesAndCounts(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{"passages":["<p>...</p>"]}`))
 	}
-	client, srv := newStubClient(t, stub)
+	reg, srv := newStubRegistry(t, stub)
 	defer srv.Close()
 
 	counter := &ESVCallCounter{}
-	h := passageHandler(client, counter)
+	h := passageHandler(reg, counter)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/passage?q="+url.QueryEscape("John 3:1-21"), nil)
 	w := httptest.NewRecorder()
@@ -116,11 +116,11 @@ func TestPassageHandlerSurfaces429(t *testing.T) {
 	stub := func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusTooManyRequests)
 	}
-	client, srv := newStubClient(t, stub)
+	reg, srv := newStubRegistry(t, stub)
 	defer srv.Close()
 
 	counter := &ESVCallCounter{}
-	h := passageHandler(client, counter)
+	h := passageHandler(reg, counter)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/passage?q=John+3", nil)
 	w := httptest.NewRecorder()
@@ -138,11 +138,11 @@ func TestPassageHandlerSurfacesUpstream5xx(t *testing.T) {
 	stub := func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}
-	client, srv := newStubClient(t, stub)
+	reg, srv := newStubRegistry(t, stub)
 	defer srv.Close()
 
 	counter := &ESVCallCounter{}
-	h := passageHandler(client, counter)
+	h := passageHandler(reg, counter)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/passage?q=John+3", nil)
 	w := httptest.NewRecorder()
@@ -150,6 +150,25 @@ func TestPassageHandlerSurfacesUpstream5xx(t *testing.T) {
 
 	if w.Code != http.StatusBadGateway {
 		t.Errorf("status = %d, want 502", w.Code)
+	}
+}
+
+func TestPassageHandlerRejectsUnknownTranslation(t *testing.T) {
+	stub := func(w http.ResponseWriter, r *http.Request) {
+		t.Fatal("upstream should not be called when translation is invalid")
+	}
+	reg, srv := newStubRegistry(t, stub)
+	defer srv.Close()
+
+	counter := &ESVCallCounter{}
+	h := passageHandler(reg, counter)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/passage?q=John+3&translation=BOGUS", nil)
+	w := httptest.NewRecorder()
+	h(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want 400", w.Code)
 	}
 }
 
@@ -171,22 +190,6 @@ func TestMetricsExposesCounter(t *testing.T) {
 	if !strings.Contains(body, "esv_api_calls_total 3") {
 		t.Errorf("missing sample line: %s", body)
 	}
-}
-
-// clientHTTP digs out the unexported *http.Client on esv.Client so the
-// stub host rewriter can be installed. Tests-only.
-func clientHTTP(c *esv.Client) *http.Client {
-	// Reach into the Client by issuing a request to an obviously-bad
-	// URL through it — but we actually need its transport. The
-	// simplest technique: the esv package exposes no transport hook,
-	// so we use unsafe-free reflection through a small helper that
-	// lives in the esv package's test surface. To avoid a hard
-	// dependency, we instead replace DefaultTransport for the duration
-	// of tests; but that's racy across tests.
-	//
-	// In practice: we use the test harness in the esv package for
-	// transport injection. See esv.SetTransportForTest.
-	return esv.HTTPClientForTest(c)
 }
 
 var _ = context.Background

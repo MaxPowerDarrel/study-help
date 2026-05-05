@@ -1,8 +1,11 @@
 // API client for /api/notes — discriminated-union shape matching
 // src/highlights/api.ts so consumers handle errors uniformly.
 
+import type { TranslationID } from "../translations/catalog";
+
 export type Note = {
   id: number;
+  translation: string;
   book: string;
   chapter: number;
   start_verse: number;
@@ -53,8 +56,13 @@ const jsonHeaders = { "Content-Type": "application/json" };
 export async function listNotes(
   book: string,
   chapter: number,
+  translation: TranslationID,
 ): Promise<ListResult> {
-  const params = new URLSearchParams({ book, chapter: String(chapter) });
+  const params = new URLSearchParams({
+    book,
+    chapter: String(chapter),
+    translation,
+  });
   let resp: Response;
   try {
     resp = await fetch(`/api/notes?${params.toString()}`);
@@ -71,13 +79,16 @@ export async function listNotes(
   }
 }
 
-export async function createNote(input: CreateInput): Promise<CreateResult> {
+export async function createNote(
+  input: CreateInput,
+  translation: TranslationID,
+): Promise<CreateResult> {
   let resp: Response;
   try {
     resp = await fetch("/api/notes", {
       method: "POST",
       headers: jsonHeaders,
-      body: JSON.stringify(input),
+      body: JSON.stringify({ ...input, translation }),
     });
   } catch {
     return { kind: "error" };

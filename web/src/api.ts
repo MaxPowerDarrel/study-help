@@ -1,4 +1,5 @@
 import { Toggles, togglesToQuery } from "./toggles";
+import type { TranslationID } from "./translations/catalog";
 
 export type FetchResult =
   | { kind: "ok"; html: string; canonical: string }
@@ -23,9 +24,11 @@ type DailyJson = { passages?: DailyPassage[]; message?: string };
 export async function fetchPassage(
   q: string,
   toggles: Toggles,
+  translation: TranslationID,
 ): Promise<FetchResult> {
   const params = new URLSearchParams(togglesToQuery(toggles));
   params.set("q", q);
+  params.set("translation", translation);
   let resp: Response;
   try {
     resp = await fetch(`/api/passage?${params.toString()}`);
