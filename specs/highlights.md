@@ -1,6 +1,6 @@
 # Highlights
 
-**Status:** In Progress
+**Status:** Shipped
 **Created:** 2026-05-04
 **Last updated:** 2026-05-04
 **Owner:** unassigned
@@ -11,11 +11,11 @@ Users read scripture in study-help to engage carefully with the text. Highlighti
 
 ## Goals
 
-- [ ] A signed-in user can select text in a passage, tap "Highlight" in a small floating toolbar, and have the selection saved as a persistent highlight.
-- [ ] Saved highlights are visually applied to the passage text on every page load — the user sees their prior annotations without any manual step.
-- [ ] A signed-in user can remove a highlight by tapping it and choosing "Remove highlight" in the toolbar.
-- [ ] Highlights are per-user and private — one user's highlights are never visible to another.
-- [ ] A guest who attempts to highlight is shown an inline prompt to sign in; reading is never interrupted.
+- [x] A signed-in user can select text in a passage, tap "Highlight" in a small floating toolbar, and have the selection saved as a persistent highlight.
+- [x] Saved highlights are visually applied to the passage text on every page load — the user sees their prior annotations without any manual step.
+- [x] A signed-in user can remove a highlight by tapping it and choosing "Remove highlight" in the toolbar.
+- [x] Highlights are per-user and private — one user's highlights are never visible to another.
+- [x] A guest who attempts to highlight is shown an inline prompt to sign in; reading is never interrupted.
 
 ## Non-goals
 

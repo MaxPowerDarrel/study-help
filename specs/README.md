@@ -12,6 +12,6 @@ landing), **Shipped** (user-visible), **Deprecated** (being removed).
 | [accounts](./accounts.md) | Shipped | Email + password sign up / sign in / sign out; cookie sessions; foundation for highlights & notes |
 | [auto-load-daily-reading](./auto-load-daily-reading.md) | Shipped | Auto-load a daily passage on startup; toggle in settings |
 | [docker](./docker.md) | Shipped | Package the app as a Docker image for reproducible, portable deployment |
-| [highlights](./highlights.md) | In Progress | Range-based, persistent, per-user passage highlights |
+| [highlights](./highlights.md) | Shipped | Range-based, persistent, per-user passage highlights |
 | [passage-reader](./passage-reader.md) | Shipped | Read a chapter or contiguous passage range; ESV proxied through the server |
 | [reader-ui-refresh](./reader-ui-refresh.md) | Shipped | iPad/Safari touch polish, light + dark theme, design tokens; rides a Vite/React/TS bump |
