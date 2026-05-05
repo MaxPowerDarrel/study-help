@@ -37,7 +37,17 @@ func dailyReadingHandler(c *DailyCounter) http.HandlerFunc {
 		if dateStr == "" {
 			now = time.Now()
 		} else {
-			parsed, err := time.Parse("2006-01-02", dateStr)
+			// Anchor the date at midnight in the user's tz so the subsequent
+			// conversion in dailyreader.Today doesn't shift it back a day for
+			// users west of UTC.
+			loc, err := time.LoadLocation(tz)
+			if err != nil {
+				c.IncError()
+				http.Error(w, "invalid tz", http.StatusBadRequest)
+				log.Printf("daily_reading tz=%q outcome=error reason=invalid_tz", tz)
+				return
+			}
+			parsed, err := time.ParseInLocation("2006-01-02", dateStr, loc)
 			if err != nil {
 				c.IncError()
 				http.Error(w, "invalid date", http.StatusBadRequest)

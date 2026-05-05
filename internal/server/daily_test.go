@@ -88,6 +88,42 @@ func TestDailyHandlerDateParam(t *testing.T) {
 	}
 }
 
+// Regression: prior to the fix, the date param was parsed as UTC midnight and
+// then converted into the user's tz, shifting the calendar day backward for
+// any tz west of UTC. With tz=America/New_York and date=2026-05-05, the
+// handler previously returned May 4's reading (Num. 17-19 / Rev. 21).
+func TestDailyHandlerDateParamRespectsTZ(t *testing.T) {
+	c := &DailyCounter{}
+	h := dailyReadingHandler(c)
+	req := httptest.NewRequest(http.MethodGet,
+		"/api/daily-reading?tz=America/New_York&date=2026-05-05", nil)
+	w := httptest.NewRecorder()
+	h(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body=%s", w.Code, w.Body.String())
+	}
+	var got dailyResp
+	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
+		t.Fatalf("json: %v; body=%s", err, w.Body.String())
+	}
+	var ot, nt *dailyPassage
+	for i, p := range got.Passages {
+		switch p.Testament {
+		case "OT":
+			ot = &got.Passages[i]
+		case "NT":
+			nt = &got.Passages[i]
+		}
+	}
+	if ot == nil || ot.Book != "Num." || ot.Chapters != "20-22" {
+		t.Errorf("OT = %+v, want {Num. 20-22 OT}", ot)
+	}
+	if nt == nil || nt.Book != "Rev." || nt.Chapters != "22" {
+		t.Errorf("NT = %+v, want {Rev. 22 NT}", nt)
+	}
+}
+
 func TestDailyHandlerInvalidDateParam(t *testing.T) {
 	c := &DailyCounter{}
 	h := dailyReadingHandler(c)
