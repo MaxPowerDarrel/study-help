@@ -19,6 +19,7 @@ const okJSON = (body: unknown) =>
 
 const sample: Highlight = {
   id: 1,
+  translation: "ESV",
   book: "John",
   chapter: 3,
   start_verse: 16,
@@ -31,7 +32,7 @@ const sample: Highlight = {
 describe("useHighlights", () => {
   it("does not fetch when disabled (guest)", async () => {
     const fetchMock = globalThis.fetch as ReturnType<typeof vi.fn>;
-    const { result } = renderHook(() => useHighlights("John", 3, false));
+    const { result } = renderHook(() => useHighlights("John", 3, "ESV", false));
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(fetchMock).not.toHaveBeenCalled();
     expect(result.current.highlights).toEqual([]);
@@ -40,7 +41,7 @@ describe("useHighlights", () => {
   it("fetches on mount when enabled", async () => {
     const fetchMock = globalThis.fetch as ReturnType<typeof vi.fn>;
     fetchMock.mockResolvedValueOnce(okJSON([sample]));
-    const { result } = renderHook(() => useHighlights("John", 3, true));
+    const { result } = renderHook(() => useHighlights("John", 3, "ESV", true));
     await waitFor(() => expect(result.current.highlights.length).toBe(1));
     expect(fetchMock).toHaveBeenCalledOnce();
     expect(fetchMock.mock.calls[0][0]).toContain("/api/highlights?book=John");
@@ -50,7 +51,7 @@ describe("useHighlights", () => {
     const fetchMock = globalThis.fetch as ReturnType<typeof vi.fn>;
     fetchMock.mockResolvedValue(okJSON([]));
     const { rerender } = renderHook(
-      ({ book, chapter }) => useHighlights(book, chapter, true),
+      ({ book, chapter }) => useHighlights(book, chapter, "ESV", true),
       { initialProps: { book: "John", chapter: 3 } },
     );
     await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
@@ -70,7 +71,7 @@ describe("useHighlights", () => {
     ); // create
     fetchMock.mockResolvedValueOnce(okJSON([sample])); // re-fetch
 
-    const { result } = renderHook(() => useHighlights("John", 3, true));
+    const { result } = renderHook(() => useHighlights("John", 3, "ESV", true));
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     await act(async () => {
@@ -94,7 +95,7 @@ describe("useHighlights", () => {
     fetchMock.mockResolvedValueOnce(okJSON([])); // initial list
     fetchMock.mockResolvedValueOnce(new Response("", { status: 409 })); // create overlap
 
-    const { result } = renderHook(() => useHighlights("John", 3, true));
+    const { result } = renderHook(() => useHighlights("John", 3, "ESV", true));
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     await act(async () => {

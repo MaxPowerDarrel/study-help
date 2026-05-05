@@ -25,6 +25,7 @@ const statusOnly = (code: number) =>
 
 const sample: Note = {
   id: 1,
+  translation: "ESV",
   book: "John",
   chapter: 3,
   start_verse: 16,
@@ -41,21 +42,21 @@ describe("listNotes", () => {
     (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
       okJSON([sample]),
     );
-    const r = await listNotes("John", 3);
+    const r = await listNotes("John", 3, "ESV");
     expect(r).toEqual({ kind: "ok", notes: [sample] });
   });
   it("maps 401 to guest", async () => {
     (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
       statusOnly(401),
     );
-    const r = await listNotes("John", 3);
+    const r = await listNotes("John", 3, "ESV");
     expect(r.kind).toBe("guest");
   });
   it("maps network failure to error", async () => {
     (globalThis.fetch as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
       new Error("nope"),
     );
-    const r = await listNotes("John", 3);
+    const r = await listNotes("John", 3, "ESV");
     expect(r.kind).toBe("error");
   });
 });
@@ -74,21 +75,21 @@ describe("createNote", () => {
     (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
       okJSON(sample, 201),
     );
-    const r = await createNote(input);
+    const r = await createNote(input, "ESV");
     expect(r).toEqual({ kind: "ok", note: sample });
   });
   it("maps 400 to invalid", async () => {
     (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
       statusOnly(400),
     );
-    const r = await createNote(input);
+    const r = await createNote(input, "ESV");
     expect(r.kind).toBe("invalid");
   });
   it("maps 401 to guest", async () => {
     (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
       statusOnly(401),
     );
-    const r = await createNote(input);
+    const r = await createNote(input, "ESV");
     expect(r.kind).toBe("guest");
   });
 });

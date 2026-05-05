@@ -18,6 +18,9 @@ export type UserActions = {
   signin: (email: string, password: string) => Promise<SigninResult>;
   signup: (email: string, password: string) => Promise<SignupResult>;
   signout: () => Promise<void>;
+  // applyUser replaces the cached user. Used by PATCH /api/auth/me
+  // callers (e.g., useTranslation) to keep this hook's copy in sync.
+  applyUser: (user: User) => void;
 };
 
 // useUser owns the current-user state and the auth-mutating actions.
@@ -62,5 +65,9 @@ export function useUser(): UserState & UserActions {
     setUser(null);
   };
 
-  return { user, hydrating, signin, signup, signout };
+  const applyUser = (u: User): void => {
+    setUser(u);
+  };
+
+  return { user, hydrating, signin, signup, signout, applyUser };
 }

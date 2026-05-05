@@ -19,6 +19,7 @@ const okJSON = (body: unknown, status = 200) =>
 
 const sample: Note = {
   id: 1,
+  translation: "ESV",
   book: "John",
   chapter: 3,
   start_verse: 16,
@@ -33,7 +34,7 @@ const sample: Note = {
 describe("useNotes", () => {
   it("does not fetch when disabled (guest)", async () => {
     const fetchMock = globalThis.fetch as ReturnType<typeof vi.fn>;
-    const { result } = renderHook(() => useNotes("John", 3, false));
+    const { result } = renderHook(() => useNotes("John", 3, "ESV", false));
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(fetchMock).not.toHaveBeenCalled();
     expect(result.current.notes).toEqual([]);
@@ -42,7 +43,7 @@ describe("useNotes", () => {
   it("fetches on mount when enabled", async () => {
     const fetchMock = globalThis.fetch as ReturnType<typeof vi.fn>;
     fetchMock.mockResolvedValueOnce(okJSON([sample]));
-    const { result } = renderHook(() => useNotes("John", 3, true));
+    const { result } = renderHook(() => useNotes("John", 3, "ESV", true));
     await waitFor(() => expect(result.current.notes.length).toBe(1));
     expect(fetchMock).toHaveBeenCalledOnce();
     expect(fetchMock.mock.calls[0][0]).toContain("/api/notes?book=John");
@@ -52,7 +53,7 @@ describe("useNotes", () => {
     const fetchMock = globalThis.fetch as ReturnType<typeof vi.fn>;
     fetchMock.mockResolvedValue(okJSON([]));
     const { rerender } = renderHook(
-      ({ book, chapter }) => useNotes(book, chapter, true),
+      ({ book, chapter }) => useNotes(book, chapter, "ESV", true),
       { initialProps: { book: "John", chapter: 3 } },
     );
     await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
@@ -67,7 +68,7 @@ describe("useNotes", () => {
     fetchMock.mockResolvedValueOnce(okJSON(sample, 201)); // create
     fetchMock.mockResolvedValueOnce(okJSON([sample])); // re-fetch
 
-    const { result } = renderHook(() => useNotes("John", 3, true));
+    const { result } = renderHook(() => useNotes("John", 3, "ESV", true));
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     await act(async () => {
@@ -99,7 +100,7 @@ describe("useNotes", () => {
       ]),
     );
 
-    const { result } = renderHook(() => useNotes("John", 3, true));
+    const { result } = renderHook(() => useNotes("John", 3, "ESV", true));
     await waitFor(() => expect(result.current.notes.length).toBe(1));
 
     await act(async () => {
@@ -116,7 +117,7 @@ describe("useNotes", () => {
     fetchMock.mockResolvedValueOnce(okJSON([]));
     fetchMock.mockResolvedValueOnce(new Response("", { status: 400 }));
 
-    const { result } = renderHook(() => useNotes("John", 3, true));
+    const { result } = renderHook(() => useNotes("John", 3, "ESV", true));
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     await act(async () => {

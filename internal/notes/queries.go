@@ -13,8 +13,8 @@ type dbtx interface {
 }
 
 func insertNote(ctx context.Context, tx dbtx, userID int64, n Note, now time.Time) (Note, error) {
-	const q = `INSERT INTO notes (user_id, book, chapter, start_verse, start_offset, end_verse, end_offset, body, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-	res, err := tx.ExecContext(ctx, q, userID, n.Book, n.Chapter, n.StartVerse, n.StartOffset, n.EndVerse, n.EndOffset, n.Body, now, now)
+	const q = `INSERT INTO notes (user_id, translation, book, chapter, start_verse, start_offset, end_verse, end_offset, body, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	res, err := tx.ExecContext(ctx, q, userID, n.Translation, n.Book, n.Chapter, n.StartVerse, n.StartOffset, n.EndVerse, n.EndOffset, n.Body, now, now)
 	if err != nil {
 		return Note{}, err
 	}
@@ -28,12 +28,12 @@ func insertNote(ctx context.Context, tx dbtx, userID int64, n Note, now time.Tim
 	return n, nil
 }
 
-func listNotes(ctx context.Context, tx dbtx, userID int64, book string, chapter int) ([]Note, error) {
-	const q = `SELECT id, book, chapter, start_verse, start_offset, end_verse, end_offset, body, created_at, updated_at
+func listNotes(ctx context.Context, tx dbtx, userID int64, translation, book string, chapter int) ([]Note, error) {
+	const q = `SELECT id, translation, book, chapter, start_verse, start_offset, end_verse, end_offset, body, created_at, updated_at
 	FROM notes
-	WHERE user_id = ? AND book = ? AND chapter = ?
+	WHERE user_id = ? AND translation = ? AND book = ? AND chapter = ?
 	ORDER BY start_verse, start_offset`
-	rows, err := tx.QueryContext(ctx, q, userID, book, chapter)
+	rows, err := tx.QueryContext(ctx, q, userID, translation, book, chapter)
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +41,7 @@ func listNotes(ctx context.Context, tx dbtx, userID int64, book string, chapter 
 	out := []Note{}
 	for rows.Next() {
 		var n Note
-		if err := rows.Scan(&n.ID, &n.Book, &n.Chapter, &n.StartVerse, &n.StartOffset, &n.EndVerse, &n.EndOffset, &n.Body, &n.CreatedAt, &n.UpdatedAt); err != nil {
+		if err := rows.Scan(&n.ID, &n.Translation, &n.Book, &n.Chapter, &n.StartVerse, &n.StartOffset, &n.EndVerse, &n.EndOffset, &n.Body, &n.CreatedAt, &n.UpdatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, n)
@@ -53,12 +53,12 @@ func listNotes(ctx context.Context, tx dbtx, userID int64, book string, chapter 
 // non-existent id, or row owned by another user — returns ErrNotFound,
 // collapsing the 403/404 distinction the same way deleteNote does.
 func getNote(ctx context.Context, tx dbtx, userID, id int64) (Note, error) {
-	const q = `SELECT id, book, chapter, start_verse, start_offset, end_verse, end_offset, body, created_at, updated_at
+	const q = `SELECT id, translation, book, chapter, start_verse, start_offset, end_verse, end_offset, body, created_at, updated_at
 	FROM notes
 	WHERE id = ? AND user_id = ?`
 	row := tx.QueryRowContext(ctx, q, id, userID)
 	var n Note
-	if err := row.Scan(&n.ID, &n.Book, &n.Chapter, &n.StartVerse, &n.StartOffset, &n.EndVerse, &n.EndOffset, &n.Body, &n.CreatedAt, &n.UpdatedAt); err != nil {
+	if err := row.Scan(&n.ID, &n.Translation, &n.Book, &n.Chapter, &n.StartVerse, &n.StartOffset, &n.EndVerse, &n.EndOffset, &n.Body, &n.CreatedAt, &n.UpdatedAt); err != nil {
 		if err == sql.ErrNoRows {
 			return Note{}, ErrNotFound
 		}

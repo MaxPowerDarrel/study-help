@@ -25,6 +25,7 @@ const status = (code: number) =>
 
 const sample: Highlight = {
   id: 1,
+  translation: "ESV",
   book: "John",
   chapter: 3,
   start_verse: 16,
@@ -39,21 +40,21 @@ describe("listHighlights", () => {
     (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
       okJSON([sample]),
     );
-    const r = await listHighlights("John", 3);
+    const r = await listHighlights("John", 3, "ESV");
     expect(r).toEqual({ kind: "ok", highlights: [sample] });
   });
   it("maps 401 to guest", async () => {
     (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
       status(401),
     );
-    const r = await listHighlights("John", 3);
+    const r = await listHighlights("John", 3, "ESV");
     expect(r.kind).toBe("guest");
   });
   it("maps network failure to error", async () => {
     (globalThis.fetch as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
       new Error("nope"),
     );
-    const r = await listHighlights("John", 3);
+    const r = await listHighlights("John", 3, "ESV");
     expect(r.kind).toBe("error");
   });
 });
@@ -74,28 +75,28 @@ describe("createHighlight", () => {
         headers: { "Content-Type": "application/json" },
       }),
     );
-    const r = await createHighlight(input);
+    const r = await createHighlight(input, "ESV");
     expect(r).toEqual({ kind: "ok", highlight: sample });
   });
   it("maps 409 to overlap", async () => {
     (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
       status(409),
     );
-    const r = await createHighlight(input);
+    const r = await createHighlight(input, "ESV");
     expect(r.kind).toBe("overlap");
   });
   it("maps 400 to invalid", async () => {
     (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
       status(400),
     );
-    const r = await createHighlight(input);
+    const r = await createHighlight(input, "ESV");
     expect(r.kind).toBe("invalid");
   });
   it("maps 401 to guest", async () => {
     (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
       status(401),
     );
-    const r = await createHighlight(input);
+    const r = await createHighlight(input, "ESV");
     expect(r.kind).toBe("guest");
   });
 });

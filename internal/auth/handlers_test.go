@@ -2,11 +2,13 @@ package auth
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"study-help/internal/scripture"
 	"testing"
 )
 
@@ -248,5 +250,120 @@ func TestMeSignedInReturnsUser(t *testing.T) {
 	}
 	if u.Email != "a@b.c" {
 		t.Errorf("email %q", u.Email)
+	}
+	if u.Translation != string(scripture.ESV) {
+		t.Errorf("translation %q, want ESV", u.Translation)
+	}
+}
+
+// fakeProvider is the minimum to register an alternative ID for the
+// translation endpoint tests; mirrors scripture.fakeProvider but lives
+// here so we don't export the test helper.
+type fakeProvider struct{ id scripture.ID }
+
+func (f *fakeProvider) ID() scripture.ID    { return f.id }
+func (f *fakeProvider) DisplayName() string { return string(f.id) }
+func (f *fakeProvider) Fetch(_ context.Context, _ string, _ scripture.Options) (*scripture.Result, error) {
+	return nil, nil
+}
+
+func newTestRegistry() *scripture.Registry {
+	return scripture.NewRegistry(scripture.ESV,
+		&fakeProvider{id: scripture.ESV},
+		&fakeProvider{id: scripture.ID("KJV")},
+	)
+}
+
+func signupAndGetCookie(t *testing.T, svc *Service, email string) *http.Cookie {
+	t.Helper()
+	rl := NewLimiter()
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/signup", credsBody(email, testPassword))
+	req.RemoteAddr = "1.2.3.4:1111"
+	w := httptest.NewRecorder()
+	svc.HandleSignup(rl)(w, req)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("signup status %d, body=%s", w.Code, w.Body.String())
+	}
+	return w.Result().Cookies()[0]
+}
+
+func TestUpdateMeGuestReturns401(t *testing.T) {
+	svc, _ := newTestService(t)
+	reg := newTestRegistry()
+	req := httptest.NewRequest(http.MethodPatch, "/api/auth/me", strings.NewReader(`{"translation":"ESV"}`))
+	req.RemoteAddr = "1.2.3.4:1111"
+	w := callViaMiddleware(svc, svc.HandleUpdateMe(reg), req)
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("status %d, want 401", w.Code)
+	}
+}
+
+func TestUpdateMeUnknownTranslationReturns400(t *testing.T) {
+	svc, _ := newTestService(t)
+	reg := newTestRegistry()
+	cookie := signupAndGetCookie(t, svc, "a@b.c")
+
+	req := httptest.NewRequest(http.MethodPatch, "/api/auth/me", strings.NewReader(`{"translation":"BOGUS"}`))
+	req.AddCookie(cookie)
+	req.RemoteAddr = "1.2.3.4:1111"
+	w := callViaMiddleware(svc, svc.HandleUpdateMe(reg), req)
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status %d, want 400", w.Code)
+	}
+}
+
+func TestUpdateMeHappyPath(t *testing.T) {
+	svc, _ := newTestService(t)
+	reg := newTestRegistry()
+	cookie := signupAndGetCookie(t, svc, "a@b.c")
+
+	req := httptest.NewRequest(http.MethodPatch, "/api/auth/me", strings.NewReader(`{"translation":"KJV"}`))
+	req.AddCookie(cookie)
+	req.RemoteAddr = "1.2.3.4:1111"
+	w := callViaMiddleware(svc, svc.HandleUpdateMe(reg), req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status %d, body=%s", w.Code, w.Body.String())
+	}
+	var u User
+	if err := json.Unmarshal(w.Body.Bytes(), &u); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if u.Translation != "KJV" {
+		t.Errorf("translation %q, want KJV", u.Translation)
+	}
+}
+
+func TestUpdateMeAbsentFieldIsNoop(t *testing.T) {
+	svc, _ := newTestService(t)
+	reg := newTestRegistry()
+	cookie := signupAndGetCookie(t, svc, "a@b.c")
+
+	req := httptest.NewRequest(http.MethodPatch, "/api/auth/me", strings.NewReader(`{}`))
+	req.AddCookie(cookie)
+	req.RemoteAddr = "1.2.3.4:1111"
+	w := callViaMiddleware(svc, svc.HandleUpdateMe(reg), req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status %d, body=%s", w.Code, w.Body.String())
+	}
+	var u User
+	if err := json.Unmarshal(w.Body.Bytes(), &u); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if u.Translation != string(scripture.ESV) {
+		t.Errorf("translation %q, want ESV (no-op)", u.Translation)
+	}
+}
+
+func TestUpdateMeUnknownFieldReturns400(t *testing.T) {
+	svc, _ := newTestService(t)
+	reg := newTestRegistry()
+	cookie := signupAndGetCookie(t, svc, "a@b.c")
+
+	req := httptest.NewRequest(http.MethodPatch, "/api/auth/me", strings.NewReader(`{"theme":"dark"}`))
+	req.AddCookie(cookie)
+	req.RemoteAddr = "1.2.3.4:1111"
+	w := callViaMiddleware(svc, svc.HandleUpdateMe(reg), req)
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status %d, want 400 (DisallowUnknownFields)", w.Code)
 	}
 }

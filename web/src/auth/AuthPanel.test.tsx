@@ -7,6 +7,7 @@ import type { SigninResult, SignupResult, User } from "./api";
 const sampleUser: User = {
   id: 1,
   email: "alice@example.com",
+  translation: "ESV",
   created_at: "2026-05-04T00:00:00Z",
   updated_at: "2026-05-04T00:00:00Z",
 };

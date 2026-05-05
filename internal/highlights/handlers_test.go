@@ -260,3 +260,96 @@ func TestListReturnsEmptyArrayNotNull(t *testing.T) {
 		t.Errorf("empty list body = %q, want \"[]\" (not null)", body)
 	}
 }
+
+// createBodyJSONWithTranslation builds a body that explicitly stamps a
+// translation, used to cross-check translation scoping.
+func createBodyJSONWithTranslation(t *testing.T, translation, book string, chapter, sv, so, ev, eo int) []byte {
+	t.Helper()
+	b, err := json.Marshal(map[string]any{
+		"translation":       translation,
+		"book":              book,
+		"chapter":           chapter,
+		"start_verse":       sv,
+		"start_char_offset": so,
+		"end_verse":         ev,
+		"end_char_offset":   eo,
+	})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	return b
+}
+
+func TestCreateRejectsUnknownTranslation(t *testing.T) {
+	hSvc, authSvc, _ := newTestStack(t)
+	mux := routedMux(hSvc)
+	_, tok := signupUser(t, authSvc, "alice@example.com")
+
+	w := callViaMiddleware(authSvc, mux,
+		authedReq(http.MethodPost, "/api/highlights",
+			createBodyJSONWithTranslation(t, "BOGUS", "John", 3, 16, 0, 16, 30), tok))
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status %d, want 400; body=%s", w.Code, w.Body.String())
+	}
+}
+
+func TestListRejectsUnknownTranslation(t *testing.T) {
+	hSvc, authSvc, _ := newTestStack(t)
+	mux := routedMux(hSvc)
+	_, tok := signupUser(t, authSvc, "alice@example.com")
+
+	w := callViaMiddleware(authSvc, mux,
+		authedReq(http.MethodGet, "/api/highlights?book=John&chapter=3&translation=BOGUS", nil, tok))
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status %d, want 400", w.Code)
+	}
+}
+
+func TestCrossTranslationIsolation(t *testing.T) {
+	hSvc, authSvc, _ := newTestStack(t)
+	mux := routedMux(hSvc)
+	_, tok := signupUser(t, authSvc, "alice@example.com")
+
+	// Create one highlight in ESV (the schema default for the new account).
+	w1 := callViaMiddleware(authSvc, mux,
+		authedReq(http.MethodPost, "/api/highlights",
+			createBodyJSONWithTranslation(t, "ESV", "John", 3, 16, 0, 16, 30), tok))
+	if w1.Code != http.StatusCreated {
+		t.Fatalf("ESV create: %d body=%s", w1.Code, w1.Body.String())
+	}
+
+	// Create one highlight in KJV (registered in newTestRegistry).
+	w2 := callViaMiddleware(authSvc, mux,
+		authedReq(http.MethodPost, "/api/highlights",
+			createBodyJSONWithTranslation(t, "KJV", "John", 3, 17, 0, 17, 20), tok))
+	if w2.Code != http.StatusCreated {
+		t.Fatalf("KJV create: %d body=%s", w2.Code, w2.Body.String())
+	}
+
+	// List ESV → 1 row only.
+	esvList := callViaMiddleware(authSvc, mux,
+		authedReq(http.MethodGet, "/api/highlights?book=John&chapter=3&translation=ESV", nil, tok))
+	var got []Highlight
+	_ = json.Unmarshal(esvList.Body.Bytes(), &got)
+	if len(got) != 1 || got[0].Translation != "ESV" {
+		t.Errorf("ESV list: got %+v, want exactly the ESV highlight", got)
+	}
+
+	// List KJV → 1 row only.
+	kjvList := callViaMiddleware(authSvc, mux,
+		authedReq(http.MethodGet, "/api/highlights?book=John&chapter=3&translation=KJV", nil, tok))
+	got = nil
+	_ = json.Unmarshal(kjvList.Body.Bytes(), &got)
+	if len(got) != 1 || got[0].Translation != "KJV" {
+		t.Errorf("KJV list: got %+v, want exactly the KJV highlight", got)
+	}
+
+	// Same range across translations doesn't trip the overlap check
+	// because overlap is scoped per-translation.
+	w3 := callViaMiddleware(authSvc, mux,
+		authedReq(http.MethodPost, "/api/highlights",
+			createBodyJSONWithTranslation(t, "KJV", "John", 3, 16, 0, 16, 30), tok))
+	if w3.Code != http.StatusCreated {
+		t.Errorf("same range in different translation: status %d, want 201", w3.Code)
+	}
+}

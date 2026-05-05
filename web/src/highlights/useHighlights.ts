@@ -8,6 +8,7 @@ import {
   deleteHighlight,
   listHighlights,
 } from "./api";
+import type { TranslationID } from "../translations/catalog";
 
 export type HighlightsState = {
   highlights: Highlight[];
@@ -20,13 +21,14 @@ export type HighlightsActions = {
 };
 
 // useHighlights owns the per-passage highlight cache. It re-fetches on
-// (book, chapter) change and after every successful mutation; no
-// optimistic updates at v1 (specs/highlights.md Decisions, 2026-05-04).
+// (book, chapter, translation) change and after every successful mutation;
+// no optimistic updates at v1 (specs/highlights.md Decisions, 2026-05-04).
 // When `enabled` is false (guest), the hook stays empty and never hits
 // the network.
 export function useHighlights(
   book: string | null,
   chapter: number | null,
+  translation: TranslationID,
   enabled: boolean,
 ): HighlightsState & HighlightsActions {
   const [highlights, setHighlights] = useState<Highlight[]>([]);
@@ -38,14 +40,14 @@ export function useHighlights(
       return;
     }
     setLoading(true);
-    const res = await listHighlights(book, chapter);
+    const res = await listHighlights(book, chapter, translation);
     setLoading(false);
     if (res.kind === "ok") {
       setHighlights(res.highlights);
     } else {
       setHighlights([]);
     }
-  }, [book, chapter, enabled]);
+  }, [book, chapter, translation, enabled]);
 
   useEffect(() => {
     let cancelled = false;
@@ -55,7 +57,7 @@ export function useHighlights(
         return;
       }
       setLoading(true);
-      const res = await listHighlights(book, chapter);
+      const res = await listHighlights(book, chapter, translation);
       if (cancelled) return;
       setLoading(false);
       setHighlights(res.kind === "ok" ? res.highlights : []);
@@ -63,15 +65,15 @@ export function useHighlights(
     return () => {
       cancelled = true;
     };
-  }, [book, chapter, enabled]);
+  }, [book, chapter, translation, enabled]);
 
   const create = useCallback(
     async (input: CreateInput): Promise<CreateResult> => {
-      const res = await createHighlight(input);
+      const res = await createHighlight(input, translation);
       if (res.kind === "ok") await fetchAll();
       return res;
     },
-    [fetchAll],
+    [fetchAll, translation],
   );
 
   const remove = useCallback(

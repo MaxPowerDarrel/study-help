@@ -18,7 +18,7 @@ The product exists to support careful, slow reading — not to be a search engin
   - Highlighting passages (range-based, persistent, per-user)
   - Notes attached to passages (per-user)
   - Account management (sign up, sign in, sign out)
-- **ESV-only at v1.** Scripture content is fetched from the ESV API.
+- **Multi-translation, ESV at launch.** Scripture is fetched through a server-side `TranslationProvider` abstraction. The first registered provider is ESV; additional translations can be added without changes to highlights, notes, or schema. Each user has a per-account active translation.
 
 ## 3. Core Principles
 
@@ -34,7 +34,7 @@ These keep the codebase clean, testable, and decoupled. They reflect how a small
 - **Backend is a JSON API.** The application API surface returns data, not views — no server-rendered HTML for app content. Operational and observability endpoints (e.g. `/healthz`, `/metrics`) are not part of this surface and may use formats appropriate to their tooling (text exposition, plain JSON, etc.); they should be bound to a non-public listener whenever practical.
 - **Frontend is decoupled.** The web client makes no assumptions about Node-only or server-only runtime APIs. It builds to a static bundle that the Go binary serves.
 - **Platform features behind an abstraction.** Anything browser-API-touching — local storage, notifications, share sheets, file pickers — goes through a thin interface so feature code stays portable and testable without mocking globals.
-- **Secrets stay server-side.** The ESV API key, session secrets, and database credentials never reach the client. The server proxies scripture requests; the client never calls `api.esv.org` directly.
+- **Secrets stay server-side.** Translation API keys, session secrets, and database credentials never reach the client. The server proxies scripture requests; the client never calls upstream translation APIs (e.g. `api.esv.org`) directly.
 - **User data is server-authoritative.** Accounts, highlights, and notes are persisted server-side. Clients hold cache, not source of truth.
 - **Auth uses session cookies.** HTTP-only secure cookies, server-side session store. No JWTs, no third-party identity providers at v1.
 
@@ -45,7 +45,7 @@ A constitution without non-goals is a wishlist. The following are explicitly **o
 - **No bundled commentary or study-note library.** This is a reader, not a library.
 - **No social, community, or sharing features.** No comments, no public profiles, no shared highlights.
 - **No original-language tooling.** No Greek/Hebrew interlinears, lexicons, or parsing aids.
-- **No multi-translation switching at v1.** ESV only.
+- **No cross-translation rendering.** Highlights and notes are stamped with the translation in which they were created and only render when that translation is active. We do not attempt to map a highlight made in one translation onto another translation's text — versification and verse-text differences make that an unbounded problem.
 - **No offline-first sync engine at v1.** Offline is a best-effort cache, not a guarantee.
 
 ## 6. Decision Rules

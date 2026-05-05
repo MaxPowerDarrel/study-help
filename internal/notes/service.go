@@ -1,11 +1,13 @@
 // Package notes implements per-user range-anchored prose annotations
-// over the ESV canon. See specs/notes.md.
+// over the canon. See specs/notes.md and specs/multi-translation.md.
 package notes
 
 import (
 	"database/sql"
 	"errors"
 	"time"
+
+	"study-help/internal/scripture"
 )
 
 // MaxBodyBytes caps a single note's body. Server rejects POST/PATCH
@@ -16,17 +18,23 @@ const MaxBodyBytes = 16 * 1024
 type Service struct {
 	db    *sql.DB
 	clock func() time.Time
+	reg   *scripture.Registry
 }
 
 // Config tunes the Service. Zero-valued fields get defaults.
 type Config struct {
 	// Clock returns "now" for created_at / updated_at. Defaults to time.Now.
 	Clock func() time.Time
+	// Registry resolves translation IDs. Required.
+	Registry *scripture.Registry
 }
 
-// NewService constructs a Service.
+// NewService constructs a Service. cfg.Registry is required.
 func NewService(db *sql.DB, cfg Config) *Service {
-	s := &Service{db: db, clock: cfg.Clock}
+	if cfg.Registry == nil {
+		panic("notes: Config.Registry is required")
+	}
+	s := &Service{db: db, clock: cfg.Clock, reg: cfg.Registry}
 	if s.clock == nil {
 		s.clock = time.Now
 	}
@@ -35,9 +43,11 @@ func NewService(db *sql.DB, cfg Config) *Service {
 
 // Note is one persisted range-anchored note. Half-open ranges, like
 // highlights — but unlike highlights, multiple notes per range are
-// allowed (no overlap rejection on create).
+// allowed (no overlap rejection on create). Translation scopes the
+// row — notes are only visible when the active translation matches.
 type Note struct {
 	ID          int64     `json:"id"`
+	Translation string    `json:"translation"`
 	Book        string    `json:"book"`
 	Chapter     int       `json:"chapter"`
 	StartVerse  int       `json:"start_verse"`

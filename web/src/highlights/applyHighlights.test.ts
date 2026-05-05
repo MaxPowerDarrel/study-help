@@ -29,6 +29,7 @@ const baseHighlight: Omit<
   Highlight,
   "start_verse" | "start_offset" | "end_verse" | "end_offset" | "id"
 > = {
+  translation: "ESV",
   book: "John",
   chapter: 3,
   created_at: "2026-05-04T00:00:00Z",

@@ -4,6 +4,7 @@
 export type User = {
   id: number;
   email: string;
+  translation: string;
   created_at: string;
   updated_at: string;
 };

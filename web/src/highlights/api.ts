@@ -1,8 +1,11 @@
 // API client for /api/highlights — same discriminated-union shape as
 // src/auth/api.ts so consumers handle errors uniformly.
 
+import type { TranslationID } from "../translations/catalog";
+
 export type Highlight = {
   id: number;
+  translation: string;
   book: string;
   chapter: number;
   start_verse: number;
@@ -44,8 +47,13 @@ const jsonHeaders = { "Content-Type": "application/json" };
 export async function listHighlights(
   book: string,
   chapter: number,
+  translation: TranslationID,
 ): Promise<ListResult> {
-  const params = new URLSearchParams({ book, chapter: String(chapter) });
+  const params = new URLSearchParams({
+    book,
+    chapter: String(chapter),
+    translation,
+  });
   let resp: Response;
   try {
     resp = await fetch(`/api/highlights?${params.toString()}`);
@@ -64,13 +72,14 @@ export async function listHighlights(
 
 export async function createHighlight(
   input: CreateInput,
+  translation: TranslationID,
 ): Promise<CreateResult> {
   let resp: Response;
   try {
     resp = await fetch("/api/highlights", {
       method: "POST",
       headers: jsonHeaders,
-      body: JSON.stringify(input),
+      body: JSON.stringify({ ...input, translation }),
     });
   } catch {
     return { kind: "error" };
