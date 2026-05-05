@@ -32,3 +32,10 @@
 .passage .woc {
   color: var(--color-woc);
 }
+
+.passage mark.highlight {
+  background-color: var(--color-highlight);
+  color: inherit;
+  padding: 0 0.05em;
+  border-radius: 2px;
+}

@@ -75,7 +75,7 @@ Users read scripture in study-help to engage carefully with the text. Highlighti
 
 ## Open questions
 
-- [ ] Does `include-verse-anchors=true` on the ESV HTML request change existing passage HTML in a way that breaks current CSS? (needs testing against real ESV output; see corresponding Verification item)
+- [x] ~~Does `include-verse-anchors=true` on the ESV HTML request change existing passage HTML in a way that breaks current CSS? (needs testing against real ESV output; see corresponding Verification item)~~ Resolved 2026-05-04 — flag enabled unconditionally in the server ESV client (it's a server-managed concern, not a user toggle); empty `<a name="...">` anchors don't render visually so existing `.passage` rules are unaffected. Final visual confirmation lives in the Verification list below. See Decisions.
 - [x] ~~Should `GET /api/highlights` include `created_at` in the response for client-side sorting?~~ Resolved 2026-05-04 — yes, include `created_at` per object. See Decisions.
 - [x] ~~Does switching book/chapter count as "passage navigation" for toolbar dismiss, or should the toolbar also dismiss when the selected text is scrolled out of view?~~ Resolved 2026-05-04 — dismiss on book/chapter change, scroll-out-of-view, and window resize. See Decisions.
 - [x] ~~Is there an upper bound on highlights per user per passage at v1?~~ Resolved 2026-05-04 — no cap, no rate limit on highlight endpoints. See Decisions.
@@ -113,6 +113,8 @@ Users read scripture in study-help to engage carefully with the text. Highlighti
 - 2026-05-04: Cross-verse highlights render as multiple `<mark class="highlight" data-highlight-id="<id>">` spans (one per text node the range crosses) sharing the same `data-highlight-id`. PassageView's click handler reads the id and treats all matching spans as one logical highlight for the "tap to remove" gesture. Rejected: single `<mark>` wrapping a multi-element Range (breaks DOM); per-verse server-side rows (breaks "one user gesture = one highlight" model).
 - 2026-05-04: Character ranges are half-open `[start, end)` (Selection API convention). Two highlights touching exactly at a boundary do not conflict; the overlap check uses lexicographic comparison on `(verse, offset)`.
 - 2026-05-04: `esv.LookupBook(name)` extracted as the shared canon allow-list helper (case-insensitive, alias-aware). Both `internal/esv/ValidateQuery` and `internal/highlights/` body validation route through it.
+- 2026-05-04: `include-verse-anchors=true` is sent unconditionally by the server-side ESV client (not a user toggle). Verse anchors are infrastructure for highlights; exposing them as a toggle would risk highlights being un-renderable when the toggle is off. Empty `<a name="...">` anchors are visually inert in modern browsers, so passage CSS is unaffected.
+- 2026-05-04: Client refactors the rendered passage out of `App.tsx` into `web/src/highlights/PassageView.tsx`, and adds `web/src/platform/SelectionAdapter.ts` (mirroring `ToggleStore`). Highlight overlay is applied via `applyHighlights` against the live DOM after each passage/highlights change; tap-to-remove dispatches by `data-highlight-id`.
 
 ## Verification
 
