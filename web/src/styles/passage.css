@@ -33,9 +33,17 @@
   color: var(--color-woc);
 }
 
+/* ESV's /passage/html/ endpoint always emits <span class="woc"> for the
+ * words of Christ (no upstream toggle). The Words-of-Christ toggle is
+ * therefore implemented client-side as a CSS class flip on .passage. */
+.passage.no-woc .woc {
+  color: inherit;
+}
+
 .passage mark.highlight {
   background-color: var(--color-highlight);
   color: inherit;
   padding: 0 0.05em;
   border-radius: 2px;
+  cursor: pointer;
 }

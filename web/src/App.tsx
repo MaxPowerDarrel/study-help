@@ -453,6 +453,7 @@ export function App() {
                   book={book.name}
                   chapter={ref.chapter}
                   isSignedIn={isSignedIn}
+                  showWordsOfChrist={toggles.include_word_of_christ}
                   onGuestSignin={() => setAuthOpen(true)}
                   onAddNote={handleAddNote}
                   articleRef={articleRef}
@@ -465,6 +466,7 @@ export function App() {
               setDaily={setDaily}
               selectedDate={selectedDate}
               setSelectedDate={setSelectedDate}
+              showWordsOfChrist={toggles.include_word_of_christ}
             />
           )}
           {toast && (
@@ -527,11 +529,13 @@ function DailyPanel({
   setDaily,
   selectedDate,
   setSelectedDate,
+  showWordsOfChrist,
 }: {
   daily: DailyLoad;
   setDaily: (updater: (prev: DailyLoad) => DailyLoad) => void;
   selectedDate: string;
   setSelectedDate: (date: string) => void;
+  showWordsOfChrist: boolean;
 }) {
   const dateNav = (
     <nav className={styles.dailyNav} aria-label="Date navigation">
@@ -639,7 +643,7 @@ function DailyPanel({
         )}
         {activeState && !activeState.loading && activeState.html && (
           <article
-            className="passage"
+            className={showWordsOfChrist ? "passage" : "passage no-woc"}
             dangerouslySetInnerHTML={{ __html: activeState.html }}
           />
         )}

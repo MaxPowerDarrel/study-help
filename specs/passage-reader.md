@@ -2,7 +2,7 @@
 
 **Status:** Shipped <!-- Draft | In Progress | Shipped | Deprecated -->
 **Created:** 2026-05-02
-**Last updated:** 2026-05-04
+**Last updated:** 2026-05-05
 **Owner:** Darrel
 
 ## Why
@@ -165,6 +165,7 @@ if a decision is reversed, add a new entry that supersedes it.
 - 2026-05-03: Server unconditionally sets `include-audio-link=false` on every ESV request. Reason: enforces the existing audio Non-goal (ESV's `passage/html` defaults the param to true and would otherwise inject `<a class="mp3link">Listen</a>` into every payload). No client toggle — audio is out of scope at v1, period. If audio ever becomes in-scope, it gets its own spec.
 - 2026-05-03: Status transitioned Draft → Shipped. The reader is user-visible on `main` after PR #5 lands: book/chapter picker, contiguous range, formatting toggles (incl. words-of-Christ red letters), canon-edge handling, `/api/passage` proxy with allow-list 400s, and `/metrics` counter on the localhost-only port. The Verification checklist remains as-is (those are test artifacts to be added incrementally), and the four open follow-up questions logged this round (toggle defaults in spec, asserting computed `.woc` color, accessibility/contrast, hyphen↔underscore mapping note) carry forward post-Shipped.
 - 2026-05-04: Corrects the 2026-05-03 toggle decision: the ESV API param is `include-words-of-christ` (plural), not `include-word-of-christ` (singular). Until this fix the server sent the singular form, ESV silently ignored the unknown key, and the toggle had no effect — `<span class="woc">` markup was emitted regardless of state. Internal naming stays `IncludeWordOfChrist` / `include_word_of_christ` (only the outbound ESV query-param string changed). Underscores-to-hyphens mapping for the proxy ↔ ESV param pair is now: proxy `include_word_of_christ` → ESV `include-words-of-christ`. Resolves the carried-forward open question on the hyphen↔underscore mapping note.
+- 2026-05-05: Supersedes the 2026-05-04 decision. ESV's `/passage/html/` endpoint has **no** upstream toggle for words-of-Christ — neither `include-words-of-christ` (plural) nor `include-word-of-christ` (singular) is a documented param for the HTML endpoint, and the markup `<span class="woc">…</span>` is always emitted regardless of any param sent. The 2026-05-04 fix changed the param string but didn't change behavior because the param itself doesn't exist for HTML. Reason: confirmed against ESV's `/passage/html/` documented param list. Implementation moves: the words-of-Christ toggle is now applied **client-side only** as a CSS class flip on `.passage` (`.passage.no-woc .woc { color: inherit; }`); the SPA stops sending `include_word_of_christ` to `/api/passage`; the Go `esv.Options` field and the server's `boolParam` read are removed. The `<span class="woc">` markup is preserved verbatim either way (§3 Respect the text holds). The `ToggleStore`-backed persistence and the SettingsPane checkbox are unchanged — only the wiring downstream of the toggle moved from server-forward to client-CSS.
 
 ## Verification
 
