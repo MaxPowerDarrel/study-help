@@ -5,7 +5,7 @@ Project direction, principles, guardrails, and non-goals live in [`PROJECT_CONST
 
 ## Status
 
-Reader feature shipped per `specs/passage-reader.md`. The Go server proxies ESV passage requests, exposes a Prometheus counter on a localhost-only metrics port, and serves the React SPA from an embedded Vite build. Accounts shipped per `specs/accounts.md`: server (signup / signin / signout / me, cookie sessions, per-IP + per-account rate limiting) + client (top-right chip, slide-in sign-in / create-account panel, sign-out menu). Highlights in progress per `specs/highlights.md`: server (`internal/highlights/` + three endpoints behind `RequireUser`) and client (`web/src/highlights/` floating toolbar, range-based selection → `<mark>` overlay, `web/src/platform/SelectionAdapter`); ESV client now sends `include-verse-anchors=true` unconditionally so the client can locate selections by verse + offset. Notes still pending.
+Reader feature shipped per `specs/passage-reader.md`. The Go server proxies ESV passage requests, exposes a Prometheus counter on a localhost-only metrics port, and serves the React SPA from an embedded Vite build. Accounts shipped per `specs/accounts.md`: server (signup / signin / signout / me, cookie sessions, per-IP + per-account rate limiting) + client (top-right chip, slide-in sign-in / create-account panel, sign-out menu). Highlights shipped per `specs/highlights.md`: server (`internal/highlights/` + three endpoints behind `RequireUser`) and client (`web/src/highlights/` floating toolbar, range-based selection → `<mark>` overlay, `web/src/platform/SelectionAdapter`); ESV client sends `include-verse-anchors=true` unconditionally so the client can locate selections by verse + offset. Notes still pending.
 
 **Layout:**
 
