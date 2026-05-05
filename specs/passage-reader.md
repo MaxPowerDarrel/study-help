@@ -2,7 +2,7 @@
 
 **Status:** Shipped <!-- Draft | In Progress | Shipped | Deprecated -->
 **Created:** 2026-05-02
-**Last updated:** 2026-05-03
+**Last updated:** 2026-05-04
 **Owner:** Darrel
 
 ## Why
@@ -115,7 +115,7 @@ under **Decisions** and leave a pointer here (don't delete the question
 - [ ] Should the User-facing behavior section name the default state of each formatting toggle (headings, footnotes, verse numbers, passage references, words of Christ) so first-load UX is pinned at spec level?
 - [ ] Should Verification assert the red-letter styling itself (e.g. computed color on `<span class="woc">` matches the chosen red), or is presence of the `woc` span considered sufficient and styling left entirely to the implementing PR?
 - [ ] Does the SPA need to expose the words-of-Christ red color as a theme/contrast concern (accessibility — color-only signal) at v1, or is that deferred?
-- [ ] Should the Decisions entry record that the `include-word-of-christ` ESV API param name uses hyphens upstream while the proxy query param uses underscores (`include_word_of_christ`), matching the existing four toggles' naming convention, so the mapping is explicit?
+- [x] Should the Decisions entry record that the `include-word-of-christ` ESV API param name uses hyphens upstream while the proxy query param uses underscores (`include_word_of_christ`), matching the existing four toggles' naming convention, so the mapping is explicit? — *resolved 2026-05-04 (see Decisions; the upstream name is actually `include-words-of-christ` — plural — and was being sent in the singular form, which ESV silently ignored)*
 
 ## Decisions
 
@@ -164,6 +164,7 @@ if a decision is reversed, add a new entry that supersedes it.
 - 2026-05-03: With the 5th toggle the combinatorial toggle space grows to 2⁵ = 32; Verification posture is unchanged — coverage stays per-toggle (5 pairs), not combinatorial. Reason: same trade-off as the prior round (per-toggle catches the regression cheaply; combinatorial coverage can be added if a real bug surfaces it). Supersedes nothing — extends the prior dropped-claim decision to the 5-toggle world.
 - 2026-05-03: Server unconditionally sets `include-audio-link=false` on every ESV request. Reason: enforces the existing audio Non-goal (ESV's `passage/html` defaults the param to true and would otherwise inject `<a class="mp3link">Listen</a>` into every payload). No client toggle — audio is out of scope at v1, period. If audio ever becomes in-scope, it gets its own spec.
 - 2026-05-03: Status transitioned Draft → Shipped. The reader is user-visible on `main` after PR #5 lands: book/chapter picker, contiguous range, formatting toggles (incl. words-of-Christ red letters), canon-edge handling, `/api/passage` proxy with allow-list 400s, and `/metrics` counter on the localhost-only port. The Verification checklist remains as-is (those are test artifacts to be added incrementally), and the four open follow-up questions logged this round (toggle defaults in spec, asserting computed `.woc` color, accessibility/contrast, hyphen↔underscore mapping note) carry forward post-Shipped.
+- 2026-05-04: Corrects the 2026-05-03 toggle decision: the ESV API param is `include-words-of-christ` (plural), not `include-word-of-christ` (singular). Until this fix the server sent the singular form, ESV silently ignored the unknown key, and the toggle had no effect — `<span class="woc">` markup was emitted regardless of state. Internal naming stays `IncludeWordOfChrist` / `include_word_of_christ` (only the outbound ESV query-param string changed). Underscores-to-hyphens mapping for the proxy ↔ ESV param pair is now: proxy `include_word_of_christ` → ESV `include-words-of-christ`. Resolves the carried-forward open question on the hyphen↔underscore mapping note.
 
 ## Verification
 
