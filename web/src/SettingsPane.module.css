@@ -96,3 +96,16 @@
   background: var(--color-rule);
   color: var(--color-fg);
 }
+
+.showGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.showLabel {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-muted);
+}

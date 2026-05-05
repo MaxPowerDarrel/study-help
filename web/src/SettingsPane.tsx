@@ -1,4 +1,5 @@
 import { ThemeChoice } from "./theme";
+import { Toggles } from "./toggles";
 import styles from "./SettingsPane.module.css";
 
 type Props = {
@@ -6,6 +7,8 @@ type Props = {
   onClose: () => void;
   theme: ThemeChoice;
   setTheme: (c: ThemeChoice) => void;
+  toggles: Toggles;
+  setToggles: (t: Toggles) => void;
 };
 
 const THEME_OPTIONS: { value: ThemeChoice; label: string }[] = [
@@ -14,7 +17,22 @@ const THEME_OPTIONS: { value: ThemeChoice; label: string }[] = [
   { value: "dark", label: "Dark" },
 ];
 
-export function SettingsPane({ open, onClose, theme, setTheme }: Props) {
+const SHOW_OPTIONS: { key: keyof Toggles; label: string }[] = [
+  { key: "include_headings", label: "Section headings" },
+  { key: "include_footnotes", label: "Footnotes" },
+  { key: "include_verse_numbers", label: "Verse numbers" },
+  { key: "include_passage_references", label: "Passage reference" },
+  { key: "include_word_of_christ", label: "Words of Christ" },
+];
+
+export function SettingsPane({
+  open,
+  onClose,
+  theme,
+  setTheme,
+  toggles,
+  setToggles,
+}: Props) {
   if (!open) return null;
   return (
     <div className={styles.overlay} role="dialog" aria-label="Settings">
@@ -51,6 +69,22 @@ export function SettingsPane({ open, onClose, theme, setTheme }: Props) {
               </button>
             ))}
           </div>
+        </div>
+
+        <div className={styles.showGroup} aria-label="Show">
+          <span className={styles.showLabel}>Show</span>
+          {SHOW_OPTIONS.map(({ key, label }) => (
+            <label key={key} className={styles.toggle}>
+              <input
+                type="checkbox"
+                checked={toggles[key]}
+                onChange={(e) =>
+                  setToggles({ ...toggles, [key]: e.target.checked })
+                }
+              />
+              {label}
+            </label>
+          ))}
         </div>
       </div>
     </div>
