@@ -236,6 +236,8 @@ export function App() {
         onClose={() => setSettingsOpen(false)}
         theme={theme}
         setTheme={setTheme}
+        toggles={toggles}
+        setToggles={setToggles}
       />
       <AuthPanel
         open={authOpen}
@@ -328,30 +330,6 @@ export function App() {
                   Clear
                 </button>
               )}
-            </fieldset>
-
-            <fieldset className={styles.toggles}>
-              <legend>Show</legend>
-              {(
-                [
-                  ["include_headings", "Section headings"],
-                  ["include_footnotes", "Footnotes"],
-                  ["include_verse_numbers", "Verse numbers"],
-                  ["include_passage_references", "Passage reference"],
-                  ["include_word_of_christ", "Words of Christ"],
-                ] as const
-              ).map(([key, label]) => (
-                <label key={key}>
-                  <input
-                    type="checkbox"
-                    checked={toggles[key]}
-                    onChange={(e) =>
-                      setToggles({ ...toggles, [key]: e.target.checked })
-                    }
-                  />
-                  {label}
-                </label>
-              ))}
             </fieldset>
 
             <nav className={styles.chapterNav}>

@@ -2,7 +2,7 @@
 
 **Status:** Shipped
 **Created:** 2026-05-03
-**Last updated:** 2026-05-03
+**Last updated:** 2026-05-04
 **Owner:** unassigned
 
 ## Why
@@ -303,6 +303,16 @@ Lands in **two PRs**, in this order:
   merge. Manual desktop and iPad verification remain in the PR's
   test plan; any regression found post-merge becomes a follow-up
   fix, not a status reversal.
+- 2026-05-04: Read-tab formatting "Show" toggles (section headings,
+  footnotes, verse numbers, passage reference, words of Christ)
+  moved from the picker sidebar into the SettingsPane, joining
+  Theme under the gear icon. Reason: realigns the implementation
+  with this spec's User-facing-behavior wording ("Theme toggle…
+  alongside the existing formatting toggles"), which had assumed
+  the formatting toggles were already in the settings pane. The
+  picker keeps only navigation primitives (book, chapter, verse
+  range, prev/next). Spec stays Shipped; no scope or behavior
+  change.
 
 ## Verification
 
