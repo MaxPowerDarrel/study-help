@@ -1,8 +1,8 @@
 # Notes
 
-**Status:** Draft <!-- Draft | In Progress | Shipped | Deprecated -->
+**Status:** Shipped <!-- Draft | In Progress | Shipped | Deprecated -->
 **Created:** 2026-05-04
-**Last updated:** 2026-05-04
+**Last updated:** 2026-05-05
 **Owner:** Darrel
 
 ## Why
@@ -111,6 +111,8 @@ if a decision is reversed, add a new entry that supersedes it.
 - 2026-05-04: No cap on number of notes per user per chapter at v1. Reason: matches the v1 simplicity posture and the no-rate-limit decision; pathological creation would surface as a separate problem worth real signal. Resolves Open question on per-chapter cap.
 - 2026-05-04: Drawer empty / loading / error UX matches the existing app patterns: silent empty (no nag when the chapter has zero notes), spinner on load, generic toast on failure (same copy posture as the reader: 429 → "Service is busy, try again in a moment"; 5xx/network → "Something went wrong, try again"). Reason: no new pattern to maintain, consistency across surfaces (§3 Study-first UX). Resolves Open question on drawer states.
 - 2026-05-04: `GET /api/notes` accepts `?book&chapter` (same shape as `GET /api/highlights`) and returns notes ordered by `start_verse ASC, start_offset ASC`. Reason: drawer order follows reading order, so tap-to-scroll feels natural; matching the highlights query shape lets the client share validation and reduces surface-area cognitive load. Resolves Open question on GET shape and ordering.
+- 2026-05-04: Implementation landed on branch `feat/notes`. Server-side `internal/notes/` package mirrors `internal/highlights/` with a `body TEXT` column, `updated_at`, no overlap rejection, and a PATCH endpoint; 16 KB body cap enforced via `http.MaxBytesReader` + post-decode length check. Client-side `web/src/notes/` (api / useNotes / NotesDrawer) plus a header-chrome "Notes" toggle button (hidden for guests). The selection toolbar (`HighlightToolbar`) gained an "Add note" button alongside "Highlight"; clicking it opens the drawer with a composer pre-anchored to the selected range so no empty notes are persisted. Tap-on-entry scrolls the reading surface to the anchor via `parseSelection.tupleToRange` against an `articleRef` lifted to `App.tsx`. Status flipped to In Progress; will move to Shipped on merge.
+- 2026-05-05: Status flipped to Shipped on merge of `feat/notes` to `main`. End-to-end verified locally against the Docker deploy after a separate `deploy.sh` fix to pass `ENV=dev` (cookies were being issued with `Secure` over plain HTTP, which intermittently broke session lookup); the deploy fix rode along on this PR.
 
 ## Verification
 
