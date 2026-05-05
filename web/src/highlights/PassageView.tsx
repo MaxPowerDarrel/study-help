@@ -1,10 +1,14 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState, type RefObject } from "react";
 import {
   defaultSelectionAdapter,
   type SelectionAdapter,
 } from "../platform/SelectionAdapter";
 import { applyHighlights, findHighlightId } from "./applyHighlights";
-import { HighlightToolbar, type ToolbarMode } from "./HighlightToolbar";
+import {
+  HighlightToolbar,
+  type ToolbarMode,
+  type ToolbarTuple,
+} from "./HighlightToolbar";
 import { rangeToTuple } from "./parseSelection";
 import { useHighlights } from "./useHighlights";
 
@@ -14,6 +18,8 @@ type Props = {
   chapter: number;
   isSignedIn: boolean;
   onGuestSignin: () => void;
+  onAddNote: (tuple: ToolbarTuple) => void;
+  articleRef: RefObject<HTMLElement | null>;
   selectionAdapter?: SelectionAdapter;
 };
 
@@ -27,9 +33,10 @@ export function PassageView({
   chapter,
   isSignedIn,
   onGuestSignin,
+  onAddNote,
+  articleRef,
   selectionAdapter = defaultSelectionAdapter,
 }: Props) {
-  const articleRef = useRef<HTMLElement | null>(null);
   const { highlights, create, remove } = useHighlights(
     book,
     chapter,
@@ -191,6 +198,13 @@ export function PassageView({
     [remove],
   );
 
+  const handleAddNote = useCallback(() => {
+    if (mode.kind !== "selection") return;
+    onAddNote(mode.tuple);
+    selectionAdapter.clear();
+    setMode({ kind: "idle" });
+  }, [mode, onAddNote, selectionAdapter]);
+
   return (
     <>
       <article
@@ -201,6 +215,7 @@ export function PassageView({
       <HighlightToolbar
         mode={mode}
         onHighlight={handleHighlight}
+        onAddNote={handleAddNote}
         onRemove={handleRemove}
         onSignin={onGuestSignin}
         onDismiss={() => setMode({ kind: "idle" })}

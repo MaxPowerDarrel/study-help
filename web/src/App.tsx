@@ -14,7 +14,12 @@ import { SettingsPane } from "./SettingsPane";
 import { AuthChip } from "./auth/AuthChip";
 import { AuthPanel } from "./auth/AuthPanel";
 import { useUser } from "./auth/useUser";
+import type { ToolbarTuple } from "./highlights/HighlightToolbar";
+import { tupleToRange } from "./highlights/parseSelection";
 import { PassageView } from "./highlights/PassageView";
+import { NotesDrawer } from "./notes/NotesDrawer";
+import { type Note } from "./notes/api";
+import { useNotes } from "./notes/useNotes";
 import styles from "./App.module.css";
 
 type Tab = "read" | "daily";
@@ -54,6 +59,9 @@ export function App() {
   const [toast, setToast] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
+  const [notesOpen, setNotesOpen] = useState(false);
+  const [pendingTuple, setPendingTuple] = useState<ToolbarTuple | null>(null);
+  const articleRef = useRef<HTMLElement | null>(null);
   const userState = useUser();
   const [daily, setDaily] = useState<DailyLoad>({ kind: "idle" });
   const [selectedDate, setSelectedDate] = useState<string>(todayString());
@@ -183,6 +191,54 @@ export function App() {
   const prev = prevChapter(ref);
   const book = CANON[ref.bookIndex];
 
+  const isSignedIn = userState.user !== null;
+  const notesApi = useNotes(book.name, ref.chapter, isSignedIn);
+
+  const handleAddNote = (tuple: ToolbarTuple) => {
+    setPendingTuple(tuple);
+    setNotesOpen(true);
+  };
+
+  const closeNotesDrawer = () => {
+    setNotesOpen(false);
+    setPendingTuple(null);
+  };
+
+  const createPendingNote = async (body: string) => {
+    if (!pendingTuple) {
+      return { kind: "error" as const };
+    }
+    const res = await notesApi.create({
+      book: book.name,
+      chapter: ref.chapter,
+      start_verse: pendingTuple.start_verse,
+      start_offset: pendingTuple.start_offset,
+      end_verse: pendingTuple.end_verse,
+      end_offset: pendingTuple.end_offset,
+      body,
+    });
+    if (res.kind === "ok") setPendingTuple(null);
+    return res;
+  };
+
+  const scrollToNote = (n: Note) => {
+    const el = articleRef.current;
+    if (!el) return;
+    const range = tupleToRange(
+      {
+        start_verse: n.start_verse,
+        start_offset: n.start_offset,
+        end_verse: n.end_verse,
+        end_offset: n.end_offset,
+      },
+      el,
+    );
+    range?.startContainer.parentElement?.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    });
+  };
+
   return (
     <div className={styles.app}>
       <header className={styles.appHeader}>
@@ -221,6 +277,15 @@ export function App() {
             onOpenSignin={() => setAuthOpen(true)}
             onSignout={() => userState.signout()}
           />
+          {isSignedIn && (
+            <button
+              type="button"
+              className={styles.notesToggle}
+              onClick={() => setNotesOpen((v) => !v)}
+            >
+              Notes
+            </button>
+          )}
           <button
             type="button"
             className={styles.gear}
@@ -244,6 +309,21 @@ export function App() {
         onClose={() => setAuthOpen(false)}
         signin={userState.signin}
         signup={userState.signup}
+      />
+      <NotesDrawer
+        open={notesOpen}
+        onClose={closeNotesDrawer}
+        book={book.name}
+        chapter={ref.chapter}
+        notes={notesApi.notes}
+        loading={notesApi.loading}
+        pendingTuple={pendingTuple}
+        onCancelPending={() => setPendingTuple(null)}
+        onCreate={createPendingNote}
+        onUpdate={notesApi.update}
+        onRemove={notesApi.remove}
+        onScrollToAnchor={scrollToNote}
+        onError={(msg) => setToast(msg)}
       />
       <div
         className={
@@ -372,8 +452,10 @@ export function App() {
                   html={html}
                   book={book.name}
                   chapter={ref.chapter}
-                  isSignedIn={userState.user !== null}
+                  isSignedIn={isSignedIn}
                   onGuestSignin={() => setAuthOpen(true)}
+                  onAddNote={handleAddNote}
+                  articleRef={articleRef}
                 />
               )}
             </>
