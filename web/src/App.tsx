@@ -14,6 +14,7 @@ import { SettingsPane } from "./SettingsPane";
 import { AuthChip } from "./auth/AuthChip";
 import { AuthPanel } from "./auth/AuthPanel";
 import { useUser } from "./auth/useUser";
+import { PassageView } from "./highlights/PassageView";
 import styles from "./App.module.css";
 
 type Tab = "read" | "daily";
@@ -389,9 +390,12 @@ export function App() {
                 <div className={styles.spinner} aria-label="loading" />
               )}
               {!loading && html && (
-                <article
-                  className="passage"
-                  dangerouslySetInnerHTML={{ __html: html }}
+                <PassageView
+                  html={html}
+                  book={book.name}
+                  chapter={ref.chapter}
+                  isSignedIn={userState.user !== null}
+                  onGuestSignin={() => setAuthOpen(true)}
                 />
               )}
             </>
