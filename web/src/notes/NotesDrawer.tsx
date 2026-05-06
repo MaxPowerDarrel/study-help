@@ -11,8 +11,7 @@ import styles from "./NotesDrawer.module.css";
 type Props = {
   open: boolean;
   onClose: () => void;
-  book: string;
-  chapter: number;
+  title: string;
   notes: Note[];
   loading: boolean;
   pendingTuple: ToolbarTuple | null;
@@ -22,13 +21,15 @@ type Props = {
   onRemove: (id: number) => Promise<DeleteResult>;
   onScrollToAnchor: (n: Note) => void;
   onError: (message: string) => void;
+  // When true (Daily aggregated view), entry refs include book + chapter
+  // since the title alone can't disambiguate the spanning chapters.
+  showChapter?: boolean;
 };
 
 export function NotesDrawer({
   open,
   onClose,
-  book,
-  chapter,
+  title,
   notes,
   loading,
   pendingTuple,
@@ -38,15 +39,14 @@ export function NotesDrawer({
   onRemove,
   onScrollToAnchor,
   onError,
+  showChapter = false,
 }: Props) {
   if (!open) return null;
   return (
     <div className={styles.overlay} role="dialog" aria-label="Notes">
       <div className={styles.pane}>
         <header className={styles.header}>
-          <h2>
-            Notes — {book} {chapter}
-          </h2>
+          <h2>Notes — {title}</h2>
           <button
             type="button"
             className={styles.close}
@@ -74,6 +74,7 @@ export function NotesDrawer({
               <Entry
                 key={note.id}
                 note={note}
+                showChapter={showChapter}
                 onUpdate={onUpdate}
                 onRemove={onRemove}
                 onScrollToAnchor={onScrollToAnchor}
@@ -158,12 +159,14 @@ function Composer({
 
 function Entry({
   note,
+  showChapter,
   onUpdate,
   onRemove,
   onScrollToAnchor,
   onError,
 }: {
   note: Note;
+  showChapter: boolean;
   onUpdate: (id: number, body: string) => Promise<UpdateResult>;
   onRemove: (id: number) => Promise<DeleteResult>;
   onScrollToAnchor: (n: Note) => void;
@@ -207,12 +210,14 @@ function Entry({
   return (
     <li className={styles.entry}>
       <span className={styles.entryRef}>
-        {formatRef({
-          start_verse: note.start_verse,
-          start_offset: note.start_offset,
-          end_verse: note.end_verse,
-          end_offset: note.end_offset,
-        })}
+        {showChapter
+          ? formatChapterRef(note)
+          : formatRef({
+              start_verse: note.start_verse,
+              start_offset: note.start_offset,
+              end_verse: note.end_verse,
+              end_offset: note.end_offset,
+            })}
       </span>
 
       {editing ? (
@@ -292,6 +297,13 @@ function formatRef(t: {
 }): string {
   if (t.start_verse === t.end_verse) return `Verse ${t.start_verse}`;
   return `Verses ${t.start_verse}–${t.end_verse}`;
+}
+
+function formatChapterRef(n: Note): string {
+  if (n.start_verse === n.end_verse) {
+    return `${n.book} ${n.chapter}:${n.start_verse}`;
+  }
+  return `${n.book} ${n.chapter}:${n.start_verse}–${n.end_verse}`;
 }
 
 function formatDate(iso: string): string {

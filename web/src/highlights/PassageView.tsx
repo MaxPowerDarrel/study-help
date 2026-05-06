@@ -27,7 +27,9 @@ type Props = {
   isSignedIn: boolean;
   showWordsOfChrist: boolean;
   onGuestSignin: () => void;
-  onAddNote: (tuple: ToolbarTuple) => void;
+  // book and chapter are passed back so multi-container surfaces (Daily
+  // tab) can route the pending note to the correct chapter.
+  onAddNote: (tuple: ToolbarTuple, book: string, chapter: number) => void;
   articleRef: RefObject<HTMLElement | null>;
   selectionAdapter?: SelectionAdapter;
 };
@@ -217,10 +219,10 @@ export function PassageView({
 
   const handleAddNote = useCallback(() => {
     if (mode.kind !== "selection") return;
-    onAddNote(mode.tuple);
+    onAddNote(mode.tuple, book, chapter);
     selectionAdapter.clear();
     setMode({ kind: "idle" });
-  }, [mode, onAddNote, selectionAdapter]);
+  }, [book, chapter, mode, onAddNote, selectionAdapter]);
 
   // Memoized so React's dangerouslySetInnerHTML diff sees a stable
   // object across renders. Without this, every render re-applies

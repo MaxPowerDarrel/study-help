@@ -91,7 +91,9 @@ func TestDailyHandlerDateParam(t *testing.T) {
 // Regression: prior to the fix, the date param was parsed as UTC midnight and
 // then converted into the user's tz, shifting the calendar day backward for
 // any tz west of UTC. With tz=America/New_York and date=2026-05-05, the
-// handler previously returned May 4's reading (Num. 17-19 / Rev. 21).
+// handler previously returned May 4's reading (Numbers 17-19 / Revelation 21).
+// Book names are normalized to canonical canon names; the plan markdown's
+// "Num."/"Rev." are returned to the client as "Numbers"/"Revelation".
 func TestDailyHandlerDateParamRespectsTZ(t *testing.T) {
 	c := &DailyCounter{}
 	h := dailyReadingHandler(c)
@@ -116,11 +118,11 @@ func TestDailyHandlerDateParamRespectsTZ(t *testing.T) {
 			nt = &got.Passages[i]
 		}
 	}
-	if ot == nil || ot.Book != "Num." || ot.Chapters != "20-22" {
-		t.Errorf("OT = %+v, want {Num. 20-22 OT}", ot)
+	if ot == nil || ot.Book != "Numbers" || ot.Chapters != "20-22" {
+		t.Errorf("OT = %+v, want {Numbers 20-22 OT}", ot)
 	}
-	if nt == nil || nt.Book != "Rev." || nt.Chapters != "22" {
-		t.Errorf("NT = %+v, want {Rev. 22 NT}", nt)
+	if nt == nil || nt.Book != "Revelation" || nt.Chapters != "22" {
+		t.Errorf("NT = %+v, want {Revelation 22 NT}", nt)
 	}
 }
 

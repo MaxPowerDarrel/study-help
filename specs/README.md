@@ -11,6 +11,7 @@ landing), **Shipped** (user-visible), **Deprecated** (being removed).
 |---|---|---|
 | [accounts](./accounts.md) | Shipped | Email + password sign up / sign in / sign out; cookie sessions; foundation for highlights & notes |
 | [auto-load-daily-reading](./auto-load-daily-reading.md) | Shipped | Auto-load a daily passage on startup; toggle in settings |
+| [daily-annotations](./daily-annotations.md) | In Progress | Highlights, notes, and translation picker on the Daily tab |
 | [docker](./docker.md) | Shipped | Package the app as a Docker image for reproducible, portable deployment |
 | [highlights](./highlights.md) | Shipped | Range-based, persistent, per-user passage highlights |
 | [multi-translation](./multi-translation.md) | Shipped | Pluggable translation foundation; ESV at launch, per-user persisted preference, highlights/notes scoped per translation |

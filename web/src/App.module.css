@@ -300,6 +300,51 @@
   border-bottom: 1px solid var(--color-rule);
 }
 
+.dailyHeaderTop {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.dailyTranslation {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.dailyTranslationLabel {
+  /* keep accessible to SR while compact on screen */
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.dailyTranslation select {
+  background: transparent;
+  color: var(--color-fg);
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-sm);
+  padding: 0 var(--space-2);
+  min-height: var(--tap-target);
+  font-family: inherit;
+  font-size: 16px; /* prevent iOS zoom on focus */
+}
+
+.dailyTranslation select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .dailyDate {
   font-family: var(--font-serif);
   font-size: 1.5rem;
@@ -371,6 +416,55 @@
   min-height: 200px;
   display: flex;
   justify-content: center;
+}
+
+.dailyChapters {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-7);
+  width: 100%;
+}
+
+.dailyChapter {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.dailyChapter + .dailyChapter {
+  border-top: 1px solid var(--color-rule);
+  padding-top: var(--space-6);
+}
+
+.dailyChapterHeading {
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-muted);
+  margin: 0;
+  font-weight: 500;
+}
+
+.dailyChapterSpinner {
+  position: relative;
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--color-rule);
+  border-top-color: var(--color-accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  align-self: center;
+  margin: var(--space-4) 0;
+}
+
+.dailyChapterError {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
 }
 
 .dailyMessage {

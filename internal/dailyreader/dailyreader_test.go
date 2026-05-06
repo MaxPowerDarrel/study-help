@@ -131,6 +131,13 @@ func TestSplitPassageMultiWordBook(t *testing.T) {
 		{"1 Samuel 17", "1 Samuel", "17"},
 		{"Song of Solomon 2", "Song of Solomon", "2"},
 		{"Revelation 22", "Revelation", "22"},
+		// Abbreviations from the plan markdown should normalize to
+		// canonical canon names so every provider can fetch them.
+		{"Num. 23-25", "Numbers", "23-25"},
+		{"Matt. 1", "Matthew", "1"},
+		{"Rev. 22", "Revelation", "22"},
+		{"1 Sam. 17", "1 Samuel", "17"},
+		{"Song of Songs 2", "Song of Solomon", "2"},
 	}
 	for _, c := range cases {
 		p, ok := splitPassage(c.in, "OT")
@@ -140,6 +147,31 @@ func TestSplitPassageMultiWordBook(t *testing.T) {
 		}
 		if p.Book != c.book || p.Chapters != c.chapters {
 			t.Errorf("splitPassage(%q) = %q / %q, want %q / %q", c.in, p.Book, p.Chapters, c.book, c.chapters)
+		}
+	}
+}
+
+func TestSplitPassageNormalizesEveryPlanRow(t *testing.T) {
+	plan, err := parsePlan(planMarkdown)
+	if err != nil {
+		t.Fatalf("parsePlan: %v", err)
+	}
+	for key, row := range plan {
+		for _, cell := range []struct {
+			testament, raw string
+		}{{"OT", row.ot}, {"NT", row.nt}} {
+			p, ok := splitPassage(cell.raw, cell.testament)
+			if !ok {
+				continue
+			}
+			b, ok := canon.LookupBook(p.Book)
+			if !ok {
+				t.Errorf("row %s %s: book %q not in canon", key, cell.testament, p.Book)
+				continue
+			}
+			if p.Book != b.Name {
+				t.Errorf("row %s %s: book %q is not canonical (want %q)", key, cell.testament, p.Book, b.Name)
+			}
 		}
 	}
 }

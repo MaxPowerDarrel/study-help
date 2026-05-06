@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"errors"
 	"strings"
+	"study-help/internal/canon"
 	"time"
 )
 
@@ -94,7 +95,12 @@ func parsePlan(src []byte) (map[string]planRow, error) {
 
 // splitPassage splits a cell like "Genesis 1-3" into book + chapters.
 // The book name may contain spaces (e.g., "1 Samuel", "Song of Solomon");
-// the chapters portion begins at the last space before a digit.
+// the chapters portion begins at the last space before a digit. The
+// returned Book is normalized to its canonical canon name — the plan
+// markdown uses common abbreviations ("Num.", "Matt.") that ESV happens
+// to accept but the YouVersion USFM mapping rejects. canon.LookupBook
+// resolves both forms; the canonical name is what every provider can
+// fetch.
 func splitPassage(cell, testament string) (Passage, bool) {
 	cell = strings.TrimSpace(cell)
 	if cell == "" {
@@ -110,8 +116,13 @@ func splitPassage(cell, testament string) (Passage, bool) {
 	if cut <= 0 {
 		return Passage{}, false
 	}
+	rawBook := strings.TrimSpace(cell[:cut])
+	bookName := rawBook
+	if b, ok := canon.LookupBook(rawBook); ok {
+		bookName = b.Name
+	}
 	return Passage{
-		Book:      strings.TrimSpace(cell[:cut]),
+		Book:      bookName,
 		Chapters:  strings.TrimSpace(cell[cut+1:]),
 		Testament: testament,
 	}, true
