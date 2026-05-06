@@ -1,0 +1,18 @@
+.attribution {
+  display: block;
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  color: var(--color-muted);
+  letter-spacing: 0.02em;
+  margin-top: var(--space-1);
+}
+
+.attribution a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: var(--color-rule);
+}
+
+.attribution a:hover {
+  text-decoration-color: var(--color-muted);
+}

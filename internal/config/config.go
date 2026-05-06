@@ -6,26 +6,31 @@ import (
 )
 
 type Config struct {
-	Addr          string
-	DatabaseURL   string
-	SessionSecret string
-	ESVAPIKey     string
-	Env           string
+	Addr             string
+	DatabaseURL      string
+	SessionSecret    string
+	ESVAPIKey        string
+	YouVersionAppKey string
+	Env              string
 }
 
 func Load() Config {
 	cfg := Config{
-		Addr:          envOr("ADDR", ":8080"),
-		DatabaseURL:   envOr("DATABASE_URL", "./sqlite.db"),
-		SessionSecret: os.Getenv("SESSION_SECRET"),
-		ESVAPIKey:     os.Getenv("ESV_API_KEY"),
-		Env:           envOr("ENV", "prod"),
+		Addr:             envOr("ADDR", ":8080"),
+		DatabaseURL:      envOr("DATABASE_URL", "./sqlite.db"),
+		SessionSecret:    os.Getenv("SESSION_SECRET"),
+		ESVAPIKey:        os.Getenv("ESV_API_KEY"),
+		YouVersionAppKey: os.Getenv("YOUVERSION_APP_KEY"),
+		Env:              envOr("ENV", "prod"),
 	}
 	if cfg.SessionSecret == "" {
 		log.Fatal("SESSION_SECRET is required")
 	}
 	if cfg.ESVAPIKey == "" {
 		log.Fatal("ESV_API_KEY is required")
+	}
+	if cfg.YouVersionAppKey == "" {
+		log.Fatal("YOUVERSION_APP_KEY is required")
 	}
 	return cfg
 }

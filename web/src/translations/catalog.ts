@@ -2,7 +2,7 @@
 // translation is registered server-side (internal/scripture, internal/<id>),
 // add a matching entry here in the same diff.
 
-export type TranslationID = "ESV";
+export type TranslationID = "ESV" | "NIV";
 
 export type TranslationEntry = {
   id: TranslationID;
@@ -11,6 +11,7 @@ export type TranslationEntry = {
 
 export const TRANSLATIONS: ReadonlyArray<TranslationEntry> = [
   { id: "ESV", displayName: "English Standard Version" },
+  { id: "NIV", displayName: "New International Version" },
 ];
 
 export const DEFAULT_TRANSLATION: TranslationID = "ESV";

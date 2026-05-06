@@ -1,8 +1,11 @@
 /*
- * Global styles for the ESV-rendered HTML inside the .passage
- * container. The class names here (h2/h3, .verse-num, .woc) are
- * emitted by the ESV API, not by our React tree, so they can't be
- * scoped via CSS Modules.
+ * Global styles for the provider-rendered HTML inside the .passage
+ * container. The class names here are emitted by the upstream APIs,
+ * not by our React tree, so they can't be scoped via CSS Modules.
+ *
+ * ESV: .verse-num (verse label), .woc (words of Christ), h2/h3 (section).
+ * YouVersion (NIV): .yv-vlbl (verse label), .wj (words of Jesus),
+ * .yv-v (empty boundary anchor — used by parseSelection), .p (paragraph).
  */
 
 .passage {
@@ -13,7 +16,8 @@
 }
 
 .passage h2,
-.passage h3 {
+.passage h3,
+.passage .yv-h {
   font-family: var(--font-sans);
   color: var(--color-muted);
   font-size: 0.95rem;
@@ -22,21 +26,35 @@
   margin-top: var(--space-6);
 }
 
-.passage .verse-num {
+.passage .verse-num,
+.passage .yv-vlbl {
   color: var(--color-muted);
   font-size: 0.7em;
   vertical-align: super;
   margin-right: 0.15em;
 }
 
-.passage .woc {
+/* YouVersion emits an empty boundary span before each verse; it pairs
+ * with .yv-vlbl above and shouldn't introduce stray whitespace. */
+.passage .yv-v {
+  display: inline;
+}
+
+/* Paragraph wrapper from YouVersion's HTML output. */
+.passage .p {
+  margin: var(--space-3) 0;
+}
+
+.passage .woc,
+.passage .wj {
   color: var(--color-woc);
 }
 
-/* ESV's /passage/html/ endpoint always emits <span class="woc"> for the
- * words of Christ (no upstream toggle). The Words-of-Christ toggle is
- * therefore implemented client-side as a CSS class flip on .passage. */
-.passage.no-woc .woc {
+/* Both providers always emit their words-of-Christ markup (ESV's woc,
+ * YouVersion's wj). The toggle is implemented client-side as a CSS
+ * class flip on .passage. */
+.passage.no-woc .woc,
+.passage.no-woc .wj {
   color: inherit;
 }
 

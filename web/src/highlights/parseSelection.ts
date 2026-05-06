@@ -1,12 +1,14 @@
 // parseSelection converts a DOM Range inside the .passage container
 // into a (start_verse, start_offset, end_verse, end_offset) tuple
-// suitable for POST /api/highlights, using ESV's include-verse-anchors
-// elements (e.g. <a name="v043003016">) as verse landmarks.
-//
-// Offsets are character positions within the textContent that follows
-// each verse anchor up to (but not including) the next verse anchor.
-// This matches the server-side range-storage convention in
+// suitable for POST /api/highlights, using verse-anchor elements as
+// landmarks. Each translation provider emits a different anchor shape;
+// the per-translation listers below dispatch off TranslationID. Offsets
+// are character positions within the textContent that follows each
+// verse anchor up to (but not including) the next verse anchor —
+// matches the server-side range-storage convention in
 // specs/highlights.md.
+
+import type { TranslationID } from "../translations/catalog";
 
 export type RangeTuple = {
   start_verse: number;
@@ -14,6 +16,26 @@ export type RangeTuple = {
   end_verse: number;
   end_offset: number;
 };
+
+export type AnchorEntry = { verse: number; anchor: Element };
+
+type AnchorLister = (container: Element) => AnchorEntry[];
+
+// listVerseAnchors dispatches to the per-translation anchor lister.
+// The shared offset-walking logic in this file is anchor-agnostic — it
+// just needs an Element per verse that sits in document order before
+// that verse's text body.
+const ANCHOR_LISTERS: Record<TranslationID, AnchorLister> = {
+  ESV: listEsvAnchors,
+  NIV: listYouVersionAnchors,
+};
+
+export function listVerseAnchors(
+  container: Element,
+  translation: TranslationID,
+): AnchorEntry[] {
+  return ANCHOR_LISTERS[translation](container);
+}
 
 // ESV's include-verse-anchors emits <a class="va" rel="vBCCCVVV">
 // before each verse, where B is the book number (1-2 digits) and CCC,
@@ -25,17 +47,35 @@ export type RangeTuple = {
 // starts, esv_12 inside woc spans, esv_17 in continuation paragraphs).
 // We dedupe by verse, keeping the LAST occurrence in document order
 // — that's the one immediately preceding the verse text body.
-const verseAnchorPattern = /^v\d+(\d{3})$/;
+const esvVerseAnchorPattern = /^v\d+(\d{3})$/;
 
-type AnchorEntry = { verse: number; anchor: Element };
-
-export function listVerseAnchors(container: Element): AnchorEntry[] {
+function listEsvAnchors(container: Element): AnchorEntry[] {
   const byVerse = new Map<number, Element>();
   container.querySelectorAll("a.va[rel]").forEach((a) => {
     const rel = a.getAttribute("rel") ?? "";
-    const m = rel.match(verseAnchorPattern);
+    const m = rel.match(esvVerseAnchorPattern);
     if (!m) return;
     byVerse.set(parseInt(m[1], 10), a); // last write wins
+  });
+  return Array.from(byVerse.entries())
+    .sort((a, b) => a[0] - b[0])
+    .map(([verse, anchor]) => ({ verse, anchor }));
+}
+
+// YouVersion's passage HTML emits an empty boundary span before each
+// verse: <span class="yv-v" v="N"></span>. The visible verse label is
+// a separate <span class="yv-vlbl">N</span> that follows. Using the
+// boundary span as the anchor means offsets count the verse label as
+// part of the verse body (offset 0 = first char of "N", not first
+// char of the verse text). That's a UX quirk, but consistent: round-
+// trips work because rangeToTuple and tupleToRange use the same anchor.
+function listYouVersionAnchors(container: Element): AnchorEntry[] {
+  const byVerse = new Map<number, Element>();
+  container.querySelectorAll("span.yv-v[v]").forEach((s) => {
+    const v = s.getAttribute("v") ?? "";
+    const n = parseInt(v, 10);
+    if (!Number.isFinite(n) || n <= 0) return;
+    byVerse.set(n, s);
   });
   return Array.from(byVerse.entries())
     .sort((a, b) => a[0] - b[0])
@@ -48,7 +88,8 @@ export function listVerseAnchors(container: Element): AnchorEntry[] {
 export function rangeToTuple(
   range: Range,
   container: Element,
-  anchors: AnchorEntry[] = listVerseAnchors(container),
+  translation: TranslationID,
+  anchors: AnchorEntry[] = listVerseAnchors(container, translation),
 ): RangeTuple | null {
   if (anchors.length === 0) return null;
   // Browsers sometimes hand back a Range whose start/end container is
@@ -151,7 +192,8 @@ export function tupleToRange(
     end_offset: number;
   },
   container: Element,
-  anchors: AnchorEntry[] = listVerseAnchors(container),
+  translation: TranslationID,
+  anchors: AnchorEntry[] = listVerseAnchors(container, translation),
 ): Range | null {
   const startAnchor = anchors.find((a) => a.verse === tuple.start_verse);
   const endAnchor = anchors.find((a) => a.verse === tuple.end_verse);

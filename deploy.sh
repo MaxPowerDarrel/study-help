@@ -70,6 +70,7 @@ docker run -d \
   -p "$PORT:8080" \
   -e "ESV_API_KEY=$ESV_API_KEY" \
   -e "SESSION_SECRET=$SESSION_SECRET" \
+  -e "YOUVERSION_APP_KEY=$YOUVERSION_APP_KEY" \
   -e "DATABASE_URL=/data/sqlite.db" \
   -e "ENV=dev" \
   -v "$(pwd)/$DATABASE_DIR:/data" \
