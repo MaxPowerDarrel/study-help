@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useSyncExternalStore } from "react";
 import { defaultToggleStore, ToggleStore } from "./platform/ToggleStore";
 
 export type ThemeChoice = "light" | "dark" | "system";
@@ -35,10 +35,12 @@ export function writeTheme(
 }
 
 export function useTheme(): [ThemeChoice, (c: ThemeChoice) => void] {
-  const [choice, setChoice] = useState<ThemeChoice>(() => readTheme());
-  const set = (c: ThemeChoice) => {
-    writeTheme(c);
-    setChoice(c);
-  };
-  return [choice, set];
+  const raw = useSyncExternalStore(
+    (cb) => defaultToggleStore.subscribe(cb),
+    () => defaultToggleStore.get(KEY),
+    () => null,
+  );
+  const choice: ThemeChoice =
+    raw === "light" || raw === "dark" ? raw : "system";
+  return [choice, (c) => writeTheme(c)];
 }
