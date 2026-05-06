@@ -75,26 +75,28 @@ Node and Go and the build is heavy on a 1 GB instance.
 ## First deploy
 
 On the Lightsail VM (one-time host setup):
+
 ```bash
-sudo apt-get update
-sudo apt-get install -y docker.io docker-compose-plugin
-sudo systemctl enable --now docker
-sudo usermod -aG docker ubuntu          # log out and back in
+git clone https://github.com/<you>/study-help.git
+cd study-help
+./deploy/lightsail/bootstrap.sh
 ```
 
-Then:
-```bash
-sudo mkdir -p /opt/study-help
-sudo chown ubuntu:ubuntu /opt/study-help
-cd /opt/study-help
+`bootstrap.sh` is idempotent. On first run it installs Docker and the
+Compose plugin, then asks you to log out / log back in for the docker
+group to take effect. Re-run after re-login and it scaffolds
+`/opt/study-help/` with `compose.yaml`, `Caddyfile`, `litestream.yml`,
+`deploy.sh`, and a starter `.env` (mode `0600`).
 
-# Copy compose.yaml, Caddyfile, litestream.yml, .env.example from this
-# directory to /opt/study-help on the VM, then:
-cp .env.example .env
-chmod 600 .env
+Fill in the placeholders, then bring the stack up:
+
+```bash
+cd /opt/study-help
 $EDITOR .env                            # fill in every CHANGEME
 $EDITOR Caddyfile                       # replace study.example.com
 $EDITOR litestream.yml                  # replace bucket / region
+
+docker login ghcr.io                    # if pulling a private image
 
 # DNS must resolve to the static IP before this step or Caddy can't get
 # a cert. Verify with `dig +short study.example.com`.
@@ -110,14 +112,38 @@ Cookies). The `ENV=prod` setting requires HTTPS; if the cookie isn't
 
 ## Day-2 ops
 
-### Deploy a new version
+### Deploy a new version (CI-driven)
 
-Bump `APP_IMAGE` in `.env` to the new tag, then:
+CI builds and pushes the image to GHCR on every push to `main` and on
+`v*` tags (see `.github/workflows/build-image.yml`). To roll a new
+version onto the VM:
+
+1. Open the GitHub Actions UI → **deploy** workflow → **Run workflow**.
+2. Enter the image tag (e.g. `sha-abc1234`, `v1.2.3`, or `main`).
+3. The workflow SSHes into the VM and runs `/opt/study-help/deploy.sh`,
+   which atomically updates `APP_IMAGE` in `.env`, pulls the new image,
+   restarts the `app` container, polls `/healthz`, and rolls back to
+   the previous image if the healthcheck fails.
+
+Repository secrets required by the deploy workflow:
+
+| Secret           | Value                                                  |
+|------------------|--------------------------------------------------------|
+| `DEPLOY_HOST`    | Lightsail static IP or FQDN                            |
+| `DEPLOY_USER`    | SSH user on the VM (e.g. `ubuntu`)                     |
+| `DEPLOY_SSH_KEY` | PEM-encoded private key (no passphrase)                |
+
+For an extra approval gate, configure a `production` environment in
+the repo settings with required reviewers.
+
+### Deploy by hand
+
+`deploy.sh` works the same way from an SSH session:
+
 ```bash
-docker compose pull && docker compose up -d
+ssh ubuntu@<host>
+/opt/study-help/deploy.sh ghcr.io/<you>/study-help:sha-abc1234
 ```
-~1 second of downtime as the app container is replaced. Caddy and the
-Litestream sidecar are unaffected.
 
 ### Restore from S3 (disaster recovery drill)
 
@@ -156,9 +182,14 @@ docker compose up -d                  # picks up the new env on restart
 
 ## Files
 
-| File              | Purpose                                                    |
-|-------------------|------------------------------------------------------------|
-| `compose.yaml`    | Service definitions (app + caddy + litestream + restore).  |
-| `Caddyfile`       | Reverse proxy + automatic Let's Encrypt cert.              |
-| `litestream.yml`  | What to replicate, where, and how often.                   |
-| `.env.example`    | Template for `.env` (image tag, secrets, AWS creds).       |
+| File              | Purpose                                                                     |
+|-------------------|-----------------------------------------------------------------------------|
+| `compose.yaml`    | Service definitions (app + caddy + litestream + restore).                   |
+| `Caddyfile`       | Reverse proxy + automatic Let's Encrypt cert.                               |
+| `litestream.yml`  | What to replicate, where, and how often.                                    |
+| `.env.example`    | Template for `.env` (image tag, secrets, AWS creds).                        |
+| `bootstrap.sh`    | One-shot host provisioning: installs Docker, scaffolds `/opt/study-help/`. |
+| `deploy.sh`       | VM-side deploy: atomic `.env` bump, pull, restart, healthcheck, rollback.   |
+
+The CI workflows in `../../.github/workflows/` (`build-image.yml`,
+`deploy.yml`) drive image build/push and remote deploy.

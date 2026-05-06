@@ -27,8 +27,13 @@ SQLite. We accept that for v1.
       disk, the app rehydrates the DB from S3 automatically before
       starting.
 - [ ] Operator-facing artifacts (`compose.yaml`, `Caddyfile`,
-      `litestream.yml`, `.env.example`, runbook) live in
-      `deploy/lightsail/` and are versioned alongside the app.
+      `litestream.yml`, `.env.example`, `bootstrap.sh`, `deploy.sh`,
+      runbook) live in `deploy/lightsail/` and are versioned alongside
+      the app.
+- [ ] CI builds and pushes the image to GHCR on every `main` push and
+      on `v*` tags. A separate `workflow_dispatch` deploy job SSHes
+      into the VM and runs `deploy.sh`, which atomically swaps the
+      image, healthchecks `/healthz`, and rolls back on failure.
 - [ ] Steady-state cost ≤ $15/mo for a personal-scale deployment.
 
 ## Non-goals
@@ -37,9 +42,10 @@ SQLite. We accept that for v1.
   Revisit with a Postgres migration spec.
 - **No Kubernetes / ECS / Fargate.** Single-VM Docker Compose is the
   smallest thing that works given the SQLite constraint.
-- **No CI/CD wiring in this spec.** The spec assumes images get pushed
-  to a registry; it does not prescribe how. A GitHub Actions workflow
-  is a separate, additive change.
+- **No auto-deploy on push to main.** Image build is automatic; the
+  deploy step is operator-triggered via `workflow_dispatch` (or a
+  manual SSH invocation of `deploy.sh`). Auto-deploy on every commit
+  is too aggressive for a personal-scale service.
 - **No production observability stack.** The internal metrics port stays
   bound to `127.0.0.1:9090` inside the container (per `docker.md`); a
   later spec can add a scraper sidecar or Grafana Cloud agent.
@@ -94,6 +100,26 @@ WAL companion.
   AWS profile / mounted credentials file.** Compose env-substitution
   is the simplest path; the credentials never leave the host's `.env`.
   Rotating means editing `.env` and `docker compose up -d`.
+- **2026-05-06** — **Image build in CI, deploy operator-triggered.**
+  Build runs on every push to `main` (and on `v*` tags); deploy is a
+  separate `workflow_dispatch` job that SSHes into the VM and runs
+  `deploy.sh`. Rationale: build cycles are cheap and the image is the
+  audit trail of what could be deployed; rolling forward to production
+  should be a deliberate act, not a side-effect of a merge.
+- **2026-05-06** — **Healthcheck via the Caddy container, not the app
+  container.** The app's distroless image has no shell or wget, so we
+  can't curl `/healthz` from inside it. Caddy's alpine base has both,
+  and both containers share the default bridge network — `docker
+  compose exec caddy wget app:8080/healthz` is the smallest path.
+  Trade: deploy.sh hard-codes a runtime dependency on the `caddy`
+  service name. Acceptable since both ship together in `compose.yaml`.
+- **2026-05-06** — **Rollback by re-writing `APP_IMAGE` and re-running
+  compose, not by keeping a "previous" container around.** Compose
+  doesn't have a first-class rollback verb; tracking `OLD_IMAGE`
+  before the swap and rewriting `.env` on healthcheck failure is the
+  smallest correct thing. Trade: the rollback path itself can fail
+  (e.g. registry unreachable); deploy.sh logs and exits non-zero so
+  CI surfaces it.
 
 ## Open questions
 
@@ -115,15 +141,24 @@ End-to-end smoke (from the deploy README):
 
 1. Provision Lightsail VM, static IP, S3 bucket, IAM user, Route 53 A
    record per `deploy/lightsail/README.md`.
-2. Push an image (`sha-<git>`) to the chosen registry.
-3. SSH in, install Docker, copy `deploy/lightsail/*` to `/opt/study-help/`,
-   fill in `.env` / `Caddyfile` / `litestream.yml`.
+2. CI build on push to `main` produces a `ghcr.io/.../study-help:sha-<git>`
+   image. Confirm in the Actions tab.
+3. SSH to the VM. Run `git clone <repo> && ./deploy/lightsail/bootstrap.sh`
+   (twice, with a re-login between to pick up the docker group). Fill
+   in `.env` / `Caddyfile` / `litestream.yml`.
 4. `docker compose up -d`; watch `docker compose logs -f caddy` for the
    first cert issue.
 5. Open the FQDN in a browser. Sign up, sign in, fetch a passage,
    highlight a verse, leave a note — confirm `Secure; HttpOnly` cookie
    in devtools.
-6. Disaster-recovery drill: `docker volume rm study-help_data` and
+6. Set GitHub repo secrets (`DEPLOY_HOST`, `DEPLOY_USER`,
+   `DEPLOY_SSH_KEY`). Run the **deploy** workflow with `image_tag=main`.
+   Confirm the workflow exits zero and the running container picks up
+   the new image (`docker compose ps` on the VM).
+7. Failed-deploy drill: tag a known-bad image (e.g. one that exits on
+   start), trigger the deploy workflow, confirm the workflow exits
+   non-zero AND `.env` has been reverted to the prior `APP_IMAGE`.
+8. Disaster-recovery drill: `docker volume rm study-help_data` and
    `docker compose up -d`; the `restore` container should pull the
    latest snapshot from S3 and the app should come back with the same
    data.
