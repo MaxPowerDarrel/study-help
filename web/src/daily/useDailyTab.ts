@@ -6,12 +6,14 @@ import {
   useRef,
   useState,
 } from "react";
-import { type DailyPassage, fetchDailyReading, fetchPassage } from "../api";
+import { type DailyPassage, fetchDailyReading } from "../api";
+import { fetchPassage } from "../api";
 import { defaultTimezoneProvider } from "../platform/TimezoneProvider";
 import type { Toggles } from "../toggles";
 import type { TranslationID } from "../translations/catalog";
+import type { PlanID } from "./plans";
 
-export type Testament = "OT" | "NT";
+export type Testament = "OT" | "NT" | "";
 
 export type DailyChapterState = {
   book: string;
@@ -21,51 +23,67 @@ export type DailyChapterState = {
   error: string | null;
 };
 
-export type DailyTabState = {
+export type DailyPill = {
+  planID: PlanID;
+  planName: string;
   passage: DailyPassage;
   chapters: DailyChapterState[];
 };
 
+export type PlanMessage = {
+  planID: PlanID;
+  planName: string;
+  text: string;
+};
+
 export type DailyState = {
-  ot: DailyTabState | null;
-  nt: DailyTabState | null;
-  active: Testament;
+  pills: DailyPill[];
+  // Index into pills. -1 when there are no pills (info-card-only days).
+  activeIdx: number;
+  planMessages: PlanMessage[];
+  // The number of plans contributing to this load — used by DailyPanel
+  // to decide whether to label pills with their testament (single plan)
+  // or with their plan name (multiple plans).
+  planCount: number;
 };
 
 export type DailyLoad =
   | { kind: "idle" }
   | { kind: "loading" }
   | { kind: "ready"; state: DailyState }
-  | { kind: "empty" }
   | { kind: "error" };
 
 export type UseDailyTab = {
   daily: DailyLoad;
-  setActivePill: (t: Testament) => void;
+  setActivePill: (idx: number) => void;
   selectedDate: string;
   setSelectedDate: (date: string) => void;
-  activeTab: DailyTabState | null;
+  activePill: DailyPill | null;
   activeChapterNumbers: number[];
   getArticleRef: (
+    planID: PlanID,
     book: string,
     chapter: number,
   ) => RefObject<HTMLElement | null>;
   getArticleEl: (book: string, chapter: number) => HTMLElement | null;
-  // If a tap targets a chapter in the inactive pill, switch active and
-  // return the new testament. Returns null when no switch was needed.
-  switchToOwningPill: (book: string, chapter: number) => Testament | null;
+  // If a tap targets a chapter inside an inactive pill, switch active
+  // and return the new pill index. Returns null when no switch was
+  // needed.
+  switchToOwningPill: (book: string, chapter: number) => number | null;
 };
 
-// useDailyTab owns the daily-reading state machine: date selection, the
-// per-pill OT/NT load, the per-chapter article refs, and the active-pill
-// switch. The load effect snapshots `toggles` and `translation` via refs
-// so identity changes don't refire it; mid-flight requests are dropped
-// via fetchId comparison. Re-fetching is gated by daily.kind === "idle"
-// (re-armed by the date / translation reset effect below).
+// useDailyTab owns the daily-reading state machine: date selection,
+// the per-plan / per-pill loads, the per-chapter article refs, and
+// the active-pill switch. The load effect snapshots `toggles` and
+// `translation` via refs so identity changes don't refire it; mid-
+// flight requests are dropped via fetchId comparison. Re-fetching is
+// gated by daily.kind === "idle" (re-armed by the date / translation
+// / planIDs reset effect below).
 export function useDailyTab(
   enabled: boolean,
   toggles: Toggles,
   translation: TranslationID,
+  planIDs: PlanID[],
 ): UseDailyTab {
   const [daily, setDaily] = useState<DailyLoad>({ kind: "idle" });
   const [selectedDate, setSelectedDate] = useState<string>(todayString);
@@ -75,16 +93,26 @@ export function useDailyTab(
   togglesRef.current = toggles;
   const translationRef = useRef(translation);
   translationRef.current = translation;
+  const planIDsRef = useRef(planIDs);
+  planIDsRef.current = planIDs;
 
-  // Per-chapter article refs, keyed by `${book}:${chapter}`. Populated
-  // lazily on first request; never pruned (entries are tiny ref objects
-  // and old keys are harmless once their DOM unmounts).
+  // Per-chapter article refs keyed by `${planID}|${book}:${chapter}`.
+  // The plan-ID prefix avoids collision when two plans schedule the
+  // same chapter on the same day. Populated lazily on first request;
+  // never pruned (entries are tiny ref objects and old keys are
+  // harmless once their DOM unmounts).
   const articleRefs = useRef<Map<string, RefObject<HTMLElement | null>>>(
     new Map(),
   );
+  const refKey = (planID: PlanID, book: string, chapter: number) =>
+    `${planID}|${book}:${chapter}`;
   const getArticleRef = useCallback(
-    (book: string, chapter: number): RefObject<HTMLElement | null> => {
-      const key = `${book}:${chapter}`;
+    (
+      planID: PlanID,
+      book: string,
+      chapter: number,
+    ): RefObject<HTMLElement | null> => {
+      const key = refKey(planID, book, chapter);
       const existing = articleRefs.current.get(key);
       if (existing) return existing;
       const ref: RefObject<HTMLElement | null> = { current: null };
@@ -93,9 +121,16 @@ export function useDailyTab(
     },
     [],
   );
+  // Note-tap callers don't know which plan owns a chapter; look across
+  // all currently-mapped refs and return the first DOM node we have.
   const getArticleEl = useCallback(
-    (book: string, chapter: number): HTMLElement | null =>
-      articleRefs.current.get(`${book}:${chapter}`)?.current ?? null,
+    (book: string, chapter: number): HTMLElement | null => {
+      const suffix = `|${book}:${chapter}`;
+      for (const [key, ref] of articleRefs.current) {
+        if (key.endsWith(suffix) && ref.current) return ref.current;
+      }
+      return null;
+    },
     [],
   );
 
@@ -105,91 +140,107 @@ export function useDailyTab(
     const id = ++fetchId.current;
     setDaily({ kind: "loading" });
     const tz = defaultTimezoneProvider.get();
-    fetchDailyReading(tz, selectedDate).then((result) => {
+    const planIDsSnapshot = planIDsRef.current;
+    fetchDailyReading(tz, planIDsSnapshot, selectedDate).then((result) => {
       if (fetchId.current !== id) return;
       if (result.kind === "error") {
         setDaily({ kind: "error" });
         return;
       }
-      if (result.kind === "empty") {
-        setDaily({ kind: "empty" });
-        return;
+
+      const pills: DailyPill[] = [];
+      const planMessages: PlanMessage[] = [];
+      for (const plan of result.plans) {
+        if (plan.message) {
+          planMessages.push({
+            planID: plan.id,
+            planName: plan.name,
+            text: plan.message,
+          });
+        }
+        for (const passage of plan.passages) {
+          pills.push({
+            planID: plan.id,
+            planName: plan.name,
+            passage,
+            chapters: parseChapterRange(passage.chapters).map((c) => ({
+              book: passage.book,
+              chapter: c,
+              html: "",
+              loading: true,
+              error: null,
+            })),
+          });
+        }
       }
-      const ot = result.passages.find((p) => p.testament === "OT") ?? null;
-      const nt = result.passages.find((p) => p.testament === "NT") ?? null;
-      const make = (p: DailyPassage | null): DailyTabState | null =>
-        p
-          ? {
-              passage: p,
-              chapters: parseChapterRange(p.chapters).map((c) => ({
-                book: p.book,
-                chapter: c,
-                html: "",
-                loading: true,
-                error: null,
-              })),
-            }
-          : null;
-      const otState = make(ot);
-      const ntState = make(nt);
-      const active: Testament = ot ? "OT" : "NT";
-      setDaily({ kind: "ready", state: { ot: otState, nt: ntState, active } });
+      const activeIdx = pills.length > 0 ? 0 : -1;
+      setDaily({
+        kind: "ready",
+        state: {
+          pills,
+          activeIdx,
+          planMessages,
+          planCount: result.plans.length,
+        },
+      });
 
       const t = togglesRef.current;
       const tr = translationRef.current;
-      if (otState) loadChapters(otState, "ot", t, tr, id);
-      if (ntState) loadChapters(ntState, "nt", t, tr, id);
+      pills.forEach((pill, idx) => loadPillChapters(pill, idx, t, tr, id));
     });
 
-    function loadChapters(
-      s: DailyTabState,
-      slot: "ot" | "nt",
+    function loadPillChapters(
+      pill: DailyPill,
+      idx: number,
       t: Toggles,
       tr: TranslationID,
       id: number,
     ) {
       // Per-chapter concurrent fetches; each chapter renders as it
       // arrives (a slow chapter doesn't block earlier ones).
-      s.chapters.forEach((c) => {
+      pill.chapters.forEach((c) => {
         fetchPassage(`${c.book} ${c.chapter}`, t, tr).then((res) => {
           if (fetchId.current !== id) return;
-          setDaily((prev) => updateChapter(prev, slot, c.book, c.chapter, res));
+          setDaily((prev) => updateChapter(prev, idx, c.book, c.chapter, res));
         });
       });
     }
-    // selectedDate / toggles / translation are snapshotted via closure
-    // and refs intentionally; re-runs are gated by daily.kind === "idle"
-    // (re-armed by the reset effect below).
+    // selectedDate / toggles / translation / planIDs are snapshotted via
+    // closure and refs intentionally; re-runs are gated by
+    // daily.kind === "idle" (re-armed by the reset effect below).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, daily.kind]);
 
-  // Date or translation change → reset to idle so the load effect
-  // re-triggers with the new context.
+  // Date / translation / planIDs change → reset to idle so the load
+  // effect re-triggers with the new context.
+  const planIDsKey = planIDs.join(",");
   useEffect(() => {
     setDaily({ kind: "idle" });
-  }, [selectedDate, translation]);
+  }, [selectedDate, translation, planIDsKey]);
 
-  const setActivePill = useCallback((t: Testament) => {
+  const setActivePill = useCallback((idx: number) => {
     setDaily((prev) =>
       prev.kind === "ready"
-        ? { ...prev, state: { ...prev.state, active: t } }
+        ? { ...prev, state: { ...prev.state, activeIdx: idx } }
         : prev,
     );
   }, []);
 
-  const activeTab = useMemo(() => activePillState(daily), [daily]);
+  const activePill = useMemo(() => activePillState(daily), [daily]);
   const activeChapterNumbers = useMemo(
-    () => activeTab?.chapters.map((c) => c.chapter) ?? [],
-    [activeTab],
+    () => activePill?.chapters.map((c) => c.chapter) ?? [],
+    [activePill],
   );
 
   const switchToOwningPill = useCallback(
-    (book: string, chapter: number): Testament | null => {
+    (book: string, chapter: number): number | null => {
       if (daily.kind !== "ready") return null;
-      const owning = findOwningTestament(daily.state, book, chapter);
-      if (!owning || daily.state.active === owning) return null;
-      setActivePill(owning);
-      return owning;
+      const idx = daily.state.pills.findIndex((p) =>
+        p.chapters.some((c) => c.book === book && c.chapter === chapter),
+      );
+      if (idx < 0 || idx === daily.state.activeIdx) return null;
+      setActivePill(idx);
+      return idx;
     },
     [daily, setActivePill],
   );
@@ -199,7 +250,7 @@ export function useDailyTab(
     setActivePill,
     selectedDate,
     setSelectedDate,
-    activeTab,
+    activePill,
     activeChapterNumbers,
     getArticleRef,
     getArticleEl,
@@ -207,22 +258,25 @@ export function useDailyTab(
   };
 }
 
-// Expand a daily-reader chapters string ("1-3", "1", "1,3") into
-// individual chapter numbers. Falls back to an empty array on
-// unrecognized formats.
+// Expand a daily-reader chapters string ("1-3", "1", "1,3", "119:33-40")
+// into individual chapter numbers. Verse-range refs collapse to the
+// chapter number (the daily panel renders chapter-block content; per-
+// verse fetching is a v1 limitation — see specs/multi-plan.md).
 export function parseChapterRange(chapters: string): number[] {
   const out: number[] = [];
   for (const part of chapters.split(",")) {
     const trimmed = part.trim();
     if (trimmed === "") continue;
-    const dash = trimmed.indexOf("-");
+    // Drop trailing ":start-end" verse range.
+    const noVerse = trimmed.split(":")[0];
+    const dash = noVerse.indexOf("-");
     if (dash < 0) {
-      const n = Number(trimmed);
+      const n = Number(noVerse);
       if (Number.isFinite(n) && n > 0) out.push(n);
       continue;
     }
-    const start = Number(trimmed.slice(0, dash).trim());
-    const end = Number(trimmed.slice(dash + 1).trim());
+    const start = Number(noVerse.slice(0, dash).trim());
+    const end = Number(noVerse.slice(dash + 1).trim());
     if (
       !Number.isFinite(start) ||
       !Number.isFinite(end) ||
@@ -238,10 +292,10 @@ export function parseChapterRange(chapters: string): number[] {
 
 // Apply a passage-fetch result to the matching chapter inside `prev`.
 // Tolerates concurrent updates: if `prev` is no longer "ready" or the
-// slot/chapter don't match, returns prev unchanged.
+// pill / chapter don't match, returns prev unchanged.
 function updateChapter(
   prev: DailyLoad,
-  slot: "ot" | "nt",
+  pillIdx: number,
   book: string,
   chapter: number,
   res:
@@ -250,9 +304,9 @@ function updateChapter(
     | { kind: "error" },
 ): DailyLoad {
   if (prev.kind !== "ready") return prev;
-  const cur = prev.state[slot];
-  if (!cur) return prev;
-  const chapters = cur.chapters.map((c) => {
+  const pill = prev.state.pills[pillIdx];
+  if (!pill) return prev;
+  const chapters = pill.chapters.map((c) => {
     if (c.book !== book || c.chapter !== chapter) return c;
     if (res.kind === "ok") {
       return { ...c, loading: false, html: res.html };
@@ -263,30 +317,17 @@ function updateChapter(
         : "Something went wrong, try again";
     return { ...c, loading: false, error: errMsg };
   });
-  return {
-    ...prev,
-    state: { ...prev.state, [slot]: { ...cur, chapters } },
-  };
+  const pills = prev.state.pills.map((p, i) =>
+    i === pillIdx ? { ...p, chapters } : p,
+  );
+  return { ...prev, state: { ...prev.state, pills } };
 }
 
-function activePillState(daily: DailyLoad): DailyTabState | null {
+function activePillState(daily: DailyLoad): DailyPill | null {
   if (daily.kind !== "ready") return null;
-  return daily.state.active === "OT" ? daily.state.ot : daily.state.nt;
-}
-
-function findOwningTestament(
-  state: DailyState,
-  book: string,
-  chapter: number,
-): Testament | null {
-  for (const t of ["OT", "NT"] as Testament[]) {
-    const slot = t === "OT" ? state.ot : state.nt;
-    if (!slot) continue;
-    if (slot.chapters.some((c) => c.book === book && c.chapter === chapter)) {
-      return t;
-    }
-  }
-  return null;
+  const { pills, activeIdx } = daily.state;
+  if (activeIdx < 0 || activeIdx >= pills.length) return null;
+  return pills[activeIdx];
 }
 
 function todayString(): string {

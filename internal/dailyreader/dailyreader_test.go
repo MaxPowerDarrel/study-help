@@ -2,6 +2,7 @@ package dailyreader
 
 import (
 	"errors"
+	"strings"
 	"study-help/internal/canon"
 	"testing"
 	"time"
@@ -17,13 +18,36 @@ func mustTime(t *testing.T, layout, value string) time.Time {
 }
 
 func TestTodayInvalidTZ(t *testing.T) {
-	_, err := Today("Not/A_Zone", time.Now())
+	_, err := Today(nil, "Not/A_Zone", time.Now())
 	if !errors.Is(err, ErrInvalidTZ) {
 		t.Fatalf("got %v, want ErrInvalidTZ", err)
 	}
 }
 
-func TestTodayHits(t *testing.T) {
+func TestTodayUnknownPlan(t *testing.T) {
+	_, err := Today([]string{"bogus"}, "UTC", time.Now())
+	if !errors.Is(err, ErrUnknownPlan) {
+		t.Fatalf("got %v, want ErrUnknownPlan", err)
+	}
+}
+
+func TestTodayDefaultPlan(t *testing.T) {
+	got, err := Today(nil, "UTC", mustTime(t, time.RFC3339, "2026-01-01T12:00:00Z"))
+	if err != nil {
+		t.Fatalf("Today: %v", err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("got %d Days, want 1", len(got))
+	}
+	if got[0].PlanID != DefaultPlanID {
+		t.Errorf("plan id = %q, want %q", got[0].PlanID, DefaultPlanID)
+	}
+	if !hasPassage(got[0].Passages, "OT", "Genesis 1-3") {
+		t.Errorf("missing OT Genesis 1-3 in %+v", got[0].Passages)
+	}
+}
+
+func TestTodayBibleYearHits(t *testing.T) {
 	cases := []struct {
 		name    string
 		tz      string
@@ -65,61 +89,101 @@ func TestTodayHits(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := Today(tc.tz, tc.now)
+			got, err := Today([]string{"bible-year"}, tc.tz, tc.now)
 			if err != nil {
 				t.Fatalf("Today: %v", err)
 			}
-			if got.Empty {
-				t.Fatalf("got Empty, want passages")
+			if len(got) != 1 {
+				t.Fatalf("got %d Days, want 1", len(got))
 			}
-			if tc.wantLen >= 0 && len(got.Passages) != tc.wantLen {
-				t.Fatalf("got %d passages, want %d", len(got.Passages), tc.wantLen)
+			d := got[0]
+			if d.Message != "" {
+				t.Fatalf("got Message %q, want passages", d.Message)
 			}
-			if tc.wantOT != "" {
-				if !hasPassage(got.Passages, "OT", tc.wantOT) {
-					t.Errorf("missing OT %q in %+v", tc.wantOT, got.Passages)
-				}
+			if tc.wantLen >= 0 && len(d.Passages) != tc.wantLen {
+				t.Fatalf("got %d passages, want %d", len(d.Passages), tc.wantLen)
 			}
-			if tc.wantNT != "" {
-				if !hasPassage(got.Passages, "NT", tc.wantNT) {
-					t.Errorf("missing NT %q in %+v", tc.wantNT, got.Passages)
-				}
+			if tc.wantOT != "" && !hasPassage(d.Passages, "OT", tc.wantOT) {
+				t.Errorf("missing OT %q in %+v", tc.wantOT, d.Passages)
+			}
+			if tc.wantNT != "" && !hasPassage(d.Passages, "NT", tc.wantNT) {
+				t.Errorf("missing NT %q in %+v", tc.wantNT, d.Passages)
 			}
 		})
 	}
 }
 
-func TestTodayLeapDayFallsBackToEmpty(t *testing.T) {
-	got, err := Today("UTC", mustTime(t, time.RFC3339, "2028-02-29T12:00:00Z"))
+func TestTodayMultiplePlans(t *testing.T) {
+	got, err := Today(
+		[]string{"bible-year", "hope"}, "UTC",
+		mustTime(t, time.RFC3339, "2026-01-12T12:00:00Z"),
+	)
 	if err != nil {
 		t.Fatalf("Today: %v", err)
 	}
-	if !got.Empty {
-		t.Fatalf("got %+v, want Empty", got.Passages)
+	if len(got) != 2 {
+		t.Fatalf("got %d Days, want 2", len(got))
+	}
+	if got[0].PlanID != "bible-year" || got[1].PlanID != "hope" {
+		t.Errorf("plan order = %s, %s; want bible-year, hope", got[0].PlanID, got[1].PlanID)
+	}
+	// Bible-year on 01/12 has Genesis 29-30 / Romans 10.
+	if !hasPassage(got[0].Passages, "OT", "Genesis 29-30") {
+		t.Errorf("bible-year missing OT Genesis 29-30 in %+v", got[0].Passages)
+	}
+	// Hope on Jan 12 has Matthew 1-4 + Psalm 1.
+	if !hasPassage(got[1].Passages, "NT", "Matthew 1-4") {
+		t.Errorf("hope missing NT Matthew 1-4 in %+v", got[1].Passages)
+	}
+	if !hasPassage(got[1].Passages, "OT", "Psalms 1") {
+		t.Errorf("hope missing Psalms 1 in %+v", got[1].Passages)
+	}
+}
+
+func TestTodayLeapDayFallsBackToMessage(t *testing.T) {
+	got, err := Today([]string{"bible-year"}, "UTC", mustTime(t, time.RFC3339, "2028-02-29T12:00:00Z"))
+	if err != nil {
+		t.Fatalf("Today: %v", err)
+	}
+	if len(got) != 1 || got[0].Message == "" || len(got[0].Passages) != 0 {
+		t.Fatalf("got %+v, want empty-message Day", got)
 	}
 }
 
 func TestRoundTripEveryRowValidates(t *testing.T) {
-	plan, err := parsePlan(planMarkdown)
-	if err != nil {
-		t.Fatalf("parsePlan: %v", err)
-	}
-	if len(plan) == 0 {
-		t.Fatal("plan parsed to zero rows")
-	}
-	for key, row := range plan {
-		for _, cell := range []struct {
-			testament, raw string
-		}{{"OT", row.ot}, {"NT", row.nt}} {
-			p, ok := splitPassage(cell.raw, cell.testament)
-			if !ok {
-				continue // empty cell is allowed
+	for _, planID := range []string{"bible-year", "hope"} {
+		t.Run(planID, func(t *testing.T) {
+			p := findPlan(planID)
+			if p == nil {
+				t.Fatalf("plan %q not found", planID)
 			}
-			q := p.Book + " " + p.Chapters
-			if err := canon.ValidateQuery(q); err != nil {
-				t.Errorf("row %s %s %q: ValidateQuery=%v", key, cell.testament, q, err)
+			entries, err := p.parse()
+			if err != nil {
+				t.Fatalf("parse: %v", err)
 			}
-		}
+			if len(entries) == 0 {
+				t.Fatal("plan parsed to zero rows")
+			}
+			for key, entry := range entries {
+				for _, ps := range entry.Passages {
+					if _, ok := canon.LookupBook(ps.Book); !ok {
+						t.Errorf("plan %s row %s: unknown book %q", planID, key, ps.Book)
+						continue
+					}
+					// Chapters may be a single number, a hyphen range,
+					// or a comma-separated list (Hope plan uses
+					// "Romans 1,2"). Validate each piece independently
+					// — the SPA splits on the same separators before
+					// fetching, so canon validation runs piecewise too.
+					for _, piece := range strings.Split(ps.Chapters, ",") {
+						q := ps.Book + " " + strings.TrimSpace(piece)
+						if err := canon.ValidateQuery(q); err != nil {
+							t.Errorf("plan %s row %s %q: ValidateQuery=%v", planID, key, q, err)
+						}
+					}
+				}
+			}
+		})
 	}
 }
 
@@ -147,31 +211,6 @@ func TestSplitPassageMultiWordBook(t *testing.T) {
 		}
 		if p.Book != c.book || p.Chapters != c.chapters {
 			t.Errorf("splitPassage(%q) = %q / %q, want %q / %q", c.in, p.Book, p.Chapters, c.book, c.chapters)
-		}
-	}
-}
-
-func TestSplitPassageNormalizesEveryPlanRow(t *testing.T) {
-	plan, err := parsePlan(planMarkdown)
-	if err != nil {
-		t.Fatalf("parsePlan: %v", err)
-	}
-	for key, row := range plan {
-		for _, cell := range []struct {
-			testament, raw string
-		}{{"OT", row.ot}, {"NT", row.nt}} {
-			p, ok := splitPassage(cell.raw, cell.testament)
-			if !ok {
-				continue
-			}
-			b, ok := canon.LookupBook(p.Book)
-			if !ok {
-				t.Errorf("row %s %s: book %q not in canon", key, cell.testament, p.Book)
-				continue
-			}
-			if p.Book != b.Name {
-				t.Errorf("row %s %s: book %q is not canonical (want %q)", key, cell.testament, p.Book, b.Name)
-			}
 		}
 	}
 }

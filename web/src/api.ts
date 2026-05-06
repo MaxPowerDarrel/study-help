@@ -1,3 +1,4 @@
+import { type PlanID } from "./daily/plans";
 import { Toggles, togglesToQuery } from "./toggles";
 import type { TranslationID } from "./translations/catalog";
 
@@ -9,17 +10,30 @@ export type FetchResult =
 export type DailyPassage = {
   book: string;
   chapters: string;
-  testament: "OT" | "NT";
+  testament: "OT" | "NT" | "";
+};
+
+export type DailyPlanResult = {
+  id: PlanID;
+  name: string;
+  passages: DailyPassage[];
+  message: string;
 };
 
 export type DailyResult =
-  | { kind: "ok"; passages: DailyPassage[] }
-  | { kind: "empty" }
+  | { kind: "ok"; plans: DailyPlanResult[] }
   | { kind: "error" };
 
 type EsvJson = { canonical?: string; passages?: string[] };
 
-type DailyJson = { passages?: DailyPassage[]; message?: string };
+type DailyJson = {
+  plans?: {
+    id?: string;
+    name?: string;
+    passages?: DailyPassage[];
+    message?: string;
+  }[];
+};
 
 export async function fetchPassage(
   q: string,
@@ -49,10 +63,12 @@ export async function fetchPassage(
 
 export async function fetchDailyReading(
   tz: string,
+  planIDs: PlanID[],
   date?: string,
 ): Promise<DailyResult> {
   const params = new URLSearchParams({ tz });
   if (date) params.set("date", date);
+  if (planIDs.length > 0) params.set("plans", planIDs.join(","));
   let resp: Response;
   try {
     resp = await fetch(`/api/daily-reading?${params.toString()}`);
@@ -66,7 +82,11 @@ export async function fetchDailyReading(
   } catch {
     return { kind: "error" };
   }
-  const passages = data.passages ?? [];
-  if (passages.length === 0) return { kind: "empty" };
-  return { kind: "ok", passages };
+  const plans: DailyPlanResult[] = (data.plans ?? []).map((p) => ({
+    id: (p.id ?? "") as PlanID,
+    name: p.name ?? "",
+    passages: p.passages ?? [],
+    message: p.message ?? "",
+  }));
+  return { kind: "ok", plans };
 }

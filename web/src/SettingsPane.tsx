@@ -1,5 +1,6 @@
 import { ThemeChoice } from "./theme";
 import { Toggles } from "./toggles";
+import { PLANS, type PlanID } from "./daily/plans";
 import styles from "./SettingsPane.module.css";
 
 type Props = {
@@ -9,6 +10,8 @@ type Props = {
   setTheme: (c: ThemeChoice) => void;
   toggles: Toggles;
   setToggles: (t: Toggles) => void;
+  planIDs: PlanID[];
+  setPlanIDs: (ids: PlanID[]) => void;
 };
 
 const THEME_OPTIONS: { value: ThemeChoice; label: string }[] = [
@@ -32,8 +35,18 @@ export function SettingsPane({
   setTheme,
   toggles,
   setToggles,
+  planIDs,
+  setPlanIDs,
 }: Props) {
   if (!open) return null;
+  const togglePlan = (id: PlanID, on: boolean) => {
+    const next = on
+      ? planIDs.includes(id)
+        ? planIDs
+        : [...planIDs, id]
+      : planIDs.filter((p) => p !== id);
+    setPlanIDs(next);
+  };
   return (
     <div className={styles.overlay} role="dialog" aria-label="Settings">
       <div className={styles.pane}>
@@ -83,6 +96,20 @@ export function SettingsPane({
                 }
               />
               {label}
+            </label>
+          ))}
+        </div>
+
+        <div className={styles.showGroup} aria-label="Reading plan">
+          <span className={styles.showLabel}>Reading plan</span>
+          {PLANS.map((p) => (
+            <label key={p.id} className={styles.toggle}>
+              <input
+                type="checkbox"
+                checked={planIDs.includes(p.id)}
+                onChange={(e) => togglePlan(p.id, e.target.checked)}
+              />
+              {p.name}
             </label>
           ))}
         </div>
