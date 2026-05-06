@@ -1,0 +1,13 @@
+# Caddy v2 configuration for the Lightsail deployment.
+#
+# Replace `study.example.com` with the FQDN whose A record points at this
+# host's static IP. Caddy obtains and renews a Let's Encrypt certificate
+# automatically on the first request once DNS resolves.
+#
+# `app` resolves to the study-help container via Docker's built-in DNS
+# (compose creates a bridge network where service names are addressable).
+
+study.example.com {
+    encode zstd gzip
+    reverse_proxy app:8080
+}

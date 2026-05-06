@@ -12,6 +12,7 @@ landing), **Shipped** (user-visible), **Deprecated** (being removed).
 | [accounts](./accounts.md) | Shipped | Email + password sign up / sign in / sign out; cookie sessions; foundation for highlights & notes |
 | [auto-load-daily-reading](./auto-load-daily-reading.md) | Shipped | Auto-load a daily passage on startup; toggle in settings |
 | [daily-annotations](./daily-annotations.md) | In Progress | Highlights, notes, and translation picker on the Daily tab |
+| [deploy-aws](./deploy-aws.md) | Draft | Single-VM AWS Lightsail deployment with Caddy TLS termination and Litestream → S3 backup |
 | [docker](./docker.md) | Shipped | Package the app as a Docker image for reproducible, portable deployment |
 | [highlights](./highlights.md) | Shipped | Range-based, persistent, per-user passage highlights |
 | [multi-plan](./multi-plan.md) | In Progress | Support multiple daily reading plans (Bible-in-One-Year + Hope 2026); checkbox picker in settings |

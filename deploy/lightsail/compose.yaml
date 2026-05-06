@@ -1,0 +1,83 @@
+# Production compose for AWS Lightsail (or any single-VM Docker host).
+#
+# Three services on the default bridge network:
+#   - restore  : one-shot, runs litestream restore from S3 before app starts
+#   - app      : the study-help binary (pulled from a registry, never built here)
+#   - litestream: ongoing replication of /data/sqlite.db to S3
+#   - caddy    : terminates TLS on :80/:443 and reverse-proxies to app:8080
+#
+# Substitutions come from a sibling .env file (see .env.example). The local
+# `compose.yaml` at the repo root is a different concern: it builds an image
+# for local dev. Do not run both at once on the same host.
+
+services:
+  # One-shot: pulls /data/sqlite.db from S3 if a replica exists and the file
+  # is not already on disk. Exits 0 when there's nothing to do, so a fresh
+  # install simply starts the app with an empty DB (migrations populate it).
+  restore:
+    image: litestream/litestream:0.3
+    command:
+      - "restore"
+      - "-if-replica-exists"
+      - "-if-db-not-exists"
+      - "-config"
+      - "/etc/litestream.yml"
+      - "/data/sqlite.db"
+    environment:
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+    volumes:
+      - data:/data
+      - ./litestream.yml:/etc/litestream.yml:ro
+    restart: "no"
+
+  app:
+    image: ${APP_IMAGE}
+    restart: unless-stopped
+    environment:
+      ADDR: ":8080"
+      DATABASE_URL: /data/sqlite.db
+      ENV: prod
+      SESSION_SECRET: ${SESSION_SECRET}
+      ESV_API_KEY: ${ESV_API_KEY}
+      YOUVERSION_APP_KEY: ${YOUVERSION_APP_KEY}
+    volumes:
+      - data:/data
+    expose:
+      - "8080"
+    depends_on:
+      restore:
+        condition: service_completed_successfully
+
+  litestream:
+    image: litestream/litestream:0.3
+    restart: unless-stopped
+    command: ["replicate", "-config", "/etc/litestream.yml"]
+    environment:
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+    volumes:
+      - data:/data
+      - ./litestream.yml:/etc/litestream.yml:ro
+    depends_on:
+      app:
+        condition: service_started
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      app:
+        condition: service_started
+
+volumes:
+  data:
+  caddy_data:
+  caddy_config:

@@ -1,0 +1,18 @@
+# Litestream configuration for replicating the SQLite DB to S3.
+#
+# Replace `bucket` and `region` to match the S3 bucket you create.
+# `path` is the key prefix inside the bucket.
+#
+# retention            — how far back point-in-time restore can reach
+# snapshot-interval    — how often a full snapshot is uploaded; everything
+#                        between snapshots is captured as WAL frames
+
+dbs:
+  - path: /data/sqlite.db
+    replicas:
+      - type: s3
+        bucket: study-help-litestream-CHANGEME
+        path: db
+        region: us-east-1
+        retention: 720h
+        snapshot-interval: 24h
