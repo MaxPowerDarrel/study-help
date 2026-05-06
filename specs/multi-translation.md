@@ -65,9 +65,9 @@ The constitution still says "secrets stay server-side" — every translation pro
 
 ## Open questions
 
-- **`parseSelection.ts` ESV-coupling.** The verse-anchor parser knows ESV's `<a class="va" rel="vBCCCVVV">` shape. Fine at launch (ESV-only). When a future provider's HTML differs, register a per-`TranslationID` parser dispatcher rather than overloading the existing one.
-- **`include_word_of_christ`.** Currently CSS-only suppression of ESV's `<span class="woc">`. When a non-ESV provider lands, either gate the toggle on `translation === "ESV"` or generalize to a per-translation render-toggle catalog.
-- **Metrics.** `ESVCallCounter` / `esv_api_calls_total` is named for ESV. Rename and segment per-translation when a second provider is registered.
+- [x] ~~**`parseSelection.ts` ESV-coupling.** The verse-anchor parser knows ESV's `<a class="va" rel="vBCCCVVV">` shape. Fine at launch (ESV-only). When a future provider's HTML differs, register a per-`TranslationID` parser dispatcher rather than overloading the existing one.~~ Resolved 2026-05-05 — the dispatcher landed in [`specs/niv.md`](./niv.md). `listVerseAnchors`, `rangeToTuple`, and `tupleToRange` now take a required `translation: TranslationID` argument and dispatch to a per-`TranslationID` anchor lister; the shared text-walking logic stays anchor-agnostic.
+- [x] ~~**`include_word_of_christ`.** Currently CSS-only suppression of ESV's `<span class="woc">`. When a non-ESV provider lands, either gate the toggle on `translation === "ESV"` or generalize to a per-translation render-toggle catalog.~~ Resolved 2026-05-05 — generalized via CSS, not React. `web/src/styles/passage.css` `.passage.no-woc` rule now suppresses both `.woc` (ESV) and `.wj` (YouVersion); the existing Settings toggle works on both providers without per-translation gating.
+- **Metrics.** `ESVCallCounter` / `esv_api_calls_total` is named for ESV. Rename and segment per-translation when a second provider is registered. *(Still open — NIV merged using the same shared counter; per-translation segmentation deferred to a separate PR.)*
 - **Per-provider knobs.** `scripture.Options.Extra map[string]string` exists as an escape hatch. The handler must never populate it from arbitrary client query params — upstream behavior fingerprinting risk. Documented in `provider.go`.
 
 ## Decisions

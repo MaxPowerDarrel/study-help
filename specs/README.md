@@ -14,7 +14,7 @@ landing), **Shipped** (user-visible), **Deprecated** (being removed).
 | [docker](./docker.md) | Shipped | Package the app as a Docker image for reproducible, portable deployment |
 | [highlights](./highlights.md) | Shipped | Range-based, persistent, per-user passage highlights |
 | [multi-translation](./multi-translation.md) | Shipped | Pluggable translation foundation; ESV at launch, per-user persisted preference, highlights/notes scoped per translation |
-| [niv](./niv.md) | In Progress | NIV translation via YouVersion Platform API; per-translation verse-anchor dispatcher; "Powered by YouVersion" attribution |
+| [niv](./niv.md) | Shipped | NIV translation via YouVersion Platform API; per-translation verse-anchor dispatcher; "Powered by YouVersion" attribution |
 | [notes](./notes.md) | Shipped | Private per-user written notes attached to passages |
 | [passage-reader](./passage-reader.md) | Shipped | Read a chapter or contiguous passage range; ESV proxied through the server |
 | [reader-ui-refresh](./reader-ui-refresh.md) | Shipped | iPad/Safari touch polish, light + dark theme, design tokens; rides a Vite/React/TS bump |
