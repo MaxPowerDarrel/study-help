@@ -95,6 +95,35 @@ export function DailyPanel({
   if (state.ot) pills.push("OT");
   if (state.nt) pills.push("NT");
 
+  const pillsNav = (label: string) => (
+    <nav className={styles.dailyPills} role="tablist" aria-label={label}>
+      {pills.map((t) => {
+        const slot = t === "OT" ? state.ot : state.nt;
+        if (!slot) return null;
+        const active = state.active === t;
+        return (
+          <button
+            key={t}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            className={
+              active
+                ? `${styles.dailyPill} ${styles.dailyPillActive}`
+                : styles.dailyPill
+            }
+            onClick={() => setActivePill(t)}
+          >
+            <span className={styles.dailyPillRef}>
+              {slot.passage.book} {formatChapters(slot.passage.chapters)}
+            </span>
+            <span className={styles.dailyPillTestament}>{t}</span>
+          </button>
+        );
+      })}
+    </nav>
+  );
+
   return (
     <div className={styles.dailyContainer}>
       <header className={styles.dailyHeader}>
@@ -123,36 +152,7 @@ export function DailyPanel({
         <div className={styles.dailyDate}>{formatDate(selectedDate)}</div>
         <div className={styles.dailyPlan}>Bible in One Year</div>
       </header>
-      <nav
-        className={styles.dailyPills}
-        role="tablist"
-        aria-label="Today's readings"
-      >
-        {pills.map((t) => {
-          const slot = t === "OT" ? state.ot : state.nt;
-          if (!slot) return null;
-          const active = state.active === t;
-          return (
-            <button
-              key={t}
-              type="button"
-              role="tab"
-              aria-selected={active}
-              className={
-                active
-                  ? `${styles.dailyPill} ${styles.dailyPillActive}`
-                  : styles.dailyPill
-              }
-              onClick={() => setActivePill(t)}
-            >
-              <span className={styles.dailyPillRef}>
-                {slot.passage.book} {formatChapters(slot.passage.chapters)}
-              </span>
-              <span className={styles.dailyPillTestament}>{t}</span>
-            </button>
-          );
-        })}
-      </nav>
+      {pillsNav("Today's readings")}
       <div className={styles.dailyBody}>
         {activeState && (
           <div className={styles.dailyChapters}>
@@ -169,6 +169,7 @@ export function DailyPanel({
               />
             ))}
             <Attribution translation={translation} />
+            {pills.length > 1 && pillsNav("Today's readings (bottom)")}
           </div>
         )}
       </div>
