@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback } from "react";
 import {
   type CreateInput,
   type CreateResult,
@@ -8,6 +8,7 @@ import {
   deleteHighlight,
   listHighlights,
 } from "./api";
+import { useResource } from "../platform/useResource";
 import type { TranslationID } from "../translations/catalog";
 
 export type HighlightsState = {
@@ -20,6 +21,8 @@ export type HighlightsActions = {
   remove: (id: number) => Promise<DeleteResult>;
 };
 
+const EMPTY: Highlight[] = [];
+
 // useHighlights owns the per-passage highlight cache. It re-fetches on
 // (book, chapter, translation) change and after every successful mutation;
 // no optimistic updates at v1 (specs/highlights.md Decisions, 2026-05-04).
@@ -31,59 +34,38 @@ export function useHighlights(
   translation: TranslationID,
   enabled: boolean,
 ): HighlightsState & HighlightsActions {
-  const [highlights, setHighlights] = useState<Highlight[]>([]);
-  const [loading, setLoading] = useState(false);
+  const fetcher =
+    enabled && book && chapter
+      ? async (signal: AbortSignal) => {
+          const res = await listHighlights(book, chapter, translation, signal);
+          return res.kind === "ok" ? res.highlights : null;
+        }
+      : null;
 
-  const fetchAll = useCallback(async () => {
-    if (!enabled || !book || !chapter) {
-      setHighlights([]);
-      return;
-    }
-    setLoading(true);
-    const res = await listHighlights(book, chapter, translation);
-    setLoading(false);
-    if (res.kind === "ok") {
-      setHighlights(res.highlights);
-    } else {
-      setHighlights([]);
-    }
-  }, [book, chapter, translation, enabled]);
-
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      if (!enabled || !book || !chapter) {
-        if (!cancelled) setHighlights([]);
-        return;
-      }
-      setLoading(true);
-      const res = await listHighlights(book, chapter, translation);
-      if (cancelled) return;
-      setLoading(false);
-      setHighlights(res.kind === "ok" ? res.highlights : []);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [book, chapter, translation, enabled]);
+  const { data, loading, refetch } = useResource(fetcher, EMPTY, [
+    book,
+    chapter,
+    translation,
+    enabled,
+  ]);
 
   const create = useCallback(
     async (input: CreateInput): Promise<CreateResult> => {
       const res = await createHighlight(input, translation);
-      if (res.kind === "ok") await fetchAll();
+      if (res.kind === "ok") await refetch();
       return res;
     },
-    [fetchAll, translation],
+    [refetch, translation],
   );
 
   const remove = useCallback(
     async (id: number): Promise<DeleteResult> => {
       const res = await deleteHighlight(id);
-      if (res.kind === "ok") await fetchAll();
+      if (res.kind === "ok") await refetch();
       return res;
     },
-    [fetchAll],
+    [refetch],
   );
 
-  return { highlights, loading, create, remove };
+  return { highlights: data, loading, create, remove };
 }

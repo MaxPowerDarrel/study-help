@@ -57,6 +57,7 @@ export async function listNotes(
   book: string,
   chapter: number,
   translation: TranslationID,
+  signal?: AbortSignal,
 ): Promise<ListResult> {
   const params = new URLSearchParams({
     book,
@@ -65,7 +66,7 @@ export async function listNotes(
   });
   let resp: Response;
   try {
-    resp = await fetch(`/api/notes?${params.toString()}`);
+    resp = await fetch(`/api/notes?${params.toString()}`, { signal });
   } catch {
     return { kind: "error" };
   }

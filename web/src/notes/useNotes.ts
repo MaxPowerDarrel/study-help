@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback } from "react";
 import {
   type CreateInput,
   type CreateResult,
@@ -10,6 +10,7 @@ import {
   listNotes,
   updateNote,
 } from "./api";
+import { useResource } from "../platform/useResource";
 import type { TranslationID } from "../translations/catalog";
 
 export type NotesState = {
@@ -23,6 +24,8 @@ export type NotesActions = {
   remove: (id: number) => Promise<DeleteResult>;
 };
 
+const EMPTY: Note[] = [];
+
 // useNotes owns the per-passage notes cache. It re-fetches on
 // (book, chapter, translation, enabled) change and after every successful
 // mutation; no optimistic updates at v1. When `enabled` is false (guest),
@@ -33,68 +36,47 @@ export function useNotes(
   translation: TranslationID,
   enabled: boolean,
 ): NotesState & NotesActions {
-  const [notes, setNotes] = useState<Note[]>([]);
-  const [loading, setLoading] = useState(false);
+  const fetcher =
+    enabled && book && chapter
+      ? async (signal: AbortSignal) => {
+          const res = await listNotes(book, chapter, translation, signal);
+          return res.kind === "ok" ? res.notes : null;
+        }
+      : null;
 
-  const fetchAll = useCallback(async () => {
-    if (!enabled || !book || !chapter) {
-      setNotes([]);
-      return;
-    }
-    setLoading(true);
-    const res = await listNotes(book, chapter, translation);
-    setLoading(false);
-    if (res.kind === "ok") {
-      setNotes(res.notes);
-    } else {
-      setNotes([]);
-    }
-  }, [book, chapter, translation, enabled]);
-
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      if (!enabled || !book || !chapter) {
-        if (!cancelled) setNotes([]);
-        return;
-      }
-      setLoading(true);
-      const res = await listNotes(book, chapter, translation);
-      if (cancelled) return;
-      setLoading(false);
-      setNotes(res.kind === "ok" ? res.notes : []);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [book, chapter, translation, enabled]);
+  const { data, loading, refetch } = useResource(fetcher, EMPTY, [
+    book,
+    chapter,
+    translation,
+    enabled,
+  ]);
 
   const create = useCallback(
     async (input: CreateInput): Promise<CreateResult> => {
       const res = await createNote(input, translation);
-      if (res.kind === "ok") await fetchAll();
+      if (res.kind === "ok") await refetch();
       return res;
     },
-    [fetchAll, translation],
+    [refetch, translation],
   );
 
   const update = useCallback(
     async (id: number, body: string): Promise<UpdateResult> => {
       const res = await updateNote(id, body);
-      if (res.kind === "ok") await fetchAll();
+      if (res.kind === "ok") await refetch();
       return res;
     },
-    [fetchAll],
+    [refetch],
   );
 
   const remove = useCallback(
     async (id: number): Promise<DeleteResult> => {
       const res = await deleteNote(id);
-      if (res.kind === "ok") await fetchAll();
+      if (res.kind === "ok") await refetch();
       return res;
     },
-    [fetchAll],
+    [refetch],
   );
 
-  return { notes, loading, create, update, remove };
+  return { notes: data, loading, create, update, remove };
 }
