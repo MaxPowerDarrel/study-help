@@ -6,13 +6,14 @@ import { Attribution } from "../translations/Attribution";
 import { type UpdateTranslationResult } from "../translations/api";
 import { TRANSLATIONS, type TranslationID } from "../translations/catalog";
 import styles from "../App.module.css";
-import type { DailyChapterState, DailyLoad, Testament } from "./useDailyTab";
+import type { PlanID } from "./plans";
+import type { DailyChapterState, DailyLoad } from "./useDailyTab";
 
 export type DailyPanelProps = {
   daily: DailyLoad;
   selectedDate: string;
   setSelectedDate: (date: string) => void;
-  setActivePill: (t: Testament) => void;
+  setActivePill: (idx: number) => void;
   showWordsOfChrist: boolean;
   translation: TranslationID;
   setTranslation: (id: TranslationID) => Promise<UpdateTranslationResult>;
@@ -20,6 +21,7 @@ export type DailyPanelProps = {
   onGuestSignin: () => void;
   onAddNote: (tuple: ToolbarTuple, book: string, chapter: number) => void;
   getArticleRef: (
+    planID: PlanID,
     book: string,
     chapter: number,
   ) => RefObject<HTMLElement | null>;
@@ -70,14 +72,6 @@ export function DailyPanel({
   if (daily.kind === "loading" || daily.kind === "idle") {
     return <div className={styles.spinner} aria-label="loading" />;
   }
-  if (daily.kind === "empty") {
-    return (
-      <div className={styles.dailyContainer}>
-        {dateNav}
-        <div className={styles.dailyMessage}>No reading for this day.</div>
-      </div>
-    );
-  }
   if (daily.kind === "error") {
     return (
       <div className={styles.dailyContainer}>
@@ -90,39 +84,44 @@ export function DailyPanel({
   }
 
   const { state } = daily;
-  const activeState = state.active === "OT" ? state.ot : state.nt;
-  const pills: Testament[] = [];
-  if (state.ot) pills.push("OT");
-  if (state.nt) pills.push("NT");
+  const { pills, planMessages, activeIdx, planCount } = state;
+  const activePill = pills[activeIdx] ?? null;
+  const showPlanTagOnPills = planCount > 1;
 
-  const pillsNav = (label: string) => (
-    <nav className={styles.dailyPills} role="tablist" aria-label={label}>
-      {pills.map((t) => {
-        const slot = t === "OT" ? state.ot : state.nt;
-        if (!slot) return null;
-        const active = state.active === t;
-        return (
-          <button
-            key={t}
-            type="button"
-            role="tab"
-            aria-selected={active}
-            className={
-              active
-                ? `${styles.dailyPill} ${styles.dailyPillActive}`
-                : styles.dailyPill
-            }
-            onClick={() => setActivePill(t)}
-          >
-            <span className={styles.dailyPillRef}>
-              {slot.passage.book} {formatChapters(slot.passage.chapters)}
-            </span>
-            <span className={styles.dailyPillTestament}>{t}</span>
-          </button>
-        );
-      })}
-    </nav>
-  );
+  const pillsNav = (label: string) =>
+    pills.length === 0 ? null : (
+      <nav className={styles.dailyPills} role="tablist" aria-label={label}>
+        {pills.map((pill, idx) => {
+          const active = idx === activeIdx;
+          const tagText = showPlanTagOnPills
+            ? pill.planName
+            : pill.passage.testament;
+          return (
+            <button
+              key={`${pill.planID}|${pill.passage.book}|${pill.passage.chapters}`}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              className={
+                active
+                  ? `${styles.dailyPill} ${styles.dailyPillActive}`
+                  : styles.dailyPill
+              }
+              onClick={() => setActivePill(idx)}
+            >
+              <span className={styles.dailyPillRef}>
+                {pill.passage.book} {formatChapters(pill.passage.chapters)}
+              </span>
+              {tagText && (
+                <span className={styles.dailyPillTestament}>{tagText}</span>
+              )}
+            </button>
+          );
+        })}
+      </nav>
+    );
+
+  const noContent = pills.length === 0 && planMessages.length === 0;
 
   return (
     <div className={styles.dailyContainer}>
@@ -150,22 +149,40 @@ export function DailyPanel({
           </label>
         </div>
         <div className={styles.dailyDate}>{formatDate(selectedDate)}</div>
-        <div className={styles.dailyPlan}>Bible in One Year</div>
       </header>
+      {planMessages.length > 0 && (
+        <div className={styles.dailyInfoCards}>
+          {planMessages.map((m) => (
+            <div
+              key={`${m.planID}|${m.text}`}
+              className={styles.dailyInfoCard}
+              role="note"
+            >
+              {planCount > 1 && (
+                <span className={styles.dailyInfoCardPlan}>{m.planName}</span>
+              )}
+              {m.text}
+            </div>
+          ))}
+        </div>
+      )}
+      {noContent && (
+        <div className={styles.dailyMessage}>No reading for this day.</div>
+      )}
       {pillsNav("Today's readings")}
       <div className={styles.dailyBody}>
-        {activeState && (
+        {activePill && (
           <div className={styles.dailyChapters}>
-            {activeState.chapters.map((c) => (
+            {activePill.chapters.map((c) => (
               <DailyChapterBlock
-                key={`${c.book}:${c.chapter}`}
+                key={`${activePill.planID}|${c.book}:${c.chapter}`}
                 chapterState={c}
                 translation={translation}
                 isSignedIn={isSignedIn}
                 showWordsOfChrist={showWordsOfChrist}
                 onGuestSignin={onGuestSignin}
                 onAddNote={onAddNote}
-                articleRef={getArticleRef(c.book, c.chapter)}
+                articleRef={getArticleRef(activePill.planID, c.book, c.chapter)}
               />
             ))}
             <Attribution translation={translation} />

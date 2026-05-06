@@ -475,6 +475,29 @@
   padding: var(--space-6) 0;
 }
 
+.dailyInfoCards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.dailyInfoCard {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--color-fg);
+  background: var(--color-rule);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3) var(--space-4);
+}
+
+.dailyInfoCardPlan {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-muted);
+  margin-right: var(--space-2);
+}
+
 .dailyNav {
   display: flex;
   align-items: center;

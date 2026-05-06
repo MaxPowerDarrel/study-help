@@ -1,106 +1,126 @@
 package dailyreader
 
 import (
-	"bufio"
-	"bytes"
 	"errors"
 	"strings"
 	"study-help/internal/canon"
+	"sync"
 	"time"
 )
 
 // ErrInvalidTZ is returned when the supplied IANA timezone name does not load.
 var ErrInvalidTZ = errors.New("invalid timezone")
 
+// ErrUnknownPlan is returned when a requested plan ID is not registered.
+var ErrUnknownPlan = errors.New("unknown plan")
+
+// DefaultPlanID is used when Today is called with no plan IDs.
+const DefaultPlanID = "bible-year"
+
+// Passage is one OT/NT/Psalm slot inside a daily reading.
 type Passage struct {
 	Book      string
 	Chapters  string
 	Testament string // "OT" or "NT"
 }
 
-type Lookup struct {
+// Day is the lookup result for one plan on one date.
+type Day struct {
+	PlanID   string
+	PlanName string
 	Passages []Passage
-	Empty    bool // true when no row matches or both readings are empty
+	Message  string // populated for special / no-reading days
 }
 
-// Today returns the reading for the local date corresponding to now in tz.
-// The plan is keyed by MM/DD only — any date not represented in the plan
-// (including Feb 29 of leap years) yields an Empty lookup.
-func Today(tz string, now time.Time) (Lookup, error) {
+// Today returns one Day per requested plan ID, in request order.
+// Empty planIDs falls back to [DefaultPlanID]. An unknown ID returns
+// ErrUnknownPlan; an invalid tz returns ErrInvalidTZ.
+func Today(planIDs []string, tz string, now time.Time) ([]Day, error) {
 	loc, err := time.LoadLocation(tz)
 	if err != nil {
-		return Lookup{}, ErrInvalidTZ
+		return nil, ErrInvalidTZ
 	}
-	local := now.In(loc)
-	key := local.Format("01/02")
-	plan, err := parsePlan(planMarkdown)
-	if err != nil {
-		return Lookup{}, err
+	if len(planIDs) == 0 {
+		planIDs = []string{DefaultPlanID}
 	}
-	row, ok := plan[key]
-	if !ok {
-		return Lookup{Empty: true}, nil
-	}
-	var passages []Passage
-	if p, ok := splitPassage(row.ot, "OT"); ok {
-		passages = append(passages, p)
-	}
-	if p, ok := splitPassage(row.nt, "NT"); ok {
-		passages = append(passages, p)
-	}
-	if len(passages) == 0 {
-		return Lookup{Empty: true}, nil
-	}
-	return Lookup{Passages: passages}, nil
-}
-
-type planRow struct {
-	ot, nt string
-}
-
-// parsePlan reads the embedded markdown table and returns a map keyed by MM/DD.
-func parsePlan(src []byte) (map[string]planRow, error) {
-	out := make(map[string]planRow, 366)
-	sc := bufio.NewScanner(bytes.NewReader(src))
-	for sc.Scan() {
-		line := strings.TrimSpace(sc.Text())
-		if !strings.HasPrefix(line, "|") {
-			continue
+	resolved := make([]*plan, 0, len(planIDs))
+	for _, id := range planIDs {
+		p := findPlan(id)
+		if p == nil {
+			return nil, ErrUnknownPlan
 		}
-		// Expected: |date|ot|nt|
-		fields := strings.Split(line, "|")
-		// Surrounding pipes produce empty strings at indices 0 and len-1.
-		if len(fields) < 5 {
-			continue
-		}
-		date := strings.TrimSpace(fields[1])
-		ot := strings.TrimSpace(fields[2])
-		nt := strings.TrimSpace(fields[3])
-		// Skip header and separator rows.
-		if date == "" || date == "Date" || strings.HasPrefix(date, "-") {
-			continue
-		}
-		// date is MM/DD/YY; key by MM/DD so any year wraps to the plan entry.
-		if len(date) < 5 || date[2] != '/' {
-			continue
-		}
-		key := date[:5]
-		out[key] = planRow{ot: ot, nt: nt}
+		resolved = append(resolved, p)
 	}
-	if err := sc.Err(); err != nil {
-		return nil, err
+	key := now.In(loc).Format("01/02")
+	out := make([]Day, 0, len(resolved))
+	for _, p := range resolved {
+		entries, err := p.get()
+		if err != nil {
+			return nil, err
+		}
+		d := Day{PlanID: p.id, PlanName: p.name}
+		entry, ok := entries[key]
+		switch {
+		case !ok:
+			d.Message = "No reading for today"
+		case entry.Message != "":
+			d.Message = entry.Message
+		case len(entry.Passages) == 0:
+			d.Message = "No reading for today"
+		default:
+			d.Passages = entry.Passages
+		}
+		out = append(out, d)
 	}
 	return out, nil
+}
+
+// planEntry is one row in a parsed plan: either a list of passages or
+// a free-text message (e.g. "Catch-up day!").
+type planEntry struct {
+	Passages []Passage
+	Message  string
+}
+
+type plan struct {
+	id, name string
+	parse    func() (map[string]planEntry, error)
+
+	once  sync.Once
+	cache map[string]planEntry
+	err   error
+}
+
+func (p *plan) get() (map[string]planEntry, error) {
+	p.once.Do(func() { p.cache, p.err = p.parse() })
+	return p.cache, p.err
+}
+
+// plans is the package-level registry. Order is the order in which
+// plans are listed in the catalog and rendered in the SPA when
+// multiple plans are active.
+var plans = []*plan{
+	{id: "bible-year", name: "Bible in One Year", parse: parseBibleYear},
+	{id: "hope", name: "Hope (2026)", parse: parseHope},
+}
+
+func findPlan(id string) *plan {
+	for _, p := range plans {
+		if p.id == id {
+			return p
+		}
+	}
+	return nil
 }
 
 // splitPassage splits a cell like "Genesis 1-3" into book + chapters.
 // The book name may contain spaces (e.g., "1 Samuel", "Song of Solomon");
 // the chapters portion begins at the last space before a digit. The
-// returned Book is normalized to its canonical canon name — the plan
-// markdown uses common abbreviations ("Num.", "Matt.") that ESV happens
-// to accept but the YouVersion USFM mapping rejects. canon.LookupBook
-// resolves both forms; the canonical name is what every provider can
-// fetch.
+// returned Book is normalized to its canonical canon name when found —
+// the plan markdowns use common abbreviations ("Num.", "Matt.") that
+// ESV happens to accept but the YouVersion USFM mapping rejects.
+// canon.LookupBook resolves both forms; the canonical name is what
+// every provider can fetch.
 func splitPassage(cell, testament string) (Passage, bool) {
 	cell = strings.TrimSpace(cell)
 	if cell == "" {

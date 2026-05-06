@@ -9,8 +9,16 @@ import (
 )
 
 type dailyResp struct {
-	Passages []dailyPassage `json:"passages"`
-	Message  string         `json:"message,omitempty"`
+	Plans []dailyPlanResult `json:"plans"`
+}
+
+func decode(t *testing.T, w *httptest.ResponseRecorder) dailyResp {
+	t.Helper()
+	var got dailyResp
+	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
+		t.Fatalf("json: %v; body=%s", err, w.Body.String())
+	}
+	return got
 }
 
 func TestDailyHandlerHit(t *testing.T) {
@@ -23,19 +31,15 @@ func TestDailyHandlerHit(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200; body=%s", w.Code, w.Body.String())
 	}
-	var got dailyResp
-	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
-		t.Fatalf("json: %v; body=%s", err, w.Body.String())
-	}
+	got := decode(t, w)
 	if c.Hit() != 1 {
 		t.Errorf("hit counter = %d, want 1", c.Hit())
 	}
-	// We don't pin the date (depends on time.Now), but hit means non-empty.
-	if got.Message != "" {
-		t.Errorf("hit response carried message %q", got.Message)
+	if len(got.Plans) != 1 {
+		t.Fatalf("got %d plans, want 1 (default plan)", len(got.Plans))
 	}
-	if len(got.Passages) == 0 {
-		t.Errorf("hit response had no passages")
+	if got.Plans[0].ID != "bible-year" {
+		t.Errorf("default plan id = %q, want bible-year", got.Plans[0].ID)
 	}
 }
 
@@ -79,12 +83,9 @@ func TestDailyHandlerDateParam(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200; body=%s", w.Code, w.Body.String())
 	}
-	var got dailyResp
-	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
-		t.Fatalf("json: %v; body=%s", err, w.Body.String())
-	}
-	if len(got.Passages) == 0 {
-		t.Errorf("expected passages for 2026-01-01, got none")
+	got := decode(t, w)
+	if len(got.Plans) != 1 || len(got.Plans[0].Passages) == 0 {
+		t.Errorf("expected passages for 2026-01-01, got %+v", got.Plans)
 	}
 }
 
@@ -105,17 +106,17 @@ func TestDailyHandlerDateParamRespectsTZ(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200; body=%s", w.Code, w.Body.String())
 	}
-	var got dailyResp
-	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
-		t.Fatalf("json: %v; body=%s", err, w.Body.String())
+	got := decode(t, w)
+	if len(got.Plans) != 1 {
+		t.Fatalf("got %d plans, want 1", len(got.Plans))
 	}
 	var ot, nt *dailyPassage
-	for i, p := range got.Passages {
+	for i, p := range got.Plans[0].Passages {
 		switch p.Testament {
 		case "OT":
-			ot = &got.Passages[i]
+			ot = &got.Plans[0].Passages[i]
 		case "NT":
-			nt = &got.Passages[i]
+			nt = &got.Plans[0].Passages[i]
 		}
 	}
 	if ot == nil || ot.Book != "Numbers" || ot.Chapters != "20-22" {
@@ -130,6 +131,92 @@ func TestDailyHandlerInvalidDateParam(t *testing.T) {
 	c := &DailyCounter{}
 	h := dailyReadingHandler(c)
 	req := httptest.NewRequest(http.MethodGet, "/api/daily-reading?tz=UTC&date=not-a-date", nil)
+	w := httptest.NewRecorder()
+	h(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want 400", w.Code)
+	}
+	if c.Errors() != 1 {
+		t.Errorf("error counter = %d, want 1", c.Errors())
+	}
+}
+
+func TestDailyHandlerSpecificPlan(t *testing.T) {
+	c := &DailyCounter{}
+	h := dailyReadingHandler(c)
+	req := httptest.NewRequest(http.MethodGet,
+		"/api/daily-reading?tz=UTC&date=2026-01-12&plans=hope", nil)
+	w := httptest.NewRecorder()
+	h(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body=%s", w.Code, w.Body.String())
+	}
+	got := decode(t, w)
+	if len(got.Plans) != 1 || got.Plans[0].ID != "hope" {
+		t.Fatalf("got %+v, want one hope plan", got.Plans)
+	}
+	// Hope plan, Jan 12: Matthew 1-4 + Psalm 1.
+	hasBook := func(book string) bool {
+		for _, p := range got.Plans[0].Passages {
+			if p.Book == book {
+				return true
+			}
+		}
+		return false
+	}
+	if !hasBook("Matthew") || !hasBook("Psalms") {
+		t.Errorf("hope plan 01/12 = %+v, want Matthew + Psalms", got.Plans[0].Passages)
+	}
+}
+
+func TestDailyHandlerMultiplePlans(t *testing.T) {
+	c := &DailyCounter{}
+	h := dailyReadingHandler(c)
+	req := httptest.NewRequest(http.MethodGet,
+		"/api/daily-reading?tz=UTC&date=2026-01-12&plans=bible-year,hope", nil)
+	w := httptest.NewRecorder()
+	h(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body=%s", w.Code, w.Body.String())
+	}
+	got := decode(t, w)
+	if len(got.Plans) != 2 {
+		t.Fatalf("got %d plans, want 2", len(got.Plans))
+	}
+	if got.Plans[0].ID != "bible-year" || got.Plans[1].ID != "hope" {
+		t.Errorf("plan order = %s,%s; want bible-year,hope", got.Plans[0].ID, got.Plans[1].ID)
+	}
+}
+
+func TestDailyHandlerSpecialDayMessage(t *testing.T) {
+	c := &DailyCounter{}
+	h := dailyReadingHandler(c)
+	// 2026-02-20 is a Hope-plan catch-up day.
+	req := httptest.NewRequest(http.MethodGet,
+		"/api/daily-reading?tz=UTC&date=2026-02-20&plans=hope", nil)
+	w := httptest.NewRecorder()
+	h(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body=%s", w.Code, w.Body.String())
+	}
+	got := decode(t, w)
+	if len(got.Plans) != 1 || got.Plans[0].Message == "" {
+		t.Errorf("got %+v, want a single plan with a Message", got.Plans)
+	}
+	if c.Empty() != 1 {
+		t.Errorf("empty counter = %d, want 1", c.Empty())
+	}
+}
+
+func TestDailyHandlerUnknownPlan(t *testing.T) {
+	c := &DailyCounter{}
+	h := dailyReadingHandler(c)
+	req := httptest.NewRequest(http.MethodGet,
+		"/api/daily-reading?tz=UTC&plans=bogus", nil)
 	w := httptest.NewRecorder()
 	h(w, req)
 

@@ -25,6 +25,7 @@ import { TRANSLATIONS, type TranslationID } from "./translations/catalog";
 import { useTranslation } from "./translations/useTranslation";
 import { DailyPanel } from "./daily/DailyPanel";
 import { useDailyTab } from "./daily/useDailyTab";
+import { usePlanSelection } from "./daily/usePlanSelection";
 import styles from "./App.module.css";
 
 type Tab = "read" | "daily";
@@ -51,7 +52,8 @@ export function App() {
   const userState = useUser();
   const translationState = useTranslation(userState.user, userState.applyUser);
   const translation = translationState.translation;
-  const dailyTab = useDailyTab(tab === "daily", toggles, translation);
+  const [planIDs, setPlanIDs] = usePlanSelection();
+  const dailyTab = useDailyTab(tab === "daily", toggles, translation, planIDs);
 
   const q = useMemo(() => refToQuery(ref, range ?? undefined), [ref, range]);
 
@@ -92,7 +94,7 @@ export function App() {
   // routes drawer mutations to the right hook.
   const readNotes = useNotes(book.name, ref.chapter, translation, isSignedIn);
   const dailyNotes = useDailyNotes(
-    dailyTab.activeTab?.passage.book ?? null,
+    dailyTab.activePill?.passage.book ?? null,
     dailyTab.activeChapterNumbers,
     translation,
     isSignedIn,
@@ -100,8 +102,8 @@ export function App() {
   const notesApi = tab === "daily" ? dailyNotes : readNotes;
   const drawerTitle =
     tab === "daily"
-      ? dailyTab.activeTab
-        ? `${dailyTab.activeTab.passage.book} ${dailyTab.activeTab.passage.chapters}`
+      ? dailyTab.activePill
+        ? `${dailyTab.activePill.passage.book} ${dailyTab.activePill.passage.chapters}`
         : "Daily"
       : `${book.name} ${ref.chapter}`;
 
@@ -156,17 +158,17 @@ export function App() {
     [translation],
   );
 
-  const activePill =
-    dailyTab.daily.kind === "ready" ? dailyTab.daily.state.active : null;
+  const activePillIdx =
+    dailyTab.daily.kind === "ready" ? dailyTab.daily.state.activeIdx : -1;
   useEffect(() => {
-    if (tab !== "daily" || !activePill) return;
+    if (tab !== "daily" || activePillIdx < 0) return;
     readingSurfaceRef.current?.scrollTo({ top: 0, behavior: "smooth" });
-  }, [activePill, tab]);
+  }, [activePillIdx, tab]);
 
   const scrollToNote = (n: Note) => {
     if (tab === "daily") {
       const switched = dailyTab.switchToOwningPill(n.book, n.chapter);
-      if (switched) {
+      if (switched !== null) {
         // Wait for the inactive pill's chapter blocks to mount, then
         // scroll. Two animation frames is enough for React's commit +
         // layout.
@@ -249,6 +251,8 @@ export function App() {
         setTheme={setTheme}
         toggles={toggles}
         setToggles={setToggles}
+        planIDs={planIDs}
+        setPlanIDs={setPlanIDs}
       />
       <AuthPanel
         open={authOpen}
