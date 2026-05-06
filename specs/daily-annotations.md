@@ -1,8 +1,8 @@
 # Daily annotations
 
-**Status:** In Progress
+**Status:** Shipped
 **Created:** 2026-05-05
-**Last updated:** 2026-05-05
+**Last updated:** 2026-05-06
 **Owner:** unassigned
 
 ## Why
@@ -11,12 +11,12 @@ The Daily tab (shipped per [auto-load-daily-reading](./auto-load-daily-reading.m
 
 ## Goals
 
-- [ ] On the Daily tab, a signed-in user can select text in any rendered chapter and tap "Highlight" or "Add note" in the same floating toolbar used on the Read tab.
-- [ ] Saved highlights are visually applied to the matching chapter on every load of the Daily tab.
-- [ ] The Notes drawer, when opened on the Daily tab, lists notes from every chapter in the active pill (e.g., Genesis 1 + 2 + 3 for "Genesis 1-3"). Tap-to-scroll navigates to the right per-chapter container.
-- [ ] A signed-in user can change the active translation directly from the Daily tab via a picker in the daily header. The choice persists (`PATCH /api/auth/me`) and is mirrored on the Read tab.
-- [ ] Annotations created on the Daily tab are visible on the Read tab (and vice versa), because both surfaces read from the same `(user_id, translation, book, chapter)`-scoped server data.
-- [ ] A guest who attempts to highlight or change translation on the Daily tab gets the same affordances they get on the Read tab (sign-in prompt for the toolbar; disabled picker with "Sign in to choose" hint).
+- [x] On the Daily tab, a signed-in user can select text in any rendered chapter and tap "Highlight" or "Add note" in the same floating toolbar used on the Read tab.
+- [x] Saved highlights are visually applied to the matching chapter on every load of the Daily tab.
+- [x] The Notes drawer, when opened on the Daily tab, lists notes from every chapter in the active pill (e.g., Genesis 1 + 2 + 3 for "Genesis 1-3"). Tap-to-scroll navigates to the right per-chapter container.
+- [x] A signed-in user can change the active translation directly from the Daily tab via a picker in the daily header. The choice persists (`PATCH /api/auth/me`) and is mirrored on the Read tab.
+- [x] Annotations created on the Daily tab are visible on the Read tab (and vice versa), because both surfaces read from the same `(user_id, translation, book, chapter)`-scoped server data.
+- [x] A guest who attempts to highlight or change translation on the Daily tab gets the same affordances they get on the Read tab (sign-in prompt for the toolbar; disabled picker with "Sign in to choose" hint).
 
 ## Non-goals
 
@@ -91,6 +91,8 @@ The Daily tab (shipped per [auto-load-daily-reading](./auto-load-daily-reading.m
 - 2026-05-05: Drawer tap-to-scroll on a hidden chapter auto-switches to the pill that contains the chapter and then scrolls. Rejected: silent no-op (looks broken); toast "Switch to {pill} to view" (extra tap for no benefit). Implementation: drawer needs a `findPillForChapter(book, chapter)` helper supplied by `DailyPanel`.
 - 2026-05-05: Maximum two pills per day (OT, NT). The dailyreader plan markdown only has OT and NT columns (`internal/dailyreader/dailyreader.go`), and a row may have one or both populated. No 3+ pill case to spec.
 - 2026-05-06: Normalize daily-reader book names to canonical canon names in `internal/dailyreader/splitPassage` via `canon.LookupBook`. The plan markdown uses common abbreviations ("Num.", "Matt.", "Rev.", "1 Sam.", "Song of Songs") that the ESV API silently accepts but YouVersion's USFM mapping rejects (no entry for "num.", etc.). Pre-existing latent bug — surfaced by the new Daily-tab translation picker because the picker now lets users select NIV from Daily, triggering YouVersion fetches for abbreviated names. Fix is at the source so every provider sees canonical names. New test `TestSplitPassageNormalizesEveryPlanRow` walks the entire plan and asserts every book resolves to its canonical name.
+- 2026-05-06: Implementation landed in PR #30 (`feat(daily): highlights, notes, and translation picker on Daily tab`). Status flipped to Shipped.
+- 2026-05-06: Post-ship cleanup (PR #35) extracted the daily-tab logic out of `App.tsx` into a new `web/src/daily/` directory: `useDailyTab.ts` owns the load/reset effects, `fetchId` race guard, per-chapter article-ref `Map<string, RefObject>`, and active-pill switching; `DailyPanel.tsx` (with `DailyChapterBlock`) owns the panel render. The ref map and date helpers no longer live in `App.tsx`. The `Implementation outline` above describes the pre-ship design — file/line refs in that section are historical. `App.tsx` dropped from 941 to 450 lines.
 
 ## Verification
 
