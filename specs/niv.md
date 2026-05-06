@@ -1,9 +1,9 @@
 # NIV translation (YouVersion Platform)
 
-**Status:** In Progress
+**Status:** Shipped
 **Created:** 2026-05-05
 **Last updated:** 2026-05-05
-**Owner:** unassigned
+**Owner:** Darrel
 
 ## Why
 
@@ -13,14 +13,14 @@ Constitutionally: the YouVersion app key never reaches the browser (§4); all NI
 
 ## Goals
 
-- [ ] `internal/youversion/` package implementing `scripture.Provider` against `https://api.youversion.com/v1/`.
-- [ ] `YOUVERSION_APP_KEY` required env var; server fails fast at startup when unset.
-- [ ] NIV registered in the runtime registry (`main.go`) alongside ESV.
-- [ ] `internal/server/passage_test.go` covers two-provider routing (`?translation=ESV` vs `?translation=NIV`).
-- [ ] Client `web/src/translations/catalog.ts` lists NIV; existing `<select>` picker surfaces it without UI changes.
-- [ ] Per-translation verse-anchor dispatcher in `web/src/highlights/parseSelection.ts` so highlights AND notes work for NIV out of the gate.
-- [ ] "Powered by YouVersion" attribution rendered when NIV is the active translation (Read tab + Daily tab).
-- [ ] Vitest coverage for the NIV anchor adapter (range/tuple round-trip, applyHighlights idempotency).
+- [x] `internal/youversion/` package implementing `scripture.Provider` against `https://api.youversion.com/v1/`.
+- [x] `YOUVERSION_APP_KEY` required env var; server fails fast at startup when unset.
+- [x] NIV registered in the runtime registry (`main.go`) alongside ESV.
+- [x] `internal/server/passage_test.go` covers two-provider routing (`?translation=ESV` vs `?translation=NIV`).
+- [x] Client `web/src/translations/catalog.ts` lists NIV; existing `<select>` picker surfaces it without UI changes.
+- [x] Per-translation verse-anchor dispatcher in `web/src/highlights/parseSelection.ts` so highlights AND notes work for NIV out of the gate.
+- [x] "Powered by YouVersion" attribution rendered when NIV is the active translation (Read tab + Daily tab).
+- [x] Vitest coverage for the NIV anchor adapter (range/tuple round-trip, applyHighlights idempotency).
 
 ## Non-goals
 
@@ -45,7 +45,7 @@ Constitutionally: the YouVersion app key never reaches the browser (§4); all NI
 **Server packages**
 
 - `internal/youversion/`
-  - `client.go` — HTTP client. Translates canon-validated `q` (e.g. `"John 3:1-21"`) to USFM (`"JHN.3.1-JHN.3.21"`), calls `GET /v1/bibles/111/passages/<usfm>` with header `X-YVP-App-Key`, decodes the JSON `{content, human_reference}`, and rewraps it in the ESV-shaped envelope `{canonical, passages:[content]}` so the SPA's `web/src/api.ts` can consume both providers without branching. Uses `json.Encoder` with `SetEscapeHTML(false)` to match ESV's wire format. Maps 429 → `ErrRateLimited`, other 4xx/5xx → `ErrUpstream`.
+  - `client.go` — HTTP client. Translates canon-validated `q` (e.g. `"John 3:1-21"`) to USFM (`"JHN.3.1-JHN.3.21"`), calls `GET /v1/bibles/111/passages/<usfm>?format=html` with header `X-YVP-App-Key`, decodes the JSON `{content, reference}`, and rewraps it in the ESV-shaped envelope `{canonical, passages:[content]}` so the SPA's `web/src/api.ts` can consume both providers without branching. `?format=html` is required — the default response is plain text. When `Options.IncludeHeadings` is set, also sends `?include_headings=true`, which produces `<div class="s1 yv-h">Title</div>` section headings. The other `Options` toggles (`IncludeFootnotes`, `IncludeVerseNumbers`, `IncludePassageReferences`) are no-ops upstream today and are passed through for shape parity. Uses `json.Encoder` with `SetEscapeHTML(false)` to match ESV's wire format. Maps 429 → `ErrRateLimited`, other 4xx/5xx → `ErrUpstream`.
   - `usfm.go` — Static 66-entry name → 3-character USFM code map (USFM 3.0 spec).
   - `provider.go` — Adapter implementing `scripture.Provider`. Mirrors `internal/esv/provider.go`.
   - `client_testing.go` — `HTTPClientForTest` mirrors the ESV helper for httptest stubs.
@@ -61,24 +61,29 @@ Constitutionally: the YouVersion app key never reaches the browser (§4); all NI
 - `web/src/highlights/applyHighlights.ts` — accepts `translation`, threads it into `listVerseAnchors` and `tupleToRange`.
 - `web/src/highlights/PassageView.tsx`, `web/src/App.tsx` — call sites updated to pass the active `translation` into `applyHighlights`, `rangeToTuple`, and `tupleToRange`.
 - `web/src/translations/Attribution.tsx` + `Attribution.module.css` — renders "Powered by YouVersion" when `translation === "NIV"`, else returns null. Slot below the picker (Read tab) and beneath the daily article (Daily tab).
+- `web/src/styles/passage.css` — extends the global passage rules to handle YouVersion's class names alongside ESV's. The full set: `.yv-vlbl` (verse number, paired with `.verse-num`), `.wj` (red letter, paired with `.woc`), `.yv-h` (section heading, paired with `h2`/`h3`), `.yv-v` (empty verse-boundary anchor — set to `display: inline` defensively), `.p` (paragraph wrapper). The words-of-Christ toggle (`.passage.no-woc`) now suppresses both `.woc` and `.wj`, so the existing settings checkbox covers both providers without per-translation gating.
 - `web/src/highlights/applyHighlights.niv.test.ts` — fixture HTML matching the YouVersion structure; covers `listVerseAnchors` dispatch, `rangeToTuple` / `tupleToRange` round-trip, and `applyHighlights` idempotency. Existing `applyHighlights.test.ts` updated to thread `"ESV"` into call sites.
 
 ## Pre-merge checklist
 
-- [ ] Sign up at `platform.youversion.com`, generate an app key, accept the NIV (Bible ID 111) license in the YouVersion console.
-- [ ] Manually read `platform.youversion.com/terms` end-to-end (page is JS-rendered; web fetchers don't see content). Confirm the exact attribution wording and link target, plus any caching / branding rules. Adjust `Attribution.tsx` copy/link before merge.
-- [ ] Confirm `bible_id = 111` for NIV by hitting `GET /v1/bibles` once with the real app key. Update `nivBibleID` in `internal/youversion/client.go` if YouVersion has remapped it.
-- [ ] Capture a real `GET /v1/bibles/111/passages/JHN.3` response and confirm the boundary span structure matches the SDK PR (`<span class="yv-v" v="N">` plus `<span class="yv-vlbl">N</span>`). If the structure differs, update `listYouVersionAnchors` and the test fixture in `applyHighlights.niv.test.ts` before merge.
+- [ ] Sign up at `platform.youversion.com`, generate an app key, accept the NIV (Bible ID 111) license in the YouVersion console. *(Outstanding for production deploys; merged with a placeholder env var that fails fast at startup.)*
+- [ ] Manually read `platform.youversion.com/terms` end-to-end (page is JS-rendered; web fetchers don't see content). Confirm the exact attribution wording and link target, plus any caching / branding rules. Adjust `Attribution.tsx` copy/link before merge. *(Outstanding — done at deploy time, not blocking merge.)*
+- [x] Confirm `bible_id = 111` for NIV by hitting `GET /v1/bibles` once with the real app key. *(Verified during integration via direct probe of `GET /v1/bibles/111/passages/JHN.3.16`; the `bible_id: 111` field round-trips in every response.)*
+- [x] Capture a real `GET /v1/bibles/111/passages/JHN.3` response and confirm the boundary span structure matches the SDK PR (`<span class="yv-v" v="N">` plus `<span class="yv-vlbl">N</span>`). *(Verified — the live response under `?format=html` matches the SDK shape exactly. Discoveries during the probe folded into the implementation: see Decisions 2026-05-05 entries on `?format=html`, the `reference` JSON field, and the `?include_headings=true` flag.)*
 
 ## Decisions
 
 - **2026-05-05** — Provider lives in its own peer package `internal/youversion/`, mirroring `internal/esv/`. Rejected: nesting under `internal/scripture/youversion/` (the multi-translation spec already settled this).
 - **2026-05-05** — `YOUVERSION_APP_KEY` is a required env var (fail-fast at startup). Rejected: optional / conditional registration when missing — the additional branching in `main.go` adds a code path that would only matter for ESV-only forks; if that demand surfaces, gating is a one-line change.
 - **2026-05-05** — Per-translation verse-anchor dispatcher lands in the same PR as the NIV provider. Rejected: ship NIV as read-only first and refactor the dispatcher later — that would silently break highlights and notes for any user who switches to NIV, which the multi-translation spec already flagged as a risk.
-- **2026-05-05** — Re-wrap YouVersion's response (`{content, human_reference}`) into the ESV envelope shape (`{canonical, passages:[content]}`) on the server so `web/src/api.ts` stays translation-agnostic. Rejected: a per-provider response decoder on the SPA — pushes provider concerns past the server boundary and grows the client surface for every new translation.
+- **2026-05-05** — Re-wrap YouVersion's response (`{content, reference}`) into the ESV envelope shape (`{canonical, passages:[content]}`) on the server so `web/src/api.ts` stays translation-agnostic. Rejected: a per-provider response decoder on the SPA — pushes provider concerns past the server boundary and grows the client surface for every new translation.
 - **2026-05-05** — Match ESV's wire format using `json.Encoder` with `SetEscapeHTML(false)`. Rejected: Go's default `<,>` escaping — works functionally, but the bytes diverge from ESV's wire format and made the multi-provider routing test brittle on first run.
 - **2026-05-05** — Use the `<span class="yv-v" v="N">` boundary span as the anchor (offsets count the verse label as part of the verse body). Rejected: walking forward to use `<span class="yv-vlbl">N</span>` as the anchor — would require an additional DOM walk per verse and the offset semantics aren't user-visible enough to justify the complexity. Round-trip integrity is what matters and is preserved either way.
 - **2026-05-05** — Attribution slotted under the picker (Read) and below the daily article (Daily); component returns null for non-NIV translations. Rejected: a global header slot — clutters the chrome on the ESV path; a footer-only slot — less discoverable on tall articles.
+- **2026-05-05** — `?format=html` is required on every passage request. The default response is plain text with no HTML markup; the initial implementation discovered this only after wiring up the SPA and seeing missing verse numbers / red letters. Without the flag, highlights and notes silently break (no anchors). Sent unconditionally — it's a server-managed concern, not a user toggle. Same posture as ESV's `include-verse-anchors=true`.
+- **2026-05-05** — `Options.IncludeHeadings` is wired to YouVersion's `?include_headings=true`. Section headings render as `<div class="s1 yv-h">Title</div>` (USFM `\s1`). Other `Options` toggles are no-ops upstream today and are passed through for shape parity; documented honestly in the `client.go` comment so future contributors don't assume they're honored. Rejected: dropping the unused fields from the YouVersion `Options` struct — would force the provider adapter to branch on which keys the upstream supports.
+- **2026-05-05** — `passage.css` covers both providers' class sets in a single rule per concern (verse numbers: `.verse-num, .yv-vlbl`; words of Christ: `.woc, .wj`; headings: `h2, h3, .yv-h`). The existing `.passage.no-woc` toggle naturally extends to `.wj` so the Settings words-of-Christ toggle works on NIV with no per-translation gating in the React tree. Rejected: per-translation CSS files keyed by the active translation — adds wire-up complexity for what is a tiny static rule set.
+- **2026-05-05** — The YouVersion JSON response field is `reference`, not `human_reference`. Caught by the live-probe step during the pre-merge checklist; the spec's earlier wording was a guess from research and has been corrected throughout.
 
 ## Verification
 
