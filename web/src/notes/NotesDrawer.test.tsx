@@ -20,8 +20,7 @@ const note: Note = {
 const defaultProps = {
   open: true,
   onClose: vi.fn(),
-  book: "John",
-  chapter: 3,
+  title: "John 3",
   notes: [] as Note[],
   loading: false,
   pendingTuple: null,
