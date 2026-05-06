@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 import { defaultToggleStore, ToggleStore } from "./platform/ToggleStore";
 
 export type Toggles = {
@@ -20,20 +20,22 @@ export const DEFAULT_TOGGLES: Toggles = {
 const STORAGE_KEY = "reader.toggles";
 
 export function useToggles(store: ToggleStore = defaultToggleStore) {
-  const [toggles, setToggles] = useState<Toggles>(() => {
-    const raw = store.get(STORAGE_KEY);
+  const raw = useSyncExternalStore(
+    (cb) => store.subscribe(cb),
+    () => store.get(STORAGE_KEY),
+    () => null,
+  );
+  const toggles = useMemo<Toggles>(() => {
     if (!raw) return DEFAULT_TOGGLES;
     try {
       return { ...DEFAULT_TOGGLES, ...JSON.parse(raw) };
     } catch {
       return DEFAULT_TOGGLES;
     }
-  });
-
-  useEffect(() => {
-    store.set(STORAGE_KEY, JSON.stringify(toggles));
-  }, [toggles, store]);
-
+  }, [raw]);
+  const setToggles = (next: Toggles): void => {
+    store.set(STORAGE_KEY, JSON.stringify(next));
+  };
   return [toggles, setToggles] as const;
 }
 
