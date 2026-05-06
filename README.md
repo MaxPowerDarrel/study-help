@@ -6,7 +6,7 @@ See [`PROJECT_CONSTITUTION.md`](./PROJECT_CONSTITUTION.md) for purpose, principl
 
 ## Status
 
-Passage reader shipped (see [`specs/passage-reader.md`](./specs/passage-reader.md)). The Go server proxies ESV passage requests, exposes a localhost-only Prometheus counter, and serves the React SPA from an embedded Vite build. Highlights, notes, and accounts are not yet implemented — each will get its own spec under [`specs/`](./specs/).
+Reader, accounts, highlights, notes, multi-translation (ESV + NIV), and daily-reading annotations have all shipped — see the per-feature specs under [`specs/`](./specs/). The Go server proxies all scripture requests (upstream API keys never reach the browser), exposes a localhost-only Prometheus counter, and serves the React SPA from an embedded Vite build.
 
 ## Stack
 
@@ -14,7 +14,7 @@ Go 1.26 stdlib HTTP server, SQLite via `modernc.org/sqlite` (pure-Go, no CGO), g
 
 ## Quickstart
 
-Prerequisites: Go 1.26+, Node 20+, an [ESV API key](https://api.esv.org/).
+Prerequisites: Go 1.26+, Node 20+, an [ESV API key](https://api.esv.org/), and a [YouVersion Platform key](https://platform.youversion.com/) (for NIV).
 
 ```sh
 # 1. Configure environment (copy and fill in)
@@ -34,10 +34,12 @@ The app listens on `:8080` by default (override with `ADDR`). A private metrics 
 
 | Var | Purpose |
 |---|---|
-| `SESSION_SECRET` | Random 32+ byte string used to sign session cookies |
-| `ESV_API_KEY` | ESV API key — never reaches the browser |
-| `ADDR` | Bind address (default `:8080`) |
-| `DATABASE_URL` | SQLite file path (default `./sqlite.db`) |
+| `SESSION_SECRET` | Required. Random 32+ byte string used to sign session cookies. |
+| `ESV_API_KEY` | Required. ESV API key — never reaches the browser. |
+| `YOUVERSION_APP_KEY` | Required. YouVersion Platform key for NIV — never reaches the browser. |
+| `ADDR` | Bind address (default `:8080`). |
+| `DATABASE_URL` | SQLite file path (default `./sqlite.db`). |
+| `ENV` | `prod` (default) or `dev`. Set to `dev` to drop the `Secure` cookie flag for plain-HTTP localhost. |
 
 ## Development
 
@@ -52,14 +54,19 @@ cd web && npm run format
 
 ## Layout
 
-- `main.go` — wires config → DB → public server + private metrics server, with graceful SIGINT/SIGTERM shutdown.
+- `main.go` — wires config → DB → auth, scripture provider registry (ESV + NIV), highlights / notes services into the public + private servers, with graceful SIGINT/SIGTERM shutdown.
 - `internal/config/` — env-var-driven `Config`.
 - `internal/db/` — opens SQLite (WAL, foreign keys, 5s busy timeout) and runs embedded goose migrations.
-- `internal/server/` — public `*http.Server` exposing `/healthz`, `/api/passage`, and the embedded SPA; plus the private metrics server.
-- `internal/esv/` — server-side ESV API client and the canon-aware `q` allow-list validator.
+- `internal/server/` — public HTTP server (`/healthz`, `/api/passage`, `/api/daily-reading`, `/api/auth/*`, `/api/highlights*`, `/api/notes*`, embedded SPA) + private `127.0.0.1:9090/metrics`.
+- `internal/auth/` — accounts: bcrypt, cookie sessions, per-IP + per-account rate limiting.
+- `internal/highlights/` + `internal/notes/` — per-user range-anchored annotations behind `auth.RequireUser`.
+- `internal/scripture/` — translation-provider abstraction; `internal/esv/` and `internal/youversion/` are the registered providers.
+- `internal/canon/` — 66-book canon: `LookupBook` and the canon-aware `q` allow-list validator.
 - `internal/web/` — embeds the Vite build output (`internal/web/dist/`) into the Go binary.
-- `web/` — React SPA (Vite + TypeScript). Platform-touching code (localStorage, timezone, etc.) goes through `web/src/platform/` to keep feature code portable and testable.
+- `web/` — React SPA (Vite + TypeScript). Platform-touching code (localStorage, timezone, Selection API) goes through `web/src/platform/`; daily-tab logic lives under `web/src/daily/`.
 - `specs/` — one markdown file per feature; index in [`specs/README.md`](./specs/README.md).
+
+For the per-package detail (handler shapes, hook contracts, file-by-file responsibilities) see [`CLAUDE.md`](./CLAUDE.md).
 
 ## Workflow
 
