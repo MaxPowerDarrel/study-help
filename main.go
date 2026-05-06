@@ -19,6 +19,7 @@ import (
 	"study-help/internal/notes"
 	"study-help/internal/scripture"
 	"study-help/internal/server"
+	"study-help/internal/youversion"
 )
 
 const metricsAddr = "127.0.0.1:9090"
@@ -34,7 +35,11 @@ func main() {
 
 	counter := &server.ESVCallCounter{}
 	dailyCounter := &server.DailyCounter{}
-	reg := scripture.NewRegistry(scripture.ESV, esv.NewProvider(cfg.ESVAPIKey))
+	reg := scripture.NewRegistry(
+		scripture.ESV,
+		esv.NewProvider(cfg.ESVAPIKey),
+		youversion.NewProvider(cfg.YouVersionAppKey),
+	)
 	authSvc := auth.NewService(database, auth.Config{
 		IsDev:      cfg.IsDev(),
 		SessionTTL: 30 * 24 * time.Hour,

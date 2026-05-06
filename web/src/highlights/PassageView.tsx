@@ -59,12 +59,14 @@ export function PassageView({
   );
   const [mode, setMode] = useState<ToolbarMode>({ kind: "idle" });
 
-  // Re-apply highlight marks whenever the HTML or the highlights change.
+  // Re-apply highlight marks whenever the HTML, highlights, or active
+  // translation change. Translation matters because the verse-anchor
+  // shape differs per provider.
   useEffect(() => {
     const article = articleRef.current;
     if (!article) return;
-    applyHighlights(article, highlights);
-  }, [html, highlights]);
+    applyHighlights(article, highlights, translation);
+  }, [html, highlights, translation]);
 
   // Dismiss the toolbar on book/chapter change.
   useEffect(() => {
@@ -103,7 +105,7 @@ export function PassageView({
       // Resolve to verse/offset tuple at capture time. Storing
       // primitives in mode means later DOM mutations can't invalidate
       // the highlight target the way they do a live Range.
-      const tuple = rangeToTuple(info.range, article);
+      const tuple = rangeToTuple(info.range, article, translation);
       if (!tuple) {
         setMode({
           kind: "error",
@@ -130,7 +132,7 @@ export function PassageView({
       document.removeEventListener("mouseup", showIfSelection);
       article.removeEventListener("touchend", showIfSelection);
     };
-  }, [isSignedIn, selectionAdapter]);
+  }, [isSignedIn, selectionAdapter, translation]);
 
   // Dismiss the toolbar when the selection becomes empty (without
   // disturbing other modes like "existing" or "error").

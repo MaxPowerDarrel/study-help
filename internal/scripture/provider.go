@@ -19,6 +19,10 @@ type ID string
 // constants land alongside their provider packages.
 const ESV ID = "ESV"
 
+// NIV is registered through internal/youversion, backed by the
+// YouVersion Platform API.
+const NIV ID = "NIV"
+
 // Options bundles the renderer toggles users can flip. Each provider
 // translates these into its own upstream parameters; toggles a provider
 // can't honor are silently ignored. Per-provider knobs go through the

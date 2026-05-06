@@ -80,6 +80,7 @@ The constitution still says "secrets stay server-side" — every translation pro
 - **2026-05-05** — Single migration (`00005_translation.sql`) covering all three tables. Atomic, one-file review surface. Rejected: three migrations — forces reviewers to mentally diff across files for one logical change.
 - **2026-05-05** — `PATCH /api/auth/me` over `PUT /api/auth/preferences`. Keeps the auth namespace cohesive; the user record is the only mutable account-scoped resource at v1.
 - **2026-05-05** — Picker shows a *disabled* `<select>` for guests with an inline "Sign in to choose" hint. Rejected: hide the picker — makes the capability undiscoverable.
+- **2026-05-05** — NIV is the first follow-up provider, registered through the YouVersion Platform API. Per-translation verse-anchor dispatcher (the open question above) lands in the same change. See [`specs/niv.md`](./niv.md).
 
 ## Verification
 

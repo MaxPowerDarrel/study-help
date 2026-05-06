@@ -50,7 +50,7 @@ describe("applyHighlights", () => {
       end_verse: 16,
       end_offset: 11, // "For God so " (11 chars)
     };
-    applyHighlights(article, [h]);
+    applyHighlights(article, [h], "ESV");
     const marks = article.querySelectorAll("mark.highlight");
     expect(marks.length).toBe(1);
     expect(marks[0].getAttribute("data-highlight-id")).toBe("7");
@@ -67,7 +67,7 @@ describe("applyHighlights", () => {
       end_verse: 17,
       end_offset: 12, // "For God did " is 12 chars from v17 start
     };
-    applyHighlights(article, [h]);
+    applyHighlights(article, [h], "ESV");
     const marks = article.querySelectorAll("mark.highlight");
     expect(marks.length).toBeGreaterThan(1);
     for (const m of marks) {
@@ -90,9 +90,9 @@ describe("applyHighlights", () => {
       end_verse: 16,
       end_offset: 7,
     };
-    applyHighlights(article, [h]);
+    applyHighlights(article, [h], "ESV");
     const first = article.innerHTML;
-    applyHighlights(article, [h]);
+    applyHighlights(article, [h], "ESV");
     expect(article.innerHTML).toBe(first);
   });
 
@@ -118,7 +118,7 @@ describe("applyHighlights", () => {
       end_verse: 16,
       end_offset: 11,
     };
-    applyHighlights(article, [h]);
+    applyHighlights(article, [h], "ESV");
     const marks = article.querySelectorAll("mark.highlight");
     expect(marks.length).toBe(1);
     expect(marks[0].textContent).toBe("For God so ");
@@ -134,11 +134,11 @@ describe("applyHighlights", () => {
       end_verse: 16,
       end_offset: 7,
     };
-    applyHighlights(article, [h]);
+    applyHighlights(article, [h], "ESV");
     expect(article.querySelectorAll("mark.highlight").length).toBeGreaterThan(
       0,
     );
-    applyHighlights(article, []);
+    applyHighlights(article, [], "ESV");
     expect(article.querySelectorAll("mark.highlight").length).toBe(0);
   });
 });
@@ -146,16 +146,20 @@ describe("applyHighlights", () => {
 describe("removeAllHighlights", () => {
   it("strips marks and merges adjacent text", () => {
     const article = makePassage();
-    applyHighlights(article, [
-      {
-        ...baseHighlight,
-        id: 3,
-        start_verse: 16,
-        start_offset: 4,
-        end_verse: 16,
-        end_offset: 7,
-      },
-    ]);
+    applyHighlights(
+      article,
+      [
+        {
+          ...baseHighlight,
+          id: 3,
+          start_verse: 16,
+          start_offset: 4,
+          end_verse: 16,
+          end_offset: 7,
+        },
+      ],
+      "ESV",
+    );
     expect(article.querySelectorAll("mark.highlight").length).toBe(1);
     removeAllHighlights(article);
     expect(article.querySelectorAll("mark.highlight").length).toBe(0);
@@ -167,16 +171,20 @@ describe("removeAllHighlights", () => {
 describe("findHighlightId", () => {
   it("returns the id of the nearest <mark> ancestor", () => {
     const article = makePassage();
-    applyHighlights(article, [
-      {
-        ...baseHighlight,
-        id: 42,
-        start_verse: 16,
-        start_offset: 0,
-        end_verse: 16,
-        end_offset: 5,
-      },
-    ]);
+    applyHighlights(
+      article,
+      [
+        {
+          ...baseHighlight,
+          id: 42,
+          start_verse: 16,
+          start_offset: 0,
+          end_verse: 16,
+          end_offset: 5,
+        },
+      ],
+      "ESV",
+    );
     const mark = article.querySelector("mark.highlight")!;
     expect(findHighlightId(mark.firstChild)).toBe(42);
     expect(findHighlightId(mark)).toBe(42);

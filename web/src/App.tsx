@@ -20,6 +20,7 @@ import { PassageView } from "./highlights/PassageView";
 import { NotesDrawer } from "./notes/NotesDrawer";
 import { type Note } from "./notes/api";
 import { useNotes } from "./notes/useNotes";
+import { Attribution } from "./translations/Attribution";
 import { TRANSLATIONS, type TranslationID } from "./translations/catalog";
 import { useTranslation } from "./translations/useTranslation";
 import styles from "./App.module.css";
@@ -236,6 +237,7 @@ export function App() {
         end_offset: n.end_offset,
       },
       el,
+      translation,
     );
     range?.startContainer.parentElement?.scrollIntoView({
       behavior: "smooth",
@@ -360,6 +362,7 @@ export function App() {
                   Sign in to choose
                 </span>
               )}
+              <Attribution translation={translation} />
             </label>
             <label>
               Book
@@ -495,6 +498,7 @@ export function App() {
               selectedDate={selectedDate}
               setSelectedDate={setSelectedDate}
               showWordsOfChrist={toggles.include_word_of_christ}
+              translation={translation}
             />
           )}
           {toast && (
@@ -558,12 +562,14 @@ function DailyPanel({
   selectedDate,
   setSelectedDate,
   showWordsOfChrist,
+  translation,
 }: {
   daily: DailyLoad;
   setDaily: (updater: (prev: DailyLoad) => DailyLoad) => void;
   selectedDate: string;
   setSelectedDate: (date: string) => void;
   showWordsOfChrist: boolean;
+  translation: TranslationID;
 }) {
   const dateNav = (
     <nav className={styles.dailyNav} aria-label="Date navigation">
@@ -670,10 +676,13 @@ function DailyPanel({
           <div className={styles.spinner} aria-label="loading" />
         )}
         {activeState && !activeState.loading && activeState.html && (
-          <article
-            className={showWordsOfChrist ? "passage" : "passage no-woc"}
-            dangerouslySetInnerHTML={{ __html: activeState.html }}
-          />
+          <>
+            <article
+              className={showWordsOfChrist ? "passage" : "passage no-woc"}
+              dangerouslySetInnerHTML={{ __html: activeState.html }}
+            />
+            <Attribution translation={translation} />
+          </>
         )}
         {activeState?.error && (
           <div className={styles.toast} role="alert">

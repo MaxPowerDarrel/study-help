@@ -13,6 +13,7 @@ import (
 
 	"study-help/internal/esv"
 	"study-help/internal/scripture"
+	"study-help/internal/youversion"
 )
 
 // newStubRegistry builds a scripture.Registry whose ESV provider is
@@ -169,6 +170,96 @@ func TestPassageHandlerRejectsUnknownTranslation(t *testing.T) {
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("status = %d, want 400", w.Code)
+	}
+}
+
+// newMultiStubRegistry builds a Registry with both ESV and NIV
+// providers, each pointed at its own httptest stub. Either handler may
+// be nil; calls into a nil handler return 500 so unexpected upstream
+// calls are loud.
+func newMultiStubRegistry(t *testing.T, esvHandler, nivHandler http.HandlerFunc) (*scripture.Registry, *httptest.Server, *httptest.Server) {
+	t.Helper()
+	esvSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if esvHandler == nil {
+			http.Error(w, "esv stub not configured", http.StatusInternalServerError)
+			return
+		}
+		esvHandler(w, r)
+	}))
+	nivSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if nivHandler == nil {
+			http.Error(w, "niv stub not configured", http.StatusInternalServerError)
+			return
+		}
+		nivHandler(w, r)
+	}))
+
+	esvClient := esv.NewClient("test-token")
+	esvHTTP := esv.HTTPClientForTest(esvClient)
+	esvHTTP.Transport = &hostRewriter{target: esvSrv.URL, next: http.DefaultTransport}
+	esvHTTP.Timeout = 5 * time.Second
+
+	nivClient := youversion.NewClient("test-key")
+	nivHTTP := youversion.HTTPClientForTest(nivClient)
+	nivHTTP.Transport = &hostRewriter{target: nivSrv.URL, next: http.DefaultTransport}
+	nivHTTP.Timeout = 5 * time.Second
+
+	reg := scripture.NewRegistry(scripture.ESV,
+		esv.NewProviderFromClient(esvClient),
+		youversion.NewProviderFromClient(nivClient),
+	)
+	return reg, esvSrv, nivSrv
+}
+
+func TestPassageHandlerRoutesByTranslation(t *testing.T) {
+	var esvCalls, nivCalls atomic.Int64
+	esvStub := func(w http.ResponseWriter, r *http.Request) {
+		esvCalls.Add(1)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"canonical":"John 3","passages":["<p>esv</p>"]}`))
+	}
+	nivStub := func(w http.ResponseWriter, r *http.Request) {
+		nivCalls.Add(1)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"id":"x","bible_id":111,"human_reference":"John 3","content":"<p>niv</p>"}`))
+	}
+	reg, esvSrv, nivSrv := newMultiStubRegistry(t, esvStub, nivStub)
+	defer esvSrv.Close()
+	defer nivSrv.Close()
+
+	counter := &ESVCallCounter{}
+	h := passageHandler(reg, counter)
+
+	// translation=ESV → ESV stub
+	req := httptest.NewRequest(http.MethodGet, "/api/passage?q="+url.QueryEscape("John 3")+"&translation=ESV", nil)
+	w := httptest.NewRecorder()
+	h(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("ESV: status = %d, body = %s", w.Code, w.Body.String())
+	}
+	if !strings.Contains(w.Body.String(), "<p>esv</p>") {
+		t.Errorf("ESV body did not contain ESV content: %s", w.Body.String())
+	}
+
+	// translation=NIV → NIV stub (envelope-rewrapped by youversion.Client)
+	req = httptest.NewRequest(http.MethodGet, "/api/passage?q="+url.QueryEscape("John 3")+"&translation=NIV", nil)
+	w = httptest.NewRecorder()
+	h(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("NIV: status = %d, body = %s", w.Code, w.Body.String())
+	}
+	if !strings.Contains(w.Body.String(), "<p>niv</p>") {
+		t.Errorf("NIV body did not contain NIV content: %s", w.Body.String())
+	}
+	if !strings.Contains(w.Body.String(), `"passages"`) {
+		t.Errorf("NIV body missing rewrapped passages envelope: %s", w.Body.String())
+	}
+
+	if got := esvCalls.Load(); got != 1 {
+		t.Errorf("esv calls = %d, want 1", got)
+	}
+	if got := nivCalls.Load(); got != 1 {
+		t.Errorf("niv calls = %d, want 1", got)
 	}
 }
 

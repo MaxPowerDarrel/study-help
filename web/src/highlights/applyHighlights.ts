@@ -7,16 +7,18 @@
 
 import type { Highlight } from "./api";
 import { listVerseAnchors, tupleToRange } from "./parseSelection";
+import type { TranslationID } from "../translations/catalog";
 
 const HIGHLIGHT_ATTR = "data-highlight-id";
 
 export function applyHighlights(
   container: Element,
   highlights: Highlight[],
+  translation: TranslationID,
 ): void {
   removeAllHighlights(container);
   if (highlights.length === 0) return;
-  const anchors = listVerseAnchors(container);
+  const anchors = listVerseAnchors(container, translation);
   for (const h of highlights) {
     const range = tupleToRange(
       {
@@ -26,6 +28,7 @@ export function applyHighlights(
         end_offset: h.end_offset,
       },
       container,
+      translation,
       anchors,
     );
     if (!range) continue;
