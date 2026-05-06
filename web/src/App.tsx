@@ -47,6 +47,7 @@ export function App() {
   const [notesOpen, setNotesOpen] = useState(false);
   const [pendingNote, setPendingNote] = useState<PendingNote | null>(null);
   const articleRef = useRef<HTMLElement | null>(null);
+  const readingSurfaceRef = useRef<HTMLElement | null>(null);
   const userState = useUser();
   const translationState = useTranslation(userState.user, userState.applyUser);
   const translation = translationState.translation;
@@ -154,6 +155,13 @@ export function App() {
     },
     [translation],
   );
+
+  const activePill =
+    dailyTab.daily.kind === "ready" ? dailyTab.daily.state.active : null;
+  useEffect(() => {
+    if (tab !== "daily" || !activePill) return;
+    readingSurfaceRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+  }, [activePill, tab]);
 
   const scrollToNote = (n: Note) => {
     if (tab === "daily") {
@@ -403,7 +411,7 @@ export function App() {
           </aside>
         )}
 
-        <main className={styles.readingSurface}>
+        <main ref={readingSurfaceRef} className={styles.readingSurface}>
           {tab === "read" ? (
             <>
               {loading && (
