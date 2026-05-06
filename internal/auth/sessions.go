@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"errors"
+	"study-help/internal/db"
 	"time"
 )
 
@@ -65,7 +66,7 @@ func hashToken(raw string) ([]byte, error) {
 	return sum[:], nil
 }
 
-func insertSession(ctx context.Context, tx dbtx, userID int64, hash []byte, now, expiresAt time.Time) (*session, error) {
+func insertSession(ctx context.Context, tx db.TX, userID int64, hash []byte, now, expiresAt time.Time) (*session, error) {
 	const q = `INSERT INTO sessions (user_id, token_hash, created_at, last_seen_at, expires_at) VALUES (?, ?, ?, ?, ?)`
 	res, err := tx.ExecContext(ctx, q, userID, hash, now, now, expiresAt)
 	if err != nil {
@@ -78,7 +79,7 @@ func insertSession(ctx context.Context, tx dbtx, userID int64, hash []byte, now,
 	return &session{ID: id, UserID: userID, CreatedAt: now, LastSeenAt: now, ExpiresAt: expiresAt}, nil
 }
 
-func findSessionByHash(ctx context.Context, tx dbtx, hash []byte) (*session, error) {
+func findSessionByHash(ctx context.Context, tx db.TX, hash []byte) (*session, error) {
 	const q = `SELECT id, user_id, created_at, last_seen_at, expires_at FROM sessions WHERE token_hash = ?`
 	var s session
 	err := tx.QueryRowContext(ctx, q, hash).Scan(&s.ID, &s.UserID, &s.CreatedAt, &s.LastSeenAt, &s.ExpiresAt)
@@ -91,19 +92,19 @@ func findSessionByHash(ctx context.Context, tx dbtx, hash []byte) (*session, err
 	return &s, nil
 }
 
-func bumpSession(ctx context.Context, tx dbtx, sessionID int64, now, expiresAt time.Time) error {
+func bumpSession(ctx context.Context, tx db.TX, sessionID int64, now, expiresAt time.Time) error {
 	const q = `UPDATE sessions SET last_seen_at = ?, expires_at = ? WHERE id = ?`
 	_, err := tx.ExecContext(ctx, q, now, expiresAt, sessionID)
 	return err
 }
 
-func deleteSession(ctx context.Context, tx dbtx, sessionID int64) error {
+func deleteSession(ctx context.Context, tx db.TX, sessionID int64) error {
 	const q = `DELETE FROM sessions WHERE id = ?`
 	_, err := tx.ExecContext(ctx, q, sessionID)
 	return err
 }
 
-func deleteSessionByHash(ctx context.Context, tx dbtx, hash []byte) error {
+func deleteSessionByHash(ctx context.Context, tx db.TX, hash []byte) error {
 	const q = `DELETE FROM sessions WHERE token_hash = ?`
 	_, err := tx.ExecContext(ctx, q, hash)
 	return err

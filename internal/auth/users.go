@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"strings"
+	"study-help/internal/db"
 	"study-help/internal/scripture"
 	"time"
 )
@@ -32,13 +33,7 @@ func normalizeEmail(s string) string {
 	return strings.ToLower(strings.TrimSpace(s))
 }
 
-type dbtx interface {
-	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
-	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
-	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
-}
-
-func insertUser(ctx context.Context, tx dbtx, email string, passwordHash []byte, now time.Time) (*User, error) {
+func insertUser(ctx context.Context, tx db.TX, email string, passwordHash []byte, now time.Time) (*User, error) {
 	// translation defaults to 'ESV' via the column default
 	// (migrations/00005_translation.sql); keep that in sync with
 	// scripture.ESV which seeds the in-memory User struct below.
@@ -57,7 +52,7 @@ func insertUser(ctx context.Context, tx dbtx, email string, passwordHash []byte,
 	return &User{ID: id, Email: email, Translation: string(scripture.ESV), CreatedAt: now, UpdatedAt: now}, nil
 }
 
-func findUserByEmail(ctx context.Context, tx dbtx, email string) (*User, []byte, error) {
+func findUserByEmail(ctx context.Context, tx db.TX, email string) (*User, []byte, error) {
 	const q = `SELECT id, email, password_hash, translation, created_at, updated_at FROM users WHERE email = ?`
 	var u User
 	var hash string
@@ -71,7 +66,7 @@ func findUserByEmail(ctx context.Context, tx dbtx, email string) (*User, []byte,
 	return &u, []byte(hash), nil
 }
 
-func findUserByID(ctx context.Context, tx dbtx, id int64) (*User, error) {
+func findUserByID(ctx context.Context, tx db.TX, id int64) (*User, error) {
 	const q = `SELECT id, email, translation, created_at, updated_at FROM users WHERE id = ?`
 	var u User
 	err := tx.QueryRowContext(ctx, q, id).Scan(&u.ID, &u.Email, &u.Translation, &u.CreatedAt, &u.UpdatedAt)
@@ -84,7 +79,7 @@ func findUserByID(ctx context.Context, tx dbtx, id int64) (*User, error) {
 	return &u, nil
 }
 
-func updateUserTranslation(ctx context.Context, tx dbtx, id int64, translation string, now time.Time) (*User, error) {
+func updateUserTranslation(ctx context.Context, tx db.TX, id int64, translation string, now time.Time) (*User, error) {
 	const q = `UPDATE users SET translation = ?, updated_at = ? WHERE id = ?`
 	res, err := tx.ExecContext(ctx, q, translation, now, id)
 	if err != nil {

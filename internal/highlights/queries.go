@@ -2,17 +2,12 @@ package highlights
 
 import (
 	"context"
-	"database/sql"
 	"time"
+
+	"study-help/internal/db"
 )
 
-type dbtx interface {
-	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
-	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
-	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
-}
-
-func insertHighlight(ctx context.Context, tx dbtx, userID int64, h Highlight, now time.Time) (Highlight, error) {
+func insertHighlight(ctx context.Context, tx db.TX, userID int64, h Highlight, now time.Time) (Highlight, error) {
 	const q = `INSERT INTO highlights (user_id, translation, book, chapter, start_verse, start_offset, end_verse, end_offset, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
 	res, err := tx.ExecContext(ctx, q, userID, h.Translation, h.Book, h.Chapter, h.StartVerse, h.StartOffset, h.EndVerse, h.EndOffset, now)
 	if err != nil {
@@ -27,7 +22,7 @@ func insertHighlight(ctx context.Context, tx dbtx, userID int64, h Highlight, no
 	return h, nil
 }
 
-func listHighlights(ctx context.Context, tx dbtx, userID int64, translation, book string, chapter int) ([]Highlight, error) {
+func listHighlights(ctx context.Context, tx db.TX, userID int64, translation, book string, chapter int) ([]Highlight, error) {
 	const q = `SELECT id, translation, book, chapter, start_verse, start_offset, end_verse, end_offset, created_at
 	FROM highlights
 	WHERE user_id = ? AND translation = ? AND book = ? AND chapter = ?
@@ -51,7 +46,7 @@ func listHighlights(ctx context.Context, tx dbtx, userID int64, translation, boo
 // deleteHighlight removes the row only when (id, user_id) matches.
 // A non-matching row (different user, or no such id) returns ErrNotFound.
 // This collapses the 403/404 distinction the spec calls for.
-func deleteHighlight(ctx context.Context, tx dbtx, userID, id int64) error {
+func deleteHighlight(ctx context.Context, tx db.TX, userID, id int64) error {
 	const q = `DELETE FROM highlights WHERE id = ? AND user_id = ?`
 	res, err := tx.ExecContext(ctx, q, id, userID)
 	if err != nil {
