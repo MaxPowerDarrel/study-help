@@ -4,15 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"time"
+
+	"study-help/internal/db"
 )
 
-type dbtx interface {
-	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
-	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
-	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
-}
-
-func insertNote(ctx context.Context, tx dbtx, userID int64, n Note, now time.Time) (Note, error) {
+func insertNote(ctx context.Context, tx db.TX, userID int64, n Note, now time.Time) (Note, error) {
 	const q = `INSERT INTO notes (user_id, translation, book, chapter, start_verse, start_offset, end_verse, end_offset, body, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 	res, err := tx.ExecContext(ctx, q, userID, n.Translation, n.Book, n.Chapter, n.StartVerse, n.StartOffset, n.EndVerse, n.EndOffset, n.Body, now, now)
 	if err != nil {
@@ -28,7 +24,7 @@ func insertNote(ctx context.Context, tx dbtx, userID int64, n Note, now time.Tim
 	return n, nil
 }
 
-func listNotes(ctx context.Context, tx dbtx, userID int64, translation, book string, chapter int) ([]Note, error) {
+func listNotes(ctx context.Context, tx db.TX, userID int64, translation, book string, chapter int) ([]Note, error) {
 	const q = `SELECT id, translation, book, chapter, start_verse, start_offset, end_verse, end_offset, body, created_at, updated_at
 	FROM notes
 	WHERE user_id = ? AND translation = ? AND book = ? AND chapter = ?
@@ -52,7 +48,7 @@ func listNotes(ctx context.Context, tx dbtx, userID int64, translation, book str
 // getNote returns the single note (id, user_id) tuple owns. A miss —
 // non-existent id, or row owned by another user — returns ErrNotFound,
 // collapsing the 403/404 distinction the same way deleteNote does.
-func getNote(ctx context.Context, tx dbtx, userID, id int64) (Note, error) {
+func getNote(ctx context.Context, tx db.TX, userID, id int64) (Note, error) {
 	const q = `SELECT id, translation, book, chapter, start_verse, start_offset, end_verse, end_offset, body, created_at, updated_at
 	FROM notes
 	WHERE id = ? AND user_id = ?`
@@ -67,7 +63,7 @@ func getNote(ctx context.Context, tx dbtx, userID, id int64) (Note, error) {
 	return n, nil
 }
 
-func updateNoteBody(ctx context.Context, tx dbtx, userID, id int64, body string, now time.Time) (Note, error) {
+func updateNoteBody(ctx context.Context, tx db.TX, userID, id int64, body string, now time.Time) (Note, error) {
 	const q = `UPDATE notes SET body = ?, updated_at = ? WHERE id = ? AND user_id = ?`
 	res, err := tx.ExecContext(ctx, q, body, now, id, userID)
 	if err != nil {
@@ -85,7 +81,7 @@ func updateNoteBody(ctx context.Context, tx dbtx, userID, id int64, body string,
 
 // deleteNote removes the row only when (id, user_id) matches.
 // A non-matching row (different user, or no such id) returns ErrNotFound.
-func deleteNote(ctx context.Context, tx dbtx, userID, id int64) error {
+func deleteNote(ctx context.Context, tx db.TX, userID, id int64) error {
 	const q = `DELETE FROM notes WHERE id = ? AND user_id = ?`
 	res, err := tx.ExecContext(ctx, q, id, userID)
 	if err != nil {

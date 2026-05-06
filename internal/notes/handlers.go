@@ -3,14 +3,13 @@ package notes
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log"
 	"net/http"
 	"strconv"
 
 	"study-help/internal/auth"
 	"study-help/internal/canon"
-	"study-help/internal/scripture"
+	"study-help/internal/httpx"
 )
 
 type createBody struct {
@@ -34,12 +33,12 @@ type patchBody struct {
 func (s *Service) HandleList() http.HandlerFunc {
 	return auth.RequireUser(func(w http.ResponseWriter, r *http.Request) {
 		user, _ := auth.UserFromContext(r.Context())
-		translation, err := resolveTranslation(r.URL.Query().Get("translation"), user, s.reg)
+		translation, err := httpx.ResolveTranslation(r.URL.Query().Get("translation"), user.Translation, s.reg)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		book, chapter, err := parsePassageQuery(r)
+		book, chapter, err := httpx.ParsePassageQuery(r)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
@@ -50,7 +49,7 @@ func (s *Service) HandleList() http.HandlerFunc {
 			log.Printf("notes list user_id=%d err=%v", user.ID, err)
 			return
 		}
-		writeJSON(w, http.StatusOK, items)
+		httpx.WriteJSON(w, http.StatusOK, items)
 	})
 }
 
@@ -78,7 +77,7 @@ func (s *Service) HandleCreate() http.HandlerFunc {
 			http.Error(w, "invalid request body", http.StatusBadRequest)
 			return
 		}
-		translation, err := resolveTranslation(body.Translation, user, s.reg)
+		translation, err := httpx.ResolveTranslation(body.Translation, user.Translation, s.reg)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
@@ -124,7 +123,7 @@ func (s *Service) HandleCreate() http.HandlerFunc {
 			log.Printf("notes create insert user_id=%d err=%v", user.ID, err)
 			return
 		}
-		writeJSON(w, http.StatusCreated, saved)
+		httpx.WriteJSON(w, http.StatusCreated, saved)
 	})
 }
 
@@ -165,7 +164,7 @@ func (s *Service) HandlePatch() http.HandlerFunc {
 			log.Printf("notes patch user_id=%d id=%d err=%v", user.ID, id, err)
 			return
 		}
-		writeJSON(w, http.StatusOK, updated)
+		httpx.WriteJSON(w, http.StatusOK, updated)
 	})
 }
 
@@ -190,51 +189,4 @@ func (s *Service) HandleDelete() http.HandlerFunc {
 		}
 		w.WriteHeader(http.StatusNoContent)
 	})
-}
-
-// resolveTranslation picks the active translation for a request:
-// supplied (body field or ?translation=) wins; falls back to the user's
-// account preference. Unknown IDs return an error mapped to 400 by the
-// caller.
-func resolveTranslation(supplied string, user *auth.User, reg *scripture.Registry) (scripture.ID, error) {
-	s := supplied
-	if s == "" {
-		s = user.Translation
-	}
-	id := scripture.ID(s)
-	if !reg.Known(id) {
-		return "", fmt.Errorf("unknown translation %q", s)
-	}
-	return id, nil
-}
-
-func parsePassageQuery(r *http.Request) (canon.Book, int, error) {
-	bookParam := r.URL.Query().Get("book")
-	chapterStr := r.URL.Query().Get("chapter")
-	if bookParam == "" || chapterStr == "" {
-		return canon.Book{}, 0, errBadRequest("missing book or chapter")
-	}
-	chapter, err := strconv.Atoi(chapterStr)
-	if err != nil {
-		return canon.Book{}, 0, errBadRequest("invalid chapter")
-	}
-	book, ok := canon.LookupBook(bookParam)
-	if !ok {
-		return canon.Book{}, 0, errBadRequest("unknown book")
-	}
-	if chapter < 1 || chapter > book.Chapters {
-		return canon.Book{}, 0, errBadRequest("chapter out of range")
-	}
-	return book, chapter, nil
-}
-
-type httpError string
-
-func (e httpError) Error() string  { return string(e) }
-func errBadRequest(s string) error { return httpError(s) }
-
-func writeJSON(w http.ResponseWriter, status int, v any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(v)
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"study-help/internal/db"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
@@ -151,7 +152,7 @@ func (s *Service) Authenticate(ctx context.Context, rawToken string) (*User, ses
 	return user, sessionToken{Raw: rawToken, ExpiresAt: newExpiry}, nil
 }
 
-func (s *Service) issueSession(ctx context.Context, tx dbtx, userID int64, now time.Time) (sessionToken, error) {
+func (s *Service) issueSession(ctx context.Context, tx db.TX, userID int64, now time.Time) (sessionToken, error) {
 	raw, hash, err := newSessionToken()
 	if err != nil {
 		return sessionToken{}, err
