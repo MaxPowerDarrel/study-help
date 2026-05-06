@@ -18,6 +18,9 @@ sqlite.db-shm
 .idea/
 .vscode/
 
+# macOS
+.DS_Store
+
 # Web bundle output (built by web/ via Vite, embedded by internal/web)
 internal/web/dist/*
 !internal/web/dist/.gitkeep
