@@ -1,7 +1,6 @@
 package notes
 
 import (
-	"encoding/json"
 	"errors"
 	"log"
 	"net/http"
@@ -60,21 +59,8 @@ func (s *Service) HandleList() http.HandlerFunc {
 func (s *Service) HandleCreate() http.HandlerFunc {
 	return auth.RequireUser(func(w http.ResponseWriter, r *http.Request) {
 		user, _ := auth.UserFromContext(r.Context())
-		// Cap the request body before decoding. The +1024 buffer covers
-		// the JSON envelope around a max-size body string; the precise
-		// len(body.Body) check below enforces the 16 KB cap on the field
-		// itself.
-		r.Body = http.MaxBytesReader(w, r.Body, MaxBodyBytes+1024)
 		var body createBody
-		dec := json.NewDecoder(r.Body)
-		dec.DisallowUnknownFields()
-		if err := dec.Decode(&body); err != nil {
-			var maxErr *http.MaxBytesError
-			if errors.As(err, &maxErr) {
-				http.Error(w, "body too large", http.StatusBadRequest)
-				return
-			}
-			http.Error(w, "invalid request body", http.StatusBadRequest)
+		if !decodeJSONBody(w, r, &body) {
 			return
 		}
 		translation, err := httpx.ResolveTranslation(body.Translation, user.Translation, s.reg)
@@ -137,17 +123,8 @@ func (s *Service) HandlePatch() http.HandlerFunc {
 			http.Error(w, "invalid id", http.StatusBadRequest)
 			return
 		}
-		r.Body = http.MaxBytesReader(w, r.Body, MaxBodyBytes+1024)
 		var body patchBody
-		dec := json.NewDecoder(r.Body)
-		dec.DisallowUnknownFields()
-		if err := dec.Decode(&body); err != nil {
-			var maxErr *http.MaxBytesError
-			if errors.As(err, &maxErr) {
-				http.Error(w, "body too large", http.StatusBadRequest)
-				return
-			}
-			http.Error(w, "invalid request body", http.StatusBadRequest)
+		if !decodeJSONBody(w, r, &body) {
 			return
 		}
 		if len(body.Body) > MaxBodyBytes {
