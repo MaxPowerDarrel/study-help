@@ -2,7 +2,7 @@
 
 **Status:** Shipped
 **Created:** 2026-05-03
-**Last updated:** 2026-05-04
+**Last updated:** 2026-05-07
 **Owner:** unassigned
 
 > **Editor's note (2026-05-07):** references in this spec to notes as a future surface predate the removal of the Notes feature on 2026-05-07 (see [notes.md](./notes.md)). The token / theme work described here was unaffected.
@@ -315,6 +315,36 @@ Lands in **two PRs**, in this order:
   picker keeps only navigation primitives (book, chapter, verse
   range, prev/next). Spec stays Shipped; no scope or behavior
   change.
+- 2026-05-07: Picker sidebar is collapsible. A `☰` button in the app
+  header (Read tab only, immediately left of the gear) toggles the
+  picker; when collapsed the layout drops to a single full-width
+  column — the same `.layoutFull` shape the Daily tab already uses
+  (the existing `.layoutDaily` class was renamed to `.layoutFull`
+  since it now serves both cases). Collapsed state persists via
+  `ToggleStore` under key `ui.pickerCollapsed`, default expanded.
+  Reason: gives the reading surface the full viewport when the user
+  is reading rather than navigating, supporting §3 "Study-first UX"
+  by making picker chrome dismissable. Spec stays Shipped; no scope
+  or behavior change to the picker's controls themselves.
+- 2026-05-07: Supersedes the earlier 2026-05-07 collapsible-sidebar
+  decision. The picker is now a **dropdown menu** anchored under the
+  `☰` button (Read tab only) rather than a persistent sidebar that
+  collapses. The menu contains the Translation / Book / Chapter
+  selects; it's a transient overlay (full-viewport backdrop with
+  click-outside dismiss, matching the SettingsPane pattern) and its
+  open/closed state is **not** persisted — it's session React state,
+  not a `ToggleStore` key. The `usePickerCollapsed` hook and the
+  `ui.pickerCollapsed` key are removed; the `.layoutFull` class is
+  removed since the layout no longer has a sidebar column. The
+  Read-tab Previous / Next chapter buttons move out of the picker
+  and into a new footer at the bottom of the rendered passage,
+  separated by a top border, so chapter navigation is reachable
+  while reading without opening the menu. Reason: a dropdown matches
+  the user's expected mobile/touch interaction model better than a
+  collapsible rail; pulling Prev/Next into the reading flow gives a
+  natural advance-after-finishing-the-chapter affordance and removes
+  the only durable reason the sidebar had to stay around. Spec stays
+  Shipped; no scope or content change to the picker's controls.
 
 ## Verification
 

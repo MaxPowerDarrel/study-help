@@ -80,7 +80,8 @@
   justify-self: end;
 }
 
-.gear {
+.gear,
+.toolbarBtn {
   background: transparent;
   border: 1px solid var(--color-rule);
   color: var(--color-accent);
@@ -91,32 +92,44 @@
   cursor: pointer;
 }
 
-.gear:hover {
+.gear:hover,
+.toolbarBtn:hover {
   border-color: var(--color-accent);
 }
 
 .layout {
-  display: grid;
-  grid-template-columns: 260px 1fr;
+  display: flex;
   flex: 1;
   min-height: 0;
 }
 
-.layoutDaily {
-  grid-template-columns: 1fr;
+.pickerOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
 }
 
-.picker {
-  border-right: 1px solid var(--color-rule);
-  padding: var(--space-5) var(--space-4);
+.pickerMenu {
+  position: absolute;
+  top: calc(
+    env(safe-area-inset-top) + var(--space-3) + var(--tap-target) +
+      var(--space-2)
+  );
+  right: max(var(--space-4), env(safe-area-inset-right));
+  width: min(280px, calc(100vw - var(--space-4) * 2));
+  background: var(--color-bg);
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: var(--space-3);
   font-family: var(--font-sans);
   font-size: var(--text-base);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
 }
 
-.picker label {
+.pickerMenu label {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
@@ -126,7 +139,7 @@
   letter-spacing: 0.05em;
 }
 
-.picker select {
+.pickerMenu select {
   background: transparent;
   color: var(--color-fg);
   border: 1px solid var(--color-rule);
@@ -134,35 +147,23 @@
   padding: 0 var(--space-2);
   min-height: var(--tap-target);
   font-family: inherit;
+  font-size: 16px;
 }
 
-.picker select:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.picker fieldset {
-  border: 1px solid var(--color-rule);
-  border-radius: var(--radius-sm);
-  padding: var(--space-2) var(--space-3);
+.readArticle {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--space-5);
+  width: 100%;
+  max-width: 38rem;
 }
 
-.picker fieldset legend {
-  font-size: var(--text-xs);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--color-muted);
-  padding: 0 var(--space-1);
-}
-
-.chapterNav {
+.chapterFooter {
   display: flex;
   justify-content: space-between;
   gap: var(--space-2);
-  margin-top: auto;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-rule);
 }
 
 .navBtn {
@@ -182,6 +183,7 @@
 
 .readingSurface {
   position: relative;
+  flex: 1;
   padding: var(--space-7) var(--space-6);
   overflow-y: auto;
   /* Keep iOS rubber-banding inside the reader. */
