@@ -223,10 +223,6 @@ func expandChapterRange(q string) []string {
 	book := strings.TrimSpace(q[:tailStart])
 	tail := strings.TrimSpace(q[tailStart+1:])
 
-	// Verse spec ("119:33-40") — pass through; YouVersion handles it.
-	if strings.Contains(tail, ":") {
-		return []string{q}
-	}
 	a, b, ok := strings.Cut(tail, "-")
 	if !ok {
 		return []string{q}
@@ -243,10 +239,11 @@ func expandChapterRange(q string) []string {
 	return out
 }
 
-// toUSFM translates a canon-validated reference (e.g. "John 3:1-21")
-// into a USFM passage reference suitable for the YouVersion endpoint
-// (e.g. "JHN.3.1-JHN.3.21"). Handles the four shapes accepted by
-// canon.ValidateQuery.
+// toUSFM translates a canon-validated reference into a USFM passage
+// reference suitable for the YouVersion endpoint. Handles the two
+// shapes accepted by canon.ValidateQuery: "<book> <chapter>" and
+// "<book> <chapter>-<chapter>". Verse-level references were retired
+// on 2026-05-07 (NIV/ESV parity).
 func toUSFM(q string) (string, error) {
 	q = strings.TrimSpace(q)
 
@@ -269,23 +266,11 @@ func toUSFM(q string) (string, error) {
 		return "", fmt.Errorf("unknown book %q", bookName)
 	}
 
-	chapterPart, versePart, hasColon := strings.Cut(tail, ":")
-	if !hasColon {
-		startCh, endCh, hasDash := cutDash(chapterPart)
-		if hasDash {
-			return fmt.Sprintf("%s.%s-%s.%s", code, startCh, code, endCh), nil
-		}
-		return fmt.Sprintf("%s.%s", code, chapterPart), nil
-	}
-	startV, endV, hasDash := cutDash(versePart)
+	startCh, endCh, hasDash := strings.Cut(tail, "-")
 	if hasDash {
-		return fmt.Sprintf("%s.%s.%s-%s.%s.%s",
-			code, chapterPart, startV, code, chapterPart, endV), nil
+		return fmt.Sprintf("%s.%s-%s.%s",
+			code, strings.TrimSpace(startCh),
+			code, strings.TrimSpace(endCh)), nil
 	}
-	return fmt.Sprintf("%s.%s.%s", code, chapterPart, versePart), nil
-}
-
-func cutDash(s string) (string, string, bool) {
-	a, b, ok := strings.Cut(s, "-")
-	return strings.TrimSpace(a), strings.TrimSpace(b), ok
+	return fmt.Sprintf("%s.%s", code, tail), nil
 }

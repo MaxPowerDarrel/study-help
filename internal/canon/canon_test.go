@@ -5,12 +5,8 @@ import "testing"
 func TestValidateQueryAccepts(t *testing.T) {
 	cases := []string{
 		"John 3",
-		"John 3:16",
-		"John 3:1-21",
 		"Genesis 1",
 		"Revelation 22",
-		"1 Samuel 17:45-50",
-		"Song of Solomon 2:1",
 		"Psalms 23",
 		"Psalm 23",
 		"3 John 1",
@@ -37,9 +33,12 @@ func TestValidateQueryRejects(t *testing.T) {
 		"John",
 		"John 99",
 		"John 0",
-		"John 3:0",
-		"John 3:5-2",
-		"John 3:abc",
+		// Verse-level references were retired 2026-05-07 (NIV/ESV
+		// parity); previously accepted, now rejected.
+		"John 3:16",
+		"John 3:1-21",
+		"1 Samuel 17:45-50",
+		"Song of Solomon 2:1",
 		"<script>",
 		"John 3; DROP TABLE",
 		"Genesis 0-3",

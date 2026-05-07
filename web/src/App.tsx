@@ -23,9 +23,6 @@ type Tab = "read" | "daily";
 export function App() {
   const [tab, setTab] = useState<Tab>("read");
   const [ref, setRef] = useState<ChapterRef>({ bookIndex: 42, chapter: 3 }); // John 3
-  const [range, setRange] = useState<{ start: number; end: number } | null>(
-    null,
-  );
   const [toggles, setToggles] = useToggles();
   const [theme, setTheme] = useTheme();
   const [html, setHtml] = useState<string>("");
@@ -37,7 +34,7 @@ export function App() {
   const [planIDs, setPlanIDs] = usePlanSelection();
   const dailyTab = useDailyTab(tab === "daily", toggles, translation, planIDs);
 
-  const q = useMemo(() => refToQuery(ref, range ?? undefined), [ref, range]);
+  const q = useMemo(() => refToQuery(ref), [ref]);
 
   // Read-tab passage fetch.
   useEffect(() => {
@@ -160,7 +157,6 @@ export function App() {
                 value={ref.bookIndex}
                 onChange={(e) => {
                   setRef({ bookIndex: Number(e.target.value), chapter: 1 });
-                  setRange(null);
                 }}
               >
                 {CANON.map((b, i) => (
@@ -176,7 +172,6 @@ export function App() {
                 value={ref.chapter}
                 onChange={(e) => {
                   setRef({ ...ref, chapter: Number(e.target.value) });
-                  setRange(null);
                 }}
               >
                 {Array.from({ length: book.chapters }, (_, i) => i + 1).map(
@@ -189,49 +184,6 @@ export function App() {
               </select>
             </label>
 
-            <fieldset className={styles.range}>
-              <legend>Verse range</legend>
-              <input
-                type="number"
-                min={1}
-                placeholder="start"
-                value={range?.start ?? ""}
-                onChange={(e) => {
-                  const start = Number(e.target.value);
-                  if (!start) {
-                    setRange(null);
-                    return;
-                  }
-                  setRange({
-                    start,
-                    end: range?.end && range.end >= start ? range.end : start,
-                  });
-                }}
-              />
-              <span>–</span>
-              <input
-                type="number"
-                min={1}
-                placeholder="end"
-                value={range?.end ?? ""}
-                disabled={!range}
-                onChange={(e) => {
-                  if (!range) return;
-                  const end = Number(e.target.value);
-                  setRange({ start: range.start, end: end || range.start });
-                }}
-              />
-              {range && (
-                <button
-                  type="button"
-                  className={styles.clearBtn}
-                  onClick={() => setRange(null)}
-                >
-                  Clear
-                </button>
-              )}
-            </fieldset>
-
             <nav className={styles.chapterNav}>
               {prev && (
                 <button
@@ -239,7 +191,6 @@ export function App() {
                   className={styles.navBtn}
                   onClick={() => {
                     setRef(prev);
-                    setRange(null);
                   }}
                 >
                   ← Previous
@@ -251,7 +202,6 @@ export function App() {
                   className={styles.navBtn}
                   onClick={() => {
                     setRef(next);
-                    setRange(null);
                   }}
                 >
                   Next →
