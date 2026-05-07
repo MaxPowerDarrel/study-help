@@ -1,0 +1,49 @@
+name: deploy
+
+# Deploy a previously-built image to the Lightsail VM. Manual trigger
+# only — auto-deploy on every main commit feels too aggressive for a
+# personal-scale service. The image must already exist in GHCR (built
+# by the build-image workflow). Repository secrets required:
+#
+#   DEPLOY_HOST     — Lightsail static IP or FQDN
+#   DEPLOY_USER     — SSH user (e.g. "ubuntu")
+#   DEPLOY_SSH_KEY  — private key for the VM (PEM, no passphrase)
+#
+# Optional: configure a "production" environment in the repo settings
+# with required reviewers if you want a manual approval gate before
+# the deploy step runs.
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Image tag to deploy (e.g. sha-abc1234, v1.2.3, main)"
+        required: true
+        default: "main"
+        type: string
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Resolve image reference
+        id: image
+        run: |
+          echo "ref=ghcr.io/${GITHUB_REPOSITORY}:${TAG}" >> "$GITHUB_OUTPUT"
+        env:
+          TAG: ${{ inputs.image_tag }}
+
+      - name: SSH and deploy
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script_stop: true
+          script: |
+            /opt/study-help/deploy.sh "${{ steps.image.outputs.ref }}"
