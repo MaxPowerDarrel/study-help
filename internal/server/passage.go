@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"strconv"
 
-	"study-help/internal/auth"
 	"study-help/internal/canon"
 	"study-help/internal/scripture"
 )
@@ -17,8 +16,7 @@ import (
 // Validation: q is checked against canon.ValidateQuery before any
 // upstream call so malformed input returns 400 without consuming an
 // upstream API call. Translation resolution: ?translation= wins;
-// otherwise the signed-in user's account preference; otherwise the
-// registry's default. Unknown ?translation= → 400.
+// otherwise the registry's default. Unknown ?translation= → 400.
 func passageHandler(reg *scripture.Registry, counter *ESVCallCounter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query().Get("q")
@@ -70,9 +68,9 @@ func passageHandler(reg *scripture.Registry, counter *ESVCallCounter) http.Handl
 }
 
 // resolvePassageTranslation picks the active translation for the
-// passage endpoint. Explicit ?translation= wins; falls back to the
-// signed-in user's account preference; falls back to the registry
-// default. Unknown explicit IDs return an error mapped to 400.
+// passage endpoint. Explicit ?translation= wins; otherwise falls back
+// to the registry default. Unknown explicit IDs return an error mapped
+// to 400.
 func resolvePassageTranslation(r *http.Request, reg *scripture.Registry) (scripture.ID, error) {
 	if q := r.URL.Query().Get("translation"); q != "" {
 		id := scripture.ID(q)
@@ -80,14 +78,6 @@ func resolvePassageTranslation(r *http.Request, reg *scripture.Registry) (script
 			return "", errBadTranslation(q)
 		}
 		return id, nil
-	}
-	if user, ok := auth.UserFromContext(r.Context()); ok && user != nil && user.Translation != "" {
-		id := scripture.ID(user.Translation)
-		if reg.Known(id) {
-			return id, nil
-		}
-		// User has a translation that's no longer registered (provider
-		// removed). Fall back to the default rather than 500ing.
 	}
 	return reg.Default(), nil
 }

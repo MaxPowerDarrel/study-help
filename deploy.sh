@@ -7,7 +7,6 @@ IMAGE_NAME="study-help"
 IMAGE_TAG="latest"
 CONTAINER_NAME="study-help"
 PORT="${APP_PORT:-8081}"
-DATABASE_DIR="./data"
 
 # Color output
 RED='\033[0;31m'
@@ -28,22 +27,16 @@ log_error() {
 }
 
 # Check for required environment variables
-if [ -z "$ESV_API_KEY" ] || [ -z "$SESSION_SECRET" ]; then
+if [ -z "$ESV_API_KEY" ] || [ -z "$YOUVERSION_APP_KEY" ]; then
   if [ -f .env ]; then
     log_info "Loading environment variables from .env"
     set -a
     source .env
     set +a
   else
-    log_error "ESV_API_KEY and SESSION_SECRET must be set, or .env file must exist"
+    log_error "ESV_API_KEY and YOUVERSION_APP_KEY must be set, or .env file must exist"
     exit 1
   fi
-fi
-
-# Create data directory if it doesn't exist
-if [ ! -d "$DATABASE_DIR" ]; then
-  log_info "Creating data directory: $DATABASE_DIR"
-  mkdir -p "$DATABASE_DIR"
 fi
 
 # Build the Docker image
@@ -69,11 +62,8 @@ docker run -d \
   --name "$CONTAINER_NAME" \
   -p "$PORT:8080" \
   -e "ESV_API_KEY=$ESV_API_KEY" \
-  -e "SESSION_SECRET=$SESSION_SECRET" \
   -e "YOUVERSION_APP_KEY=$YOUVERSION_APP_KEY" \
-  -e "DATABASE_URL=/data/sqlite.db" \
   -e "ENV=dev" \
-  -v "$(pwd)/$DATABASE_DIR:/data" \
   "$IMAGE_NAME:$IMAGE_TAG"
 
 # Wait a moment for the container to start

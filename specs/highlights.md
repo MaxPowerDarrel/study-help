@@ -1,11 +1,18 @@
 # Highlights
 
-**Status:** Shipped
+**Status:** Deprecated
 **Created:** 2026-05-04
-**Last updated:** 2026-05-04
-**Owner:** unassigned
+**Last updated:** 2026-05-07
+**Removed:** 2026-05-07
+**Owner:** Darrel
 
-> **Editor's note (2026-05-07):** historical references in this spec to "highlights and notes" predate the removal of the Notes feature on 2026-05-07 (see [notes.md](./notes.md)). The constitution quotes below reflect §1/§2 as they read at the time of this spec; both sections have since been amended to drop notes. Highlights ship and remain in scope.
+> **Editor's note (2026-05-07):** historical references in this spec to "highlights and notes" predate the removal of the Notes feature on 2026-05-07 (see [notes.md](./notes.md)). The constitution quotes below reflect §1/§2 as they read at the time of this spec; both sections have since been amended to drop notes.
+
+## Removal
+
+The Highlights feature shipped per the spec below and was then removed end-to-end on 2026-05-07, alongside [accounts.md](./accounts.md). The reason: highlights were the only remaining per-user feature, and once retired the entire identity layer (and the SQLite database that backed it) could go too. Removal covered the `internal/highlights/` Go package and its `00003_highlights.sql` migration, the `web/src/highlights/` SPA module (PassageView, HighlightToolbar, parseSelection, applyHighlights, useHighlights), the three `/api/highlights*` routes, the `mark.highlight` CSS rule, the `--color-highlight` token, the `include-verse-anchors=true` flag in the ESV client, and the `web/src/platform/SelectionAdapter.ts` and `useResource.ts` helpers (only highlights consumed them). The Daily-tab per-chapter chunking introduced specifically to fix the highlight verse-anchor dedup bug (see [daily-annotations.md](./daily-annotations.md)) was reverted in the same change.
+
+The body of this spec is preserved below as the historical design record.
 
 ## Why
 

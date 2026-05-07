@@ -76,11 +76,6 @@ func (c *Client) Fetch(ctx context.Context, q string, opts Options) (*Result, er
 	// passage/html defaults this to true and would otherwise emit a
 	// <a class="mp3link">Listen</a> link in every payload.
 	params.Set("include-audio-link", "false")
-	// Highlights need per-verse anchors (e.g. <a name="v043003016">) so
-	// the client can locate selections by verse + character offset. Sent
-	// unconditionally — it's a server-managed concern, not a user toggle.
-	// See specs/highlights.md.
-	params.Set("include-verse-anchors", "true")
 	u.RawQuery = params.Encode()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)

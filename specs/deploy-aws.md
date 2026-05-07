@@ -2,8 +2,10 @@
 
 **Status:** Draft
 **Created:** 2026-05-06
-**Last updated:** 2026-05-06
+**Last updated:** 2026-05-07
 **Owner:** unassigned
+
+> **Editor's note (2026-05-07):** the design below assumes a SQLite-backed app and devotes most of its complexity to Litestream → S3 replication, a one-shot `restore` init container, and the IAM scaffolding around them. None of that is required anymore: the auth, highlights, and notes features that needed a database were retired on 2026-05-07 (see [accounts.md](./accounts.md), [highlights.md](./highlights.md), [notes.md](./notes.md)), so the binary is fully stateless. The live `deploy/lightsail/` stack now runs **two services only — `app` + `caddy` — with no `restore`, `litestream`, S3 bucket, or AWS IAM key**. Caddy + DNS + a static IP remain the deployment shape; everything below tied to data persistence is preserved as the historical design record and would need to be reintroduced if a future feature brings back server-owned state.
 
 ## Why
 

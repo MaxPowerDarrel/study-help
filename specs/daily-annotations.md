@@ -1,11 +1,18 @@
 # Daily annotations
 
-**Status:** Shipped
+**Status:** Deprecated
 **Created:** 2026-05-05
 **Last updated:** 2026-05-07
-**Owner:** unassigned
+**Removed:** 2026-05-07
+**Owner:** Darrel
 
-> **Editor's note (2026-05-07):** the Notes feature has since been removed (see [notes.md](./notes.md)). Sections of this spec describe the now-removed notes drawer, `useDailyNotes`, and "Add note" toolbar affordance — they are preserved as the historical design record but the live behavior on the Daily tab is highlights + translation picker only. The `onAddNote` callback, `useDailyNotes` hook, `findArticle`/`getArticleEl` lookup, and `switchToOwningPill` are no longer present in the codebase.
+> **Editor's note (2026-05-07):** the Notes feature was removed earlier the same day (see [notes.md](./notes.md)); sections describing the notes drawer, `useDailyNotes`, and the "Add note" toolbar affordance reflect a state that was already partially out of date when this spec was deprecated.
+
+## Removal
+
+The Daily-annotations feature shipped per the spec below and was then removed end-to-end on 2026-05-07, alongside [accounts.md](./accounts.md) and [highlights.md](./highlights.md). The reason: with highlights retired, the per-chapter chunking this feature introduced (to work around the verse-anchor dedup bug when rendering multi-chapter pills) had no remaining purpose. The Daily tab reverted to the simpler pre-2026-05-06 shape: one HTML blob per pill, one `<article>` render, no per-chapter `PassageView`. Removal covered the per-chapter `DailyChapterState` model, the per-chapter article-ref map in `useDailyTab`, the per-chapter spinner / heading / error blocks in `DailyPanel`, and the highlight wiring on the Daily tab's reading surface. The daily-header translation picker (added by this feature) and multi-plan support (added afterwards in [multi-plan.md](./multi-plan.md)) are kept.
+
+The body of this spec is preserved below as the historical design record.
 
 ## Why
 

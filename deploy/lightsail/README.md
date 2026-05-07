@@ -1,8 +1,7 @@
 # Lightsail deploy
 
-Single-VM AWS deployment for `study-help`: Caddy fronts the app on `:443`,
-Litestream replicates the SQLite database to S3, and a one-shot restore
-service rehydrates the DB from S3 if the disk is empty.
+Single-VM AWS deployment for `study-help`: Caddy fronts the app on `:443`
+and reverse-proxies to the stateless Go binary.
 
 See [`specs/deploy-aws.md`](../../specs/deploy-aws.md) for the rationale
 and decisions; this README is the operator runbook.
@@ -10,19 +9,19 @@ and decisions; this README is the operator runbook.
 ## What gets deployed
 
 ```
-┌─────────────────────────── Lightsail VM ───────────────────────────┐
-│                                                                    │
-│   caddy :80/:443  ──►  app :8080  ──►  /data/sqlite.db (volume)    │
-│                                            ▲                       │
-│                                            │ shared volume         │
-│                                       litestream  ──►  S3 (replica)│
-│                                       restore   ◄──   (one-shot)   │
-│                                                                    │
-└────────────────────────────────────────────────────────────────────┘
+┌───────────── Lightsail VM ──────────────┐
+│                                         │
+│   caddy :80/:443  ──►  app :8080        │
+│                                         │
+└─────────────────────────────────────────┘
         ▲
         │ HTTPS
    Route 53  ──  A record  ──►  Lightsail static IP
 ```
+
+The server has no database — see `STACK.md` for context. Auth, highlights,
+and notes were retired on 2026-05-07; the binary is fully stateless, so
+this stack carries no per-app volumes (only Caddy's cert / state caches).
 
 ## One-time AWS setup
 
@@ -30,33 +29,7 @@ and decisions; this README is the operator runbook.
    `small_3_0` ($10/mo, 2 GB) for headroom. Pick a region near you.
 2. **Static IP** — attach to the instance (free while attached).
 3. **Networking** — open ports 80 and 443. Restrict 22 to your IP.
-4. **Automatic snapshots** — enable daily, 7-day retention (~$1/mo). Belt
-   and suspenders against the Litestream replica.
-5. **S3 bucket** — `study-help-litestream-<random>`, block all public
-   access, enable versioning. Same region as the VM is fine but not
-   required (replication latency is irrelevant).
-6. **IAM user** for Litestream — least-privilege policy:
-   ```json
-   {
-     "Version": "2012-10-17",
-     "Statement": [{
-       "Effect": "Allow",
-       "Action": [
-         "s3:GetObject",
-         "s3:PutObject",
-         "s3:DeleteObject",
-         "s3:ListBucket"
-       ],
-       "Resource": [
-         "arn:aws:s3:::study-help-litestream-XXXXXX",
-         "arn:aws:s3:::study-help-litestream-XXXXXX/*"
-       ]
-     }]
-   }
-   ```
-   Issue an access key for this user. Lightsail VMs do not get IAM instance
-   profiles, so a scoped access key is the path.
-7. **Route 53** — hosted zone for your domain, A record at the static IP.
+4. **Route 53** — hosted zone for your domain, A record at the static IP.
 
 ## Image distribution
 
@@ -85,8 +58,8 @@ cd study-help
 `bootstrap.sh` is idempotent. On first run it installs Docker and the
 Compose plugin, then asks you to log out / log back in for the docker
 group to take effect. Re-run after re-login and it scaffolds
-`/opt/study-help/` with `compose.yaml`, `Caddyfile`, `litestream.yml`,
-`deploy.sh`, and a starter `.env` (mode `0600`).
+`/opt/study-help/` with `compose.yaml`, `Caddyfile`, `deploy.sh`, and a
+starter `.env` (mode `0600`).
 
 Fill in the placeholders, then bring the stack up:
 
@@ -94,7 +67,6 @@ Fill in the placeholders, then bring the stack up:
 cd /opt/study-help
 $EDITOR .env                            # fill in every CHANGEME
 $EDITOR Caddyfile                       # replace study.example.com
-$EDITOR litestream.yml                  # replace bucket / region
 
 docker login ghcr.io                    # if pulling a private image
 
@@ -105,10 +77,7 @@ docker compose up -d
 docker compose logs -f caddy            # watch the first cert issue
 ```
 
-The app should be reachable at `https://study.example.com/`. Sign in,
-and confirm `Secure` cookies are set (browser devtools → Application →
-Cookies). The `ENV=prod` setting requires HTTPS; if the cookie isn't
-`Secure`, sign-in will silently fail.
+The app should be reachable at `https://study.example.com/`.
 
 ## Day-2 ops
 
@@ -145,25 +114,10 @@ ssh ubuntu@<host>
 /opt/study-help/deploy.sh ghcr.io/<you>/study-help:sha-abc1234
 ```
 
-### Restore from S3 (disaster recovery drill)
-
-The `restore` service runs automatically at startup whenever the DB file
-is missing. To exercise it:
-
-```bash
-docker compose down              # stops everything; data volume persists
-docker volume rm study-help_data # destroys the on-disk DB
-docker compose up -d             # restore service rehydrates from S3
-docker compose logs restore      # confirm "restored snapshot" message
-```
-
-Practice once on a throwaway box before you need it for real.
-
 ### Logs and metrics
 
 ```bash
 docker compose logs -f app           # application logs
-docker compose logs -f litestream    # replication progress / errors
 docker compose exec app wget -qO- 127.0.0.1:9090/metrics
 ```
 
@@ -171,23 +125,13 @@ The metrics endpoint is bound to `127.0.0.1:9090` inside the container by
 design — only reachable via `docker exec`. For a real dashboard, point a
 Grafana Cloud free-tier agent at it.
 
-### Rotating the AWS access key
-
-```bash
-# in AWS console: create a new key for the litestream user
-$EDITOR .env                          # update AWS_ACCESS_KEY_ID + SECRET
-docker compose up -d                  # picks up the new env on restart
-# then deactivate the old key in AWS console after confirming replication
-```
-
 ## Files
 
 | File              | Purpose                                                                     |
 |-------------------|-----------------------------------------------------------------------------|
-| `compose.yaml`    | Service definitions (app + caddy + litestream + restore).                   |
+| `compose.yaml`    | Service definitions (app + caddy).                                          |
 | `Caddyfile`       | Reverse proxy + automatic Let's Encrypt cert.                               |
-| `litestream.yml`  | What to replicate, where, and how often.                                    |
-| `.env.example`    | Template for `.env` (image tag, secrets, AWS creds).                        |
+| `.env.example`    | Template for `.env` (image tag, API keys).                                  |
 | `bootstrap.sh`    | One-shot host provisioning: installs Docker, scaffolds `/opt/study-help/`. |
 | `deploy.sh`       | VM-side deploy: atomic `.env` bump, pull, restart, healthcheck, rollback.   |
 

@@ -11,11 +11,8 @@ import (
 
 	_ "time/tzdata"
 
-	"study-help/internal/auth"
 	"study-help/internal/config"
-	"study-help/internal/db"
 	"study-help/internal/esv"
-	"study-help/internal/highlights"
 	"study-help/internal/scripture"
 	"study-help/internal/server"
 	"study-help/internal/youversion"
@@ -26,12 +23,6 @@ const metricsAddr = "127.0.0.1:9090"
 func main() {
 	cfg := config.Load()
 
-	database, err := db.Open(cfg)
-	if err != nil {
-		log.Fatalf("db: %v", err)
-	}
-	defer database.Close()
-
 	counter := &server.ESVCallCounter{}
 	dailyCounter := &server.DailyCounter{}
 	reg := scripture.NewRegistry(
@@ -39,13 +30,7 @@ func main() {
 		esv.NewProvider(cfg.ESVAPIKey),
 		youversion.NewProvider(cfg.YouVersionAppKey),
 	)
-	authSvc := auth.NewService(database, auth.Config{
-		IsDev:      cfg.IsDev(),
-		SessionTTL: 30 * 24 * time.Hour,
-	})
-	authLimiter := auth.NewLimiter()
-	highlightsSvc := highlights.NewService(database, highlights.Config{Registry: reg})
-	srv := server.New(cfg, database, counter, dailyCounter, reg, authSvc, authLimiter, highlightsSvc)
+	srv := server.New(cfg, counter, dailyCounter, reg)
 	metricsSrv := server.NewMetricsServer(metricsAddr, counter, dailyCounter)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)

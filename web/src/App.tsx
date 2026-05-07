@@ -10,10 +10,6 @@ import { fetchPassage } from "./api";
 import { useToggles } from "./toggles";
 import { useTheme } from "./theme";
 import { SettingsPane } from "./SettingsPane";
-import { AuthChip } from "./auth/AuthChip";
-import { AuthPanel } from "./auth/AuthPanel";
-import { useUser } from "./auth/useUser";
-import { PassageView } from "./highlights/PassageView";
 import { Attribution } from "./translations/Attribution";
 import { TRANSLATIONS, type TranslationID } from "./translations/catalog";
 import { useTranslation } from "./translations/useTranslation";
@@ -36,12 +32,8 @@ export function App() {
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [authOpen, setAuthOpen] = useState(false);
-  const articleRef = useRef<HTMLElement | null>(null);
   const readingSurfaceRef = useRef<HTMLElement | null>(null);
-  const userState = useUser();
-  const translationState = useTranslation(userState.user, userState.applyUser);
-  const translation = translationState.translation;
+  const { translation, setTranslation } = useTranslation();
   const [planIDs, setPlanIDs] = usePlanSelection();
   const dailyTab = useDailyTab(tab === "daily", toggles, translation, planIDs);
 
@@ -76,8 +68,6 @@ export function App() {
   const next = nextChapter(ref);
   const prev = prevChapter(ref);
   const book = CANON[ref.bookIndex];
-
-  const isSignedIn = userState.user !== null;
 
   const activePillIdx =
     dailyTab.daily.kind === "ready" ? dailyTab.daily.state.activeIdx : -1;
@@ -119,11 +109,6 @@ export function App() {
           </button>
         </nav>
         <div className={styles.headerRight}>
-          <AuthChip
-            user={userState.user}
-            onOpenSignin={() => setAuthOpen(true)}
-            onSignout={() => userState.signout()}
-          />
           <button
             type="button"
             className={styles.gear}
@@ -144,12 +129,6 @@ export function App() {
         planIDs={planIDs}
         setPlanIDs={setPlanIDs}
       />
-      <AuthPanel
-        open={authOpen}
-        onClose={() => setAuthOpen(false)}
-        signin={userState.signin}
-        signup={userState.signup}
-      />
       <div
         className={
           tab === "daily"
@@ -164,9 +143,7 @@ export function App() {
               <select
                 value={translation}
                 onChange={(e) => {
-                  void translationState.setTranslation(
-                    e.target.value as TranslationID,
-                  );
+                  setTranslation(e.target.value as TranslationID);
                 }}
               >
                 {TRANSLATIONS.map((t) => (
@@ -291,15 +268,13 @@ export function App() {
                 <div className={styles.spinner} aria-label="loading" />
               )}
               {!loading && html && (
-                <PassageView
-                  html={html}
-                  book={book.name}
-                  chapter={ref.chapter}
-                  translation={translation}
-                  isSignedIn={isSignedIn}
-                  showWordsOfChrist={toggles.include_word_of_christ}
-                  onGuestSignin={() => setAuthOpen(true)}
-                  articleRef={articleRef}
+                <article
+                  className={
+                    toggles.include_word_of_christ
+                      ? "passage"
+                      : "passage no-woc"
+                  }
+                  dangerouslySetInnerHTML={{ __html: html }}
                 />
               )}
             </>
@@ -311,10 +286,7 @@ export function App() {
               setActivePill={dailyTab.setActivePill}
               showWordsOfChrist={toggles.include_word_of_christ}
               translation={translation}
-              setTranslation={translationState.setTranslation}
-              isSignedIn={isSignedIn}
-              onGuestSignin={() => setAuthOpen(true)}
-              getArticleRef={dailyTab.getArticleRef}
+              setTranslation={setTranslation}
             />
           )}
           {toast && (

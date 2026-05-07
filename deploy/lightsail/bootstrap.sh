@@ -3,19 +3,18 @@
 #
 # Idempotent: safe to re-run. Installs Docker if missing, creates
 # /opt/study-help/, and copies the deploy artifacts (compose.yaml,
-# Caddyfile, litestream.yml, deploy.sh) into place. Leaves .env as a
-# copy of .env.example for the operator to fill in.
+# Caddyfile, deploy.sh) into place. Leaves .env as a copy of
+# .env.example for the operator to fill in.
 #
 # Usage (on the VM, after cloning the repo):
 #   ./deploy/lightsail/bootstrap.sh
 #
 # Run as a non-root user with sudo. After this script completes you
 # still need to:
-#   1. Edit /opt/study-help/.env (set image tag, secrets, AWS keys)
+#   1. Edit /opt/study-help/.env (set image tag, API keys)
 #   2. Edit /opt/study-help/Caddyfile (set the FQDN)
-#   3. Edit /opt/study-help/litestream.yml (set the bucket / region)
-#   4. docker login ghcr.io        (if pulling a private image)
-#   5. cd /opt/study-help && docker compose up -d
+#   3. docker login ghcr.io        (if pulling a private image)
+#   4. cd /opt/study-help && docker compose up -d
 
 set -euo pipefail
 
@@ -53,7 +52,6 @@ sudo chown "$USER:$USER" "$APP_DIR"
 log "copying artifacts"
 install -m 0644 "$SCRIPT_DIR/compose.yaml"    "$APP_DIR/compose.yaml"
 install -m 0644 "$SCRIPT_DIR/Caddyfile"        "$APP_DIR/Caddyfile"
-install -m 0644 "$SCRIPT_DIR/litestream.yml"   "$APP_DIR/litestream.yml"
 install -m 0755 "$SCRIPT_DIR/deploy.sh"        "$APP_DIR/deploy.sh"
 
 if [ ! -f "$APP_DIR/.env" ]; then
@@ -70,8 +68,7 @@ cat <<EOF
 Next steps:
   1. \$EDITOR $APP_DIR/.env              # fill in every CHANGEME
   2. \$EDITOR $APP_DIR/Caddyfile         # replace study.example.com
-  3. \$EDITOR $APP_DIR/litestream.yml    # replace bucket / region
-  4. docker login ghcr.io               # if using a private image
-  5. cd $APP_DIR && docker compose up -d
-  6. docker compose logs -f caddy       # watch the first cert issue
+  3. docker login ghcr.io               # if using a private image
+  4. cd $APP_DIR && docker compose up -d
+  5. docker compose logs -f caddy       # watch the first cert issue
 EOF
