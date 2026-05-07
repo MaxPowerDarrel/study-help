@@ -8,7 +8,4 @@ services:
     environment:
       # Listed without values — Compose passes them through from the host shell.
       ESV_API_KEY:
-      SESSION_SECRET:
-      DATABASE_URL: /data/sqlite.db
-    volumes:
-      - ./data:/data
+      YOUVERSION_APP_KEY:

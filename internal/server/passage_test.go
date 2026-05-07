@@ -94,7 +94,7 @@ func TestPassageHandlerProxiesAndCounts(t *testing.T) {
 	counter := &ESVCallCounter{}
 	h := passageHandler(reg, counter)
 
-	req := httptest.NewRequest(http.MethodGet, "/api/passage?q="+url.QueryEscape("John 3:1-21"), nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/passage?q="+url.QueryEscape("John 3"), nil)
 	w := httptest.NewRecorder()
 	h(w, req)
 

@@ -1,11 +1,18 @@
 # Accounts
 
-**Status:** Shipped <!-- Draft | In Progress | Shipped | Deprecated -->
+**Status:** Deprecated <!-- Draft | In Progress | Shipped | Deprecated -->
 **Created:** 2026-05-04
-**Last updated:** 2026-05-04 <!-- PR 2 (client) shipped; feature complete 2026-05-04 -->
-**Owner:** unassigned
+**Last updated:** 2026-05-07
+**Removed:** 2026-05-07
+**Owner:** Darrel
 
-> **Editor's note (2026-05-07):** references in this spec to "notes" predate the removal of the Notes feature on 2026-05-07 (see [notes.md](./notes.md)). Accounts still underpin highlights and any future per-user data; the historical wording is preserved as the design record at the time of writing.
+> **Editor's note (2026-05-07):** references in this spec to "notes" predate the removal of the Notes feature on 2026-05-07 (see [notes.md](./notes.md)). The historical wording is preserved as the design record at the time of writing.
+
+## Removal
+
+The Accounts feature shipped per the spec below and was then removed end-to-end on 2026-05-07, alongside [highlights.md](./highlights.md) and the daily-tab annotation work in [daily-annotations.md](./daily-annotations.md). The reason: with notes already gone (2026-05-07) and highlights being retired in the same change, no remaining feature needed a per-user record. Removing the entire identity layer eliminated password storage, session management, the per-IP / per-account rate limiter, the SQLite database, and the OAuth-replacement work drafted in [oauth-auth.md](./oauth-auth.md). Removal covered the `internal/auth/` Go package, the `internal/db/` package and all migrations, the `web/src/auth/` SPA module, the four `/api/auth/*` routes, the `AuthChip` / `AuthPanel` UI, the `bcrypt` and `goose` dependencies, the `SESSION_SECRET` and `DATABASE_URL` env vars, and the per-IP / per-account rate limiters. Translation preference now persists in `localStorage` only — the same store guests already used (see [multi-translation.md](./multi-translation.md)).
+
+The body of this spec is preserved below as the historical design record.
 
 ## Why
 

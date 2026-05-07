@@ -92,9 +92,59 @@ type envelopeJSON struct {
 
 // Fetch retrieves the rendered NIV passage. q is the canonical user
 // reference (e.g. "John 3:1-21"). canon.ValidateQuery has already
-// rejected obvious garbage, so toUSFM only has to handle the four
-// allow-listed shapes.
+// rejected obvious garbage upstream of this call.
+//
+// Chapter-range queries ("Genesis 1-3") are fanned out into per-chapter
+// requests because the YouVersion endpoint accepts a single passage per
+// call, not a chapter range. Verse-range queries ("Psalm 119:33-40")
+// and single chapters pass through as one request.
 func (c *Client) Fetch(ctx context.Context, q string, opts Options) (*Result, error) {
+	pieces := expandChapterRange(q)
+
+	passages := make([]string, 0, len(pieces))
+	var canonical string
+	for _, piece := range pieces {
+		pr, err := c.fetchOne(ctx, piece, opts)
+		if err != nil {
+			return nil, err
+		}
+		if canonical == "" {
+			canonical = pr.Reference
+		}
+		passages = append(passages, pr.Content)
+	}
+	if canonical == "" {
+		canonical = q
+	}
+	// For multi-chapter ranges, prefer the original user-facing q over
+	// the first chapter's "Genesis 1" canonical.
+	if len(pieces) > 1 {
+		canonical = q
+	}
+
+	// Match ESV's wire format: emit raw <,> rather than &lt;,&gt; so
+	// the bytes the SPA receives look the same regardless of provider.
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetEscapeHTML(false)
+	if err := enc.Encode(envelopeJSON{
+		Canonical: canonical,
+		Passages:  passages,
+	}); err != nil {
+		return nil, fmt.Errorf("%w: marshal envelope: %v", ErrUpstream, err)
+	}
+
+	return &Result{
+		Body:        bytes.TrimRight(buf.Bytes(), "\n"),
+		ContentType: "application/json",
+		Status:      http.StatusOK,
+	}, nil
+}
+
+// fetchOne issues a single GET against the passages endpoint. q must
+// be a single chapter or a verse-range within a single chapter — see
+// expandChapterRange.
+func (c *Client) fetchOne(ctx context.Context, q string, opts Options) (*passageJSON, error) {
 	usfm, err := toUSFM(q)
 	if err != nil {
 		return nil, fmt.Errorf("translate q to USFM: %w", err)
@@ -147,34 +197,53 @@ func (c *Client) Fetch(ctx context.Context, q string, opts Options) (*Result, er
 	if err := json.Unmarshal(body, &pr); err != nil {
 		return nil, fmt.Errorf("%w: decode body: %v", ErrUpstream, err)
 	}
-
-	canonical := pr.Reference
-	if canonical == "" {
-		canonical = q
-	}
-	// Match ESV's wire format: emit raw <,> rather than <,> so
-	// the bytes the SPA receives look the same regardless of provider.
-	var buf bytes.Buffer
-	enc := json.NewEncoder(&buf)
-	enc.SetEscapeHTML(false)
-	if err := enc.Encode(envelopeJSON{
-		Canonical: canonical,
-		Passages:  []string{pr.Content},
-	}); err != nil {
-		return nil, fmt.Errorf("%w: marshal envelope: %v", ErrUpstream, err)
-	}
-
-	return &Result{
-		Body:        bytes.TrimRight(buf.Bytes(), "\n"),
-		ContentType: "application/json",
-		Status:      resp.StatusCode,
-	}, nil
+	return &pr, nil
 }
 
-// toUSFM translates a canon-validated reference (e.g. "John 3:1-21")
-// into a USFM passage reference suitable for the YouVersion endpoint
-// (e.g. "JHN.3.1-JHN.3.21"). Handles the four shapes accepted by
-// canon.ValidateQuery.
+// expandChapterRange splits a chapter-range query ("Genesis 1-3") into
+// per-chapter queries (["Genesis 1", "Genesis 2", "Genesis 3"]). Single
+// chapters and verse-range queries pass through unchanged. The
+// YouVersion passage endpoint only accepts one passage per call, so
+// this fan-out happens at the provider boundary; the SPA still issues
+// one request per pill.
+func expandChapterRange(q string) []string {
+	q = strings.TrimSpace(q)
+
+	// Mirror canon.ValidateQuery's split rule.
+	tailStart := -1
+	for i := len(q) - 1; i > 0; i-- {
+		if q[i] == ' ' && i+1 < len(q) && q[i+1] >= '0' && q[i+1] <= '9' {
+			tailStart = i
+			break
+		}
+	}
+	if tailStart <= 0 {
+		return []string{q}
+	}
+	book := strings.TrimSpace(q[:tailStart])
+	tail := strings.TrimSpace(q[tailStart+1:])
+
+	a, b, ok := strings.Cut(tail, "-")
+	if !ok {
+		return []string{q}
+	}
+	start, err1 := strconv.Atoi(strings.TrimSpace(a))
+	end, err2 := strconv.Atoi(strings.TrimSpace(b))
+	if err1 != nil || err2 != nil || start < 1 || end < start {
+		return []string{q}
+	}
+	out := make([]string, 0, end-start+1)
+	for c := start; c <= end; c++ {
+		out = append(out, fmt.Sprintf("%s %d", book, c))
+	}
+	return out
+}
+
+// toUSFM translates a canon-validated reference into a USFM passage
+// reference suitable for the YouVersion endpoint. Handles the two
+// shapes accepted by canon.ValidateQuery: "<book> <chapter>" and
+// "<book> <chapter>-<chapter>". Verse-level references were retired
+// on 2026-05-07 (NIV/ESV parity).
 func toUSFM(q string) (string, error) {
 	q = strings.TrimSpace(q)
 
@@ -197,23 +266,11 @@ func toUSFM(q string) (string, error) {
 		return "", fmt.Errorf("unknown book %q", bookName)
 	}
 
-	chapterPart, versePart, hasColon := strings.Cut(tail, ":")
-	if !hasColon {
-		startCh, endCh, hasDash := cutDash(chapterPart)
-		if hasDash {
-			return fmt.Sprintf("%s.%s-%s.%s", code, startCh, code, endCh), nil
-		}
-		return fmt.Sprintf("%s.%s", code, chapterPart), nil
-	}
-	startV, endV, hasDash := cutDash(versePart)
+	startCh, endCh, hasDash := strings.Cut(tail, "-")
 	if hasDash {
-		return fmt.Sprintf("%s.%s.%s-%s.%s.%s",
-			code, chapterPart, startV, code, chapterPart, endV), nil
+		return fmt.Sprintf("%s.%s-%s.%s",
+			code, strings.TrimSpace(startCh),
+			code, strings.TrimSpace(endCh)), nil
 	}
-	return fmt.Sprintf("%s.%s.%s", code, chapterPart, versePart), nil
-}
-
-func cutDash(s string) (string, string, bool) {
-	a, b, ok := strings.Cut(s, "-")
-	return strings.TrimSpace(a), strings.TrimSpace(b), ok
+	return fmt.Sprintf("%s.%s", code, tail), nil
 }

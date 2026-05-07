@@ -13,7 +13,6 @@
   --color-accent: #4a3a2a;
   --color-rule: #e3dfd4;
   --color-woc: #c0392b;
-  --color-highlight: rgba(255, 224, 102, 0.55);
 
   --space-1: 0.25rem;
   --space-2: 0.5rem;
@@ -48,7 +47,6 @@
   --color-accent: #d4c8a8;
   --color-rule: #2a2823;
   --color-woc: #ff6b5b;
-  --color-highlight: rgba(214, 176, 60, 0.4);
 
   color-scheme: dark;
 }
@@ -65,7 +63,6 @@
     --color-accent: #d4c8a8;
     --color-rule: #2a2823;
     --color-woc: #ff6b5b;
-    --color-highlight: rgba(214, 176, 60, 0.4);
 
     color-scheme: dark;
   }

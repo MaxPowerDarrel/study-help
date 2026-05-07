@@ -6,18 +6,17 @@ This document is the canonical answer to *"why is this project shaped this way?"
 
 ## 1. Purpose
 
-`study-help` is a Bible reader optimized for **focused study** of scripture a chapter or section at a time, with personal highlights. It is a web application, served as a static SPA from a Go binary. Safari on iPad is a first-class target, but it is reached as a regular browser — there is no native shell.
+`study-help` is a Bible reader optimized for **focused study** of scripture a chapter or section at a time. It is a web application, served as a static SPA from a Go binary. Safari on iPad is a first-class target, but it is reached as a regular browser — there is no native shell.
 
 The product exists to support careful, slow reading — not to be a search engine, a commentary library, or a social platform.
 
 ## 2. Users & Scope
 
-- **Multi-user with accounts.** Each user has private highlights. Server-side storage is the source of truth.
+- **Single-user, no accounts.** Originally multi-user with per-account highlights; the auth and highlights features were retired on 2026-05-07 (see [`specs/accounts.md`](./specs/accounts.md), [`specs/highlights.md`](./specs/highlights.md)). The server holds no user state. Reintroducing per-user data requires re-amending this section.
 - **In scope:**
   - Reading a chapter or a contiguous passage range
-  - Highlighting passages (range-based, persistent, per-user)
-  - Account management (sign up, sign in, sign out)
-- **Multi-translation, ESV at launch.** Scripture is fetched through a server-side `TranslationProvider` abstraction. The first registered provider is ESV; additional translations can be added without changes to highlights or schema. Each user has a per-account active translation.
+  - Daily reading plans (Bible-in-One-Year, Hope 2026)
+- **Multi-translation, ESV at launch.** Scripture is fetched through a server-side `Provider` abstraction. The first registered provider is ESV; additional translations can be added without schema changes. The active translation persists in `localStorage` on the client.
 
 ## 3. Core Principles
 
@@ -33,9 +32,8 @@ These keep the codebase clean, testable, and decoupled. They reflect how a small
 - **Backend is a JSON API.** The application API surface returns data, not views — no server-rendered HTML for app content. Operational and observability endpoints (e.g. `/healthz`, `/metrics`) are not part of this surface and may use formats appropriate to their tooling (text exposition, plain JSON, etc.); they should be bound to a non-public listener whenever practical.
 - **Frontend is decoupled.** The web client makes no assumptions about Node-only or server-only runtime APIs. It builds to a static bundle that the Go binary serves.
 - **Platform features behind an abstraction.** Anything browser-API-touching — local storage, notifications, share sheets, file pickers — goes through a thin interface so feature code stays portable and testable without mocking globals.
-- **Secrets stay server-side.** Translation API keys, session secrets, and database credentials never reach the client. The server proxies scripture requests; the client never calls upstream translation APIs (e.g. `api.esv.org`) directly.
-- **User data is server-authoritative.** Accounts and highlights are persisted server-side. Clients hold cache, not source of truth.
-- **Auth uses session cookies.** HTTP-only secure cookies, server-side session store. No JWTs, no third-party identity providers at v1.
+- **Secrets stay server-side.** Translation API keys never reach the client. The server proxies scripture requests; the client never calls upstream translation APIs (e.g. `api.esv.org`) directly.
+- **The server is stateless.** Since the 2026-05-07 retirement of accounts and highlights, the server holds no user state and no database. The only client-side preference (translation choice) lives in `localStorage`. Reintroducing server-side state should be a deliberate spec-level decision, not a side effect of a feature.
 
 ## 5. Non-Goals
 
@@ -44,8 +42,7 @@ A constitution without non-goals is a wishlist. The following are explicitly **o
 - **No bundled commentary or study-note library.** This is a reader, not a library.
 - **No social, community, or sharing features.** No comments, no public profiles, no shared highlights.
 - **No original-language tooling.** No Greek/Hebrew interlinears, lexicons, or parsing aids.
-- **No cross-translation rendering.** Highlights are stamped with the translation in which they were created and only render when that translation is active. We do not attempt to map a highlight made in one translation onto another translation's text — versification and verse-text differences make that an unbounded problem.
-- **No personal notes.** Removed 2026-05-07. Free-form, user-authored prose attached to scripture is sensitive information we don't want to store. Re-introducing notes requires re-amending this section.
+- **No personal annotations.** Highlights and notes were retired on 2026-05-07 (see [`specs/highlights.md`](./specs/highlights.md), [`specs/notes.md`](./specs/notes.md)). Free-form per-user prose attached to scripture is sensitive data we chose not to retain; range-based highlights were retired alongside the rest of the auth layer when no other per-user feature remained. Reintroducing either requires re-amending this section.
 - **No offline-first sync engine at v1.** Offline is a best-effort cache, not a guarantee.
 
 ## 6. Decision Rules

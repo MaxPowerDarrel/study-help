@@ -17,11 +17,14 @@ func TestToUSFM(t *testing.T) {
 		want string
 	}{
 		{"John 3", "JHN.3"},
-		{"John 3:16", "JHN.3.16"},
-		{"John 3:1-21", "JHN.3.1-JHN.3.21"},
 		{"Psalms 119-120", "PSA.119-PSA.120"},
-		{"1 Corinthians 13:4-7", "1CO.13.4-1CO.13.7"},
-		{"Song of Solomon 2:10", "SNG.2.10"},
+		// Hope reading-plan cells use the singular "Psalm";
+		// canon.LookupBook resolves it to "Psalms" so the USFM lookup
+		// still finds PSA.
+		{"Psalm 5", "PSA.5"},
+		{"1 Corinthians 13", "1CO.13"},
+		{"Song of Solomon 2", "SNG.2"},
+		{"Song of Songs 1-2", "SNG.1-SNG.2"},
 		{"3 John 1", "3JN.1"},
 	}
 	for _, c := range cases {
@@ -39,6 +42,36 @@ func TestToUSFM(t *testing.T) {
 func TestToUSFM_UnknownBook(t *testing.T) {
 	if _, err := toUSFM("Gibberish 3"); err == nil {
 		t.Error("expected error for unknown book, got nil")
+	}
+}
+
+func TestExpandChapterRange(t *testing.T) {
+	cases := []struct {
+		in   string
+		want []string
+	}{
+		// Single chapter — pass through.
+		{"Genesis 1", []string{"Genesis 1"}},
+		// Chapter range — fan out per-chapter so each call hits the
+		// YouVersion endpoint with one passage at a time.
+		{"Genesis 1-3", []string{"Genesis 1", "Genesis 2", "Genesis 3"}},
+		{"Matthew 11-12", []string{"Matthew 11", "Matthew 12"}},
+		// Multi-word book names still parse correctly.
+		{"Song of Solomon 1-2", []string{"Song of Solomon 1", "Song of Solomon 2"}},
+	}
+	for _, c := range cases {
+		got := expandChapterRange(c.in)
+		if len(got) != len(c.want) {
+			t.Errorf("expandChapterRange(%q) = %v (len %d), want %v (len %d)",
+				c.in, got, len(got), c.want, len(c.want))
+			continue
+		}
+		for i := range got {
+			if got[i] != c.want[i] {
+				t.Errorf("expandChapterRange(%q)[%d] = %q, want %q",
+					c.in, i, got[i], c.want[i])
+			}
+		}
 	}
 }
 
@@ -80,14 +113,14 @@ func TestFetch_HappyPath_RewrapsEnvelope(t *testing.T) {
 		gotFormat = r.URL.Query().Get("format")
 		gotHeadings = r.URL.Query().Get("include_headings")
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"id":"x","bible_id":111,"reference":"John 3:16","content":"<p>For God so loved the world.</p>"}`))
+		_, _ = w.Write([]byte(`{"id":"x","bible_id":111,"reference":"John 3","content":"<p>For God so loved the world.</p>"}`))
 	}
 	c := withStub(t, stub)
-	res, err := c.Fetch(context.Background(), "John 3:16", Options{IncludeHeadings: true})
+	res, err := c.Fetch(context.Background(), "John 3", Options{IncludeHeadings: true})
 	if err != nil {
 		t.Fatalf("Fetch err = %v", err)
 	}
-	if !strings.HasSuffix(gotPath, "/v1/bibles/111/passages/JHN.3.16") {
+	if !strings.HasSuffix(gotPath, "/v1/bibles/111/passages/JHN.3") {
 		t.Errorf("unexpected upstream path: %s", gotPath)
 	}
 	if gotHeader != "test-key" {
@@ -106,8 +139,8 @@ func TestFetch_HappyPath_RewrapsEnvelope(t *testing.T) {
 	if err := json.Unmarshal(res.Body, &env); err != nil {
 		t.Fatalf("envelope decode: %v", err)
 	}
-	if env.Canonical != "John 3:16" {
-		t.Errorf("Canonical = %q, want John 3:16", env.Canonical)
+	if env.Canonical != "John 3" {
+		t.Errorf("Canonical = %q, want John 3", env.Canonical)
 	}
 	if len(env.Passages) != 1 || !strings.Contains(env.Passages[0], "For God so loved") {
 		t.Errorf("Passages = %v", env.Passages)

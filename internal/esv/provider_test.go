@@ -33,7 +33,7 @@ func stubResponse(status int, body string) roundTripFunc {
 
 func TestProviderFetchMaps429ToScriptureRateLimited(t *testing.T) {
 	p := newProviderWithStub(stubResponse(http.StatusTooManyRequests, ""))
-	_, err := p.Fetch(context.Background(), "John 1:1", scripture.Options{})
+	_, err := p.Fetch(context.Background(), "John 1", scripture.Options{})
 	if !errors.Is(err, scripture.ErrRateLimited) {
 		t.Fatalf("err = %v, want scripture.ErrRateLimited", err)
 	}
@@ -41,7 +41,7 @@ func TestProviderFetchMaps429ToScriptureRateLimited(t *testing.T) {
 
 func TestProviderFetchMaps5xxToScriptureUpstream(t *testing.T) {
 	p := newProviderWithStub(stubResponse(http.StatusBadGateway, ""))
-	_, err := p.Fetch(context.Background(), "John 1:1", scripture.Options{})
+	_, err := p.Fetch(context.Background(), "John 1", scripture.Options{})
 	if !errors.Is(err, scripture.ErrUpstream) {
 		t.Fatalf("err = %v, want scripture.ErrUpstream", err)
 	}
@@ -52,7 +52,7 @@ func TestProviderFetchMapsTransportFailureToScriptureUpstream(t *testing.T) {
 		return nil, errors.New("dial tcp: connection refused")
 	})
 	p := newProviderWithStub(stub)
-	_, err := p.Fetch(context.Background(), "John 1:1", scripture.Options{})
+	_, err := p.Fetch(context.Background(), "John 1", scripture.Options{})
 	if !errors.Is(err, scripture.ErrUpstream) {
 		t.Fatalf("err = %v, want scripture.ErrUpstream", err)
 	}
@@ -68,7 +68,7 @@ func TestProviderFetchPassesThroughOnSuccess(t *testing.T) {
 		}, nil
 	})
 	p := newProviderWithStub(stub)
-	res, err := p.Fetch(context.Background(), "John 1:1", scripture.Options{IncludeHeadings: true})
+	res, err := p.Fetch(context.Background(), "John 1", scripture.Options{IncludeHeadings: true})
 	if err != nil {
 		t.Fatalf("Fetch err = %v, want nil", err)
 	}

@@ -1,10 +1,15 @@
 # OAuth auth (Google)
 
-**Status:** Draft
+**Status:** Deprecated
 **Created:** 2026-05-06
-**Last updated:** 2026-05-06
-**Owner:** unassigned
+**Last updated:** 2026-05-07
+**Deprecated:** 2026-05-07
+**Owner:** Darrel
 **Supersedes:** [`accounts.md`](./accounts.md) (email + password is being retired)
+
+## Deprecation
+
+This spec was drafted on 2026-05-06 to replace email + password auth with Google OAuth. It never reached implementation. On 2026-05-07 the broader auth layer was retired entirely (see [accounts.md](./accounts.md) and [highlights.md](./highlights.md)) — there is no longer a per-user feature to identify users for, so neither password auth nor an OAuth replacement is needed. The spec body is preserved below as the design record for the path that was considered but not taken; if a future feature reintroduces the need for accounts, this is a starting point rather than a current plan.
 
 ## Why
 
@@ -27,7 +32,7 @@ rationale is logged in Decisions below.
 - [ ] A new visitor signs in with one Google click; account is created on first
       sign-in.
 - [ ] An existing user (signed up via email + password before this change) signs
-      in with Google using the same email and keeps every highlight, note, and
+      in with Google using the same email and keeps every highlight and
       preference on their account.
 - [ ] The `users` row is keyed by Google's stable `sub` claim once linked, so a
       future Google email change doesn't break sign-in.
@@ -77,15 +82,24 @@ server normalises Google's claimed email through the same
 established (2026-05-04), then looks for a `users` row with that already-
 normalised email. If found, it stamps `oauth_provider=google` and
 `oauth_sub=<sub>` onto that row, leaving `user_id` (and therefore every
-highlight, note, and translation preference) intact. If no row matches, a
+highlight and translation preference) intact. If no row matches, a
 new row is created. This runs once per user; subsequent sign-ins key on
 `(oauth_provider, oauth_sub)`.
+
+**Guest translation handoff.** If the visitor had picked a translation
+as a guest (`localStorage.translation`, per `multi-translation.md`), the
+SPA reconciles it into the account on the sign-in transition the same
+way it does for any sign-in: a single `PATCH /api/auth/me` after
+`useUser` flips from `null` → user. The OAuth callback itself is
+unaware of this; it's a client-side step that fires immediately after
+the session cookie is set.
 
 **Sign-out.** Unchanged — `POST /api/auth/signout` deletes the local session
 row and clears the cookie. We don't try to sign the user out of Google.
 
-**Guest experience.** Unchanged — reading and the daily tab work fully without
-an account; per-user actions (highlight, note) show the existing inline nudge.
+**Guest experience.** Unchanged — reading, translation switching, and the daily
+tab work fully without an account; per-user actions (highlight) show the
+existing inline nudge.
 
 **Errors.** OAuth-specific failure modes get inline messages on a new
 `/api/auth/oauth/error` landing route: `state` mismatch, `email_verified=false`
@@ -301,8 +315,11 @@ implementation rather than spec.
 - Round-trip `oauthStart` → `oauthCallback` with valid state, nonce, ID token →
   session minted, cookie set.
 - New-user case: no pre-existing row matching the verified email → fresh
-  `users` row with `email`, `oauth_provider=google`, `oauth_sub`, and the
-  default translation populated.
+  `users` row with `email`, `oauth_provider=google`, `oauth_sub`, and
+  `translation` set to the default (`'ESV'`). The SPA may immediately
+  `PATCH /api/auth/me` to overwrite this if the visitor had a guest
+  translation preference; that handoff is covered by
+  `multi-translation.md`'s tests, not duplicated here.
 - Existing-user-by-email migration: pre-create a user with email
   `nate@example.com` (and a `password_hash`, in the world before this
   migration); first OAuth sign-in stamps `oauth_sub` and reuses the

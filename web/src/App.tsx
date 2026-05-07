@@ -10,10 +10,6 @@ import { fetchPassage } from "./api";
 import { useToggles } from "./toggles";
 import { useTheme } from "./theme";
 import { SettingsPane } from "./SettingsPane";
-import { AuthChip } from "./auth/AuthChip";
-import { AuthPanel } from "./auth/AuthPanel";
-import { useUser } from "./auth/useUser";
-import { PassageView } from "./highlights/PassageView";
 import { Attribution } from "./translations/Attribution";
 import { TRANSLATIONS, type TranslationID } from "./translations/catalog";
 import { useTranslation } from "./translations/useTranslation";
@@ -27,25 +23,18 @@ type Tab = "read" | "daily";
 export function App() {
   const [tab, setTab] = useState<Tab>("read");
   const [ref, setRef] = useState<ChapterRef>({ bookIndex: 42, chapter: 3 }); // John 3
-  const [range, setRange] = useState<{ start: number; end: number } | null>(
-    null,
-  );
   const [toggles, setToggles] = useToggles();
   const [theme, setTheme] = useTheme();
   const [html, setHtml] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [authOpen, setAuthOpen] = useState(false);
-  const articleRef = useRef<HTMLElement | null>(null);
   const readingSurfaceRef = useRef<HTMLElement | null>(null);
-  const userState = useUser();
-  const translationState = useTranslation(userState.user, userState.applyUser);
-  const translation = translationState.translation;
+  const { translation, setTranslation } = useTranslation();
   const [planIDs, setPlanIDs] = usePlanSelection();
   const dailyTab = useDailyTab(tab === "daily", toggles, translation, planIDs);
 
-  const q = useMemo(() => refToQuery(ref, range ?? undefined), [ref, range]);
+  const q = useMemo(() => refToQuery(ref), [ref]);
 
   // Read-tab passage fetch.
   useEffect(() => {
@@ -76,8 +65,6 @@ export function App() {
   const next = nextChapter(ref);
   const prev = prevChapter(ref);
   const book = CANON[ref.bookIndex];
-
-  const isSignedIn = userState.user !== null;
 
   const activePillIdx =
     dailyTab.daily.kind === "ready" ? dailyTab.daily.state.activeIdx : -1;
@@ -119,11 +106,6 @@ export function App() {
           </button>
         </nav>
         <div className={styles.headerRight}>
-          <AuthChip
-            user={userState.user}
-            onOpenSignin={() => setAuthOpen(true)}
-            onSignout={() => userState.signout()}
-          />
           <button
             type="button"
             className={styles.gear}
@@ -144,12 +126,6 @@ export function App() {
         planIDs={planIDs}
         setPlanIDs={setPlanIDs}
       />
-      <AuthPanel
-        open={authOpen}
-        onClose={() => setAuthOpen(false)}
-        signin={userState.signin}
-        signup={userState.signup}
-      />
       <div
         className={
           tab === "daily"
@@ -164,9 +140,7 @@ export function App() {
               <select
                 value={translation}
                 onChange={(e) => {
-                  void translationState.setTranslation(
-                    e.target.value as TranslationID,
-                  );
+                  setTranslation(e.target.value as TranslationID);
                 }}
               >
                 {TRANSLATIONS.map((t) => (
@@ -183,7 +157,6 @@ export function App() {
                 value={ref.bookIndex}
                 onChange={(e) => {
                   setRef({ bookIndex: Number(e.target.value), chapter: 1 });
-                  setRange(null);
                 }}
               >
                 {CANON.map((b, i) => (
@@ -199,7 +172,6 @@ export function App() {
                 value={ref.chapter}
                 onChange={(e) => {
                   setRef({ ...ref, chapter: Number(e.target.value) });
-                  setRange(null);
                 }}
               >
                 {Array.from({ length: book.chapters }, (_, i) => i + 1).map(
@@ -212,49 +184,6 @@ export function App() {
               </select>
             </label>
 
-            <fieldset className={styles.range}>
-              <legend>Verse range</legend>
-              <input
-                type="number"
-                min={1}
-                placeholder="start"
-                value={range?.start ?? ""}
-                onChange={(e) => {
-                  const start = Number(e.target.value);
-                  if (!start) {
-                    setRange(null);
-                    return;
-                  }
-                  setRange({
-                    start,
-                    end: range?.end && range.end >= start ? range.end : start,
-                  });
-                }}
-              />
-              <span>–</span>
-              <input
-                type="number"
-                min={1}
-                placeholder="end"
-                value={range?.end ?? ""}
-                disabled={!range}
-                onChange={(e) => {
-                  if (!range) return;
-                  const end = Number(e.target.value);
-                  setRange({ start: range.start, end: end || range.start });
-                }}
-              />
-              {range && (
-                <button
-                  type="button"
-                  className={styles.clearBtn}
-                  onClick={() => setRange(null)}
-                >
-                  Clear
-                </button>
-              )}
-            </fieldset>
-
             <nav className={styles.chapterNav}>
               {prev && (
                 <button
@@ -262,7 +191,6 @@ export function App() {
                   className={styles.navBtn}
                   onClick={() => {
                     setRef(prev);
-                    setRange(null);
                   }}
                 >
                   ← Previous
@@ -274,7 +202,6 @@ export function App() {
                   className={styles.navBtn}
                   onClick={() => {
                     setRef(next);
-                    setRange(null);
                   }}
                 >
                   Next →
@@ -291,15 +218,13 @@ export function App() {
                 <div className={styles.spinner} aria-label="loading" />
               )}
               {!loading && html && (
-                <PassageView
-                  html={html}
-                  book={book.name}
-                  chapter={ref.chapter}
-                  translation={translation}
-                  isSignedIn={isSignedIn}
-                  showWordsOfChrist={toggles.include_word_of_christ}
-                  onGuestSignin={() => setAuthOpen(true)}
-                  articleRef={articleRef}
+                <article
+                  className={
+                    toggles.include_word_of_christ
+                      ? "passage"
+                      : "passage no-woc"
+                  }
+                  dangerouslySetInnerHTML={{ __html: html }}
                 />
               )}
             </>
@@ -311,10 +236,7 @@ export function App() {
               setActivePill={dailyTab.setActivePill}
               showWordsOfChrist={toggles.include_word_of_christ}
               translation={translation}
-              setTranslation={translationState.setTranslation}
-              isSignedIn={isSignedIn}
-              onGuestSignin={() => setAuthOpen(true)}
-              getArticleRef={dailyTab.getArticleRef}
+              setTranslation={setTranslation}
             />
           )}
           {toast && (

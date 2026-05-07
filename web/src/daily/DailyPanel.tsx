@@ -1,12 +1,8 @@
-import type { RefObject } from "react";
-import { PassageView } from "../highlights/PassageView";
 import { defaultTimezoneProvider } from "../platform/TimezoneProvider";
 import { Attribution } from "../translations/Attribution";
-import { type UpdateTranslationResult } from "../translations/api";
 import { TRANSLATIONS, type TranslationID } from "../translations/catalog";
 import styles from "../App.module.css";
-import type { PlanID } from "./plans";
-import type { DailyChapterState, DailyLoad } from "./useDailyTab";
+import type { DailyLoad } from "./useDailyTab";
 
 export type DailyPanelProps = {
   daily: DailyLoad;
@@ -15,14 +11,7 @@ export type DailyPanelProps = {
   setActivePill: (idx: number) => void;
   showWordsOfChrist: boolean;
   translation: TranslationID;
-  setTranslation: (id: TranslationID) => Promise<UpdateTranslationResult>;
-  isSignedIn: boolean;
-  onGuestSignin: () => void;
-  getArticleRef: (
-    planID: PlanID,
-    book: string,
-    chapter: number,
-  ) => RefObject<HTMLElement | null>;
+  setTranslation: (id: TranslationID) => void;
 };
 
 export function DailyPanel({
@@ -33,9 +22,6 @@ export function DailyPanel({
   showWordsOfChrist,
   translation,
   setTranslation,
-  isSignedIn,
-  onGuestSignin,
-  getArticleRef,
 }: DailyPanelProps) {
   const dateNav = (
     <nav className={styles.dailyNav} aria-label="Date navigation">
@@ -130,7 +116,7 @@ export function DailyPanel({
             <select
               value={translation}
               onChange={(e) => {
-                void setTranslation(e.target.value as TranslationID);
+                setTranslation(e.target.value as TranslationID);
               }}
             >
               {TRANSLATIONS.map((t) => (
@@ -165,71 +151,27 @@ export function DailyPanel({
       {pillsNav("Today's readings")}
       <div className={styles.dailyBody}>
         {activePill && (
-          <div className={styles.dailyChapters}>
-            {activePill.chapters.map((c) => (
-              <DailyChapterBlock
-                key={`${activePill.planID}|${c.book}:${c.chapter}`}
-                chapterState={c}
-                translation={translation}
-                isSignedIn={isSignedIn}
-                showWordsOfChrist={showWordsOfChrist}
-                onGuestSignin={onGuestSignin}
-                articleRef={getArticleRef(activePill.planID, c.book, c.chapter)}
+          <>
+            {activePill.loading && (
+              <div className={styles.spinner} aria-label="loading" />
+            )}
+            {!activePill.loading && activePill.html && (
+              <article
+                className={showWordsOfChrist ? "passage" : "passage no-woc"}
+                dangerouslySetInnerHTML={{ __html: activePill.html }}
               />
-            ))}
+            )}
+            {activePill.error && (
+              <div className={styles.dailyMessage} role="alert">
+                {activePill.error}
+              </div>
+            )}
             <Attribution translation={translation} />
             {pills.length > 1 && pillsNav("Today's readings (bottom)")}
-          </div>
+          </>
         )}
       </div>
     </div>
-  );
-}
-
-function DailyChapterBlock({
-  chapterState,
-  translation,
-  isSignedIn,
-  showWordsOfChrist,
-  onGuestSignin,
-  articleRef,
-}: {
-  chapterState: DailyChapterState;
-  translation: TranslationID;
-  isSignedIn: boolean;
-  showWordsOfChrist: boolean;
-  onGuestSignin: () => void;
-  articleRef: RefObject<HTMLElement | null>;
-}) {
-  return (
-    <section
-      className={styles.dailyChapter}
-      aria-label={`${chapterState.book} ${chapterState.chapter}`}
-    >
-      <h3 className={styles.dailyChapterHeading}>
-        {chapterState.book} {chapterState.chapter}
-      </h3>
-      {chapterState.loading && (
-        <div className={styles.dailyChapterSpinner} aria-label="loading" />
-      )}
-      {!chapterState.loading && chapterState.html && (
-        <PassageView
-          html={chapterState.html}
-          book={chapterState.book}
-          chapter={chapterState.chapter}
-          translation={translation}
-          isSignedIn={isSignedIn}
-          showWordsOfChrist={showWordsOfChrist}
-          onGuestSignin={onGuestSignin}
-          articleRef={articleRef}
-        />
-      )}
-      {chapterState.error && (
-        <div className={styles.dailyChapterError} role="alert">
-          {chapterState.error}
-        </div>
-      )}
-    </section>
   );
 }
 

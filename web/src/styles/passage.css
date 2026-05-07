@@ -57,11 +57,3 @@
 .passage.no-woc .wj {
   color: inherit;
 }
-
-.passage mark.highlight {
-  background-color: var(--color-highlight);
-  color: inherit;
-  padding: 0 0.05em;
-  border-radius: 2px;
-  cursor: pointer;
-}

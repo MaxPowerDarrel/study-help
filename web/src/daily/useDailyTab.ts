@@ -1,12 +1,5 @@
-import {
-  type RefObject,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
-import { type DailyPassage, fetchDailyReading } from "../api";
-import { fetchPassage } from "../api";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { type DailyPassage, fetchDailyReading, fetchPassage } from "../api";
 import { defaultTimezoneProvider } from "../platform/TimezoneProvider";
 import type { Toggles } from "../toggles";
 import type { TranslationID } from "../translations/catalog";
@@ -14,19 +7,13 @@ import type { PlanID } from "./plans";
 
 export type Testament = "OT" | "NT" | "";
 
-export type DailyChapterState = {
-  book: string;
-  chapter: number;
-  html: string;
-  loading: boolean;
-  error: string | null;
-};
-
 export type DailyPill = {
   planID: PlanID;
   planName: string;
   passage: DailyPassage;
-  chapters: DailyChapterState[];
+  html: string;
+  loading: boolean;
+  error: string | null;
 };
 
 export type PlanMessage = {
@@ -40,9 +27,9 @@ export type DailyState = {
   // Index into pills. -1 when there are no pills (info-card-only days).
   activeIdx: number;
   planMessages: PlanMessage[];
-  // The number of plans contributing to this load — used by DailyPanel
-  // to decide whether to label pills with their testament (single plan)
-  // or with their plan name (multiple plans).
+  // Number of plans contributing to this load. DailyPanel uses this to
+  // decide whether to label pills with their testament (single plan) or
+  // their plan name (multiple plans).
   planCount: number;
 };
 
@@ -57,20 +44,14 @@ export type UseDailyTab = {
   setActivePill: (idx: number) => void;
   selectedDate: string;
   setSelectedDate: (date: string) => void;
-  getArticleRef: (
-    planID: PlanID,
-    book: string,
-    chapter: number,
-  ) => RefObject<HTMLElement | null>;
 };
 
 // useDailyTab owns the daily-reading state machine: date selection,
-// the per-plan / per-pill loads, the per-chapter article refs, and
-// the active-pill switch. The load effect snapshots `toggles` and
-// `translation` via refs so identity changes don't refire it; mid-
-// flight requests are dropped via fetchId comparison. Re-fetching is
-// gated by daily.kind === "idle" (re-armed by the date / translation
-// / planIDs reset effect below).
+// the per-pill load, and the active-pill switch. The load effect
+// snapshots `toggles` and `translation` via refs so identity changes
+// don't refire it; mid-flight requests are dropped via fetchId
+// comparison. Re-fetching is gated by daily.kind === "idle" (re-armed
+// by the date / translation / planIDs reset effect below).
 export function useDailyTab(
   enabled: boolean,
   toggles: Toggles,
@@ -87,32 +68,6 @@ export function useDailyTab(
   translationRef.current = translation;
   const planIDsRef = useRef(planIDs);
   planIDsRef.current = planIDs;
-
-  // Per-chapter article refs keyed by `${planID}|${book}:${chapter}`.
-  // The plan-ID prefix avoids collision when two plans schedule the
-  // same chapter on the same day. Populated lazily on first request;
-  // never pruned (entries are tiny ref objects and old keys are
-  // harmless once their DOM unmounts).
-  const articleRefs = useRef<Map<string, RefObject<HTMLElement | null>>>(
-    new Map(),
-  );
-  const refKey = (planID: PlanID, book: string, chapter: number) =>
-    `${planID}|${book}:${chapter}`;
-  const getArticleRef = useCallback(
-    (
-      planID: PlanID,
-      book: string,
-      chapter: number,
-    ): RefObject<HTMLElement | null> => {
-      const key = refKey(planID, book, chapter);
-      const existing = articleRefs.current.get(key);
-      if (existing) return existing;
-      const ref: RefObject<HTMLElement | null> = { current: null };
-      articleRefs.current.set(key, ref);
-      return ref;
-    },
-    [],
-  );
 
   useEffect(() => {
     if (!enabled) return;
@@ -143,13 +98,9 @@ export function useDailyTab(
             planID: plan.id,
             planName: plan.name,
             passage,
-            chapters: parseChapterRange(passage.chapters).map((c) => ({
-              book: passage.book,
-              chapter: c,
-              html: "",
-              loading: true,
-              error: null,
-            })),
+            html: "",
+            loading: true,
+            error: null,
           });
         }
       }
@@ -166,24 +117,37 @@ export function useDailyTab(
 
       const t = togglesRef.current;
       const tr = translationRef.current;
-      pills.forEach((pill, idx) => loadPillChapters(pill, idx, t, tr, id));
+      pills.forEach((pill, idx) => loadPill(pill, idx, t, tr, id));
     });
 
-    function loadPillChapters(
+    function loadPill(
       pill: DailyPill,
       idx: number,
       t: Toggles,
       tr: TranslationID,
       id: number,
     ) {
-      // Per-chapter concurrent fetches; each chapter renders as it
-      // arrives (a slow chapter doesn't block earlier ones).
-      pill.chapters.forEach((c) => {
-        fetchPassage(`${c.book} ${c.chapter}`, t, tr).then((res) => {
+      const queries = passageQueries(pill.passage);
+      Promise.all(queries.map((q) => fetchPassage(q, t, tr))).then(
+        (results) => {
           if (fetchId.current !== id) return;
-          setDaily((prev) => updateChapter(prev, idx, c.book, c.chapter, res));
-        });
-      });
+          const failed = results.find((r) => r.kind !== "ok");
+          if (failed) {
+            const msg =
+              failed.kind === "rate_limited"
+                ? "Service is busy, try again in a moment"
+                : "Something went wrong, try again";
+            setDaily((prev) =>
+              updatePill(prev, idx, { error: msg, loading: false }),
+            );
+            return;
+          }
+          const html = results
+            .map((r) => (r.kind === "ok" ? r.html : ""))
+            .join("");
+          setDaily((prev) => updatePill(prev, idx, { html, loading: false }));
+        },
+      );
     }
     // selectedDate / toggles / translation / planIDs are snapshotted via
     // closure and refs intentionally; re-runs are gated by
@@ -211,71 +175,30 @@ export function useDailyTab(
     setActivePill,
     selectedDate,
     setSelectedDate,
-    getArticleRef,
   };
 }
 
-// Expand a daily-reader chapters string ("1-3", "1", "1,3", "119:33-40")
-// into individual chapter numbers. Verse-range refs collapse to the
-// chapter number (the daily panel renders chapter-block content; per-
-// verse fetching is a v1 limitation — see specs/multi-plan.md).
-export function parseChapterRange(chapters: string): number[] {
-  const out: number[] = [];
-  for (const part of chapters.split(",")) {
-    const trimmed = part.trim();
-    if (trimmed === "") continue;
-    // Drop trailing ":start-end" verse range.
-    const noVerse = trimmed.split(":")[0];
-    const dash = noVerse.indexOf("-");
-    if (dash < 0) {
-      const n = Number(noVerse);
-      if (Number.isFinite(n) && n > 0) out.push(n);
-      continue;
-    }
-    const start = Number(noVerse.slice(0, dash).trim());
-    const end = Number(noVerse.slice(dash + 1).trim());
-    if (
-      !Number.isFinite(start) ||
-      !Number.isFinite(end) ||
-      start <= 0 ||
-      end < start
-    ) {
-      continue;
-    }
-    for (let c = start; c <= end; c++) out.push(c);
-  }
-  return out;
+// passageQueries turns one DailyPassage into one or more `?q=` strings.
+// Comma-separated chapters (e.g. "Matthew 11,12") fan out into
+// multiple queries because the canon validator on the server only
+// accepts single chapters or hyphen ranges per call.
+export function passageQueries(p: DailyPassage): string[] {
+  const pieces = p.chapters
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (pieces.length === 0) return [];
+  return pieces.map((piece) => `${p.book} ${piece}`);
 }
 
-// Apply a passage-fetch result to the matching chapter inside `prev`.
-// Tolerates concurrent updates: if `prev` is no longer "ready" or the
-// pill / chapter don't match, returns prev unchanged.
-function updateChapter(
+function updatePill(
   prev: DailyLoad,
-  pillIdx: number,
-  book: string,
-  chapter: number,
-  res:
-    | { kind: "ok"; html: string }
-    | { kind: "rate_limited" }
-    | { kind: "error" },
+  idx: number,
+  patch: Partial<Pick<DailyPill, "html" | "loading" | "error">>,
 ): DailyLoad {
   if (prev.kind !== "ready") return prev;
-  const pill = prev.state.pills[pillIdx];
-  if (!pill) return prev;
-  const chapters = pill.chapters.map((c) => {
-    if (c.book !== book || c.chapter !== chapter) return c;
-    if (res.kind === "ok") {
-      return { ...c, loading: false, html: res.html };
-    }
-    const errMsg =
-      res.kind === "rate_limited"
-        ? "Service is busy, try again in a moment"
-        : "Something went wrong, try again";
-    return { ...c, loading: false, error: errMsg };
-  });
   const pills = prev.state.pills.map((p, i) =>
-    i === pillIdx ? { ...p, chapters } : p,
+    i === idx ? { ...p, ...patch } : p,
   );
   return { ...prev, state: { ...prev.state, pills } };
 }

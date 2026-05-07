@@ -97,13 +97,16 @@ var canonByName = func() map[string]Book {
 //
 //	"<book> <chapter>"
 //	"<book> <chapter>-<chapter>"
-//	"<book> <chapter>:<verse>"
-//	"<book> <chapter>:<verse>-<verse>"
 //
-// It does not validate that the chapter or verse exist beyond
-// "chapter <= book.Chapters" and "verse >= 1". The provider's grammar
-// enforces the rest. The point of this allow-list is to reject obvious
-// garbage before consuming an upstream API call.
+// Verse-level references (`<book> <chapter>:<verse>` and verse ranges)
+// were retired on 2026-05-07 to give NIV/ESV parity — YouVersion's
+// passage endpoint doesn't accept verse-range USFM. The reader is now
+// chapter-level only.
+//
+// It does not validate that chapters exist beyond
+// "chapter <= book.Chapters". The provider's grammar enforces the
+// rest. The point of this allow-list is to reject obvious garbage
+// before consuming an upstream API call.
 func ValidateQuery(q string) error {
 	q = strings.TrimSpace(q)
 	if q == "" {
@@ -112,9 +115,12 @@ func ValidateQuery(q string) error {
 	if len(q) > 64 {
 		return errors.New("query too long")
 	}
+	if strings.Contains(q, ":") {
+		return errors.New("verse references are not supported; use \"<book> <chapter>\" or \"<book> <chapter>-<chapter>\"")
+	}
 
-	// Split book name from "chapter[:verse[-verse]]" tail.
-	// The tail starts at the last space before a digit.
+	// Split book name from "chapter[-chapter]" tail. The tail starts
+	// at the last space before a digit.
 	tailStart := -1
 	for i := len(q) - 1; i > 0; i-- {
 		if q[i] == ' ' && i+1 < len(q) && q[i+1] >= '0' && q[i+1] <= '9' {
@@ -133,10 +139,8 @@ func ValidateQuery(q string) error {
 		return fmt.Errorf("unknown book: %q", bookName)
 	}
 
-	// tail = "<chapter>" or "<chapter>-<chapter>" or "<chapter>:<verse>" or "<chapter>:<verse>-<verse>"
-	chapterStr, verseSpec, hasColon := strings.Cut(tail, ":")
-	if !hasColon && strings.Contains(chapterStr, "-") {
-		startStr, endStr, _ := strings.Cut(chapterStr, "-")
+	if strings.Contains(tail, "-") {
+		startStr, endStr, _ := strings.Cut(tail, "-")
 		startCh, err := parsePositiveInt(startStr)
 		if err != nil {
 			return fmt.Errorf("invalid chapter: %w", err)
@@ -153,34 +157,12 @@ func ValidateQuery(q string) error {
 		}
 		return nil
 	}
-	chapter, err := parsePositiveInt(chapterStr)
+	chapter, err := parsePositiveInt(tail)
 	if err != nil {
 		return fmt.Errorf("invalid chapter: %w", err)
 	}
 	if chapter < 1 || chapter > book.Chapters {
 		return fmt.Errorf("chapter %d out of range for %s (1-%d)", chapter, book.Name, book.Chapters)
-	}
-	if !hasColon {
-		return nil
-	}
-
-	startStr, endStr, hasDash := strings.Cut(verseSpec, "-")
-	startVerse, err := parsePositiveInt(startStr)
-	if err != nil {
-		return fmt.Errorf("invalid verse: %w", err)
-	}
-	if startVerse < 1 {
-		return errors.New("verse must be >= 1")
-	}
-	if !hasDash {
-		return nil
-	}
-	endVerse, err := parsePositiveInt(endStr)
-	if err != nil {
-		return fmt.Errorf("invalid range end: %w", err)
-	}
-	if endVerse < startVerse {
-		return errors.New("range end before start")
 	}
 	return nil
 }

@@ -2,10 +2,14 @@
 
 **Status:** Shipped <!-- Draft | In Progress | Shipped | Deprecated -->
 **Created:** 2026-05-02
-**Last updated:** 2026-05-05
+**Last updated:** 2026-05-07
 **Owner:** Darrel
 
-> **Editor's note (2026-05-07):** forward-looking references in this spec to future highlights/notes integration predate the removal of the Notes feature on 2026-05-07 (see [notes.md](./notes.md)). Highlights shipped and remain. The anchoring scheme described here still underpins highlights.
+> **Editor's note (2026-05-07):** the live behavior is narrower than the body below describes.
+> - **Verse-range references retired.** The reader is now chapter-level only — `<book> <chapter>` and `<book> <chapter>-<chapter>` are accepted; the colon-bearing forms `<book> <chapter>:<verse>[-<verse>]` are rejected by `canon.ValidateQuery` with HTTP 400. The Read-tab "Verse range" picker is gone. Reason: NIV/ESV parity — YouVersion's passage endpoint doesn't accept verse-range USFM identifiers, so granting parity by lowering ESV to chapter-level beat fixing NIV's verse support.
+> - **Highlights and notes retired.** Both shipped and were removed on 2026-05-07 (see [accounts.md](./accounts.md), [highlights.md](./highlights.md), [notes.md](./notes.md)). The verse-anchor markup, the per-character offset scheme, and the in-text `<mark>` overlay described later in this spec no longer have a consumer in the live code.
+>
+> The body is preserved as the historical design record.
 
 ## Why
 
