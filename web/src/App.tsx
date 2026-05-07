@@ -32,6 +32,7 @@ export function App() {
   const readingSurfaceRef = useRef<HTMLElement | null>(null);
   const { translation, setTranslation } = useTranslation();
   const [planIDs, setPlanIDs] = usePlanSelection();
+  const [pickerOpen, setPickerOpen] = useState(false);
   const dailyTab = useDailyTab(tab === "daily", toggles, translation, planIDs);
 
   const q = useMemo(() => refToQuery(ref), [ref]);
@@ -106,6 +107,21 @@ export function App() {
           </button>
         </nav>
         <div className={styles.headerRight}>
+          {tab === "read" && (
+            <button
+              type="button"
+              className={styles.toolbarBtn}
+              aria-label={
+                pickerOpen ? "Close chapter picker" : "Open chapter picker"
+              }
+              aria-expanded={pickerOpen}
+              aria-controls="picker"
+              aria-haspopup="menu"
+              onClick={() => setPickerOpen((v) => !v)}
+            >
+              ☰
+            </button>
+          )}
           <button
             type="button"
             className={styles.gear}
@@ -126,15 +142,17 @@ export function App() {
         planIDs={planIDs}
         setPlanIDs={setPlanIDs}
       />
-      <div
-        className={
-          tab === "daily"
-            ? `${styles.layout} ${styles.layoutDaily}`
-            : styles.layout
-        }
-      >
-        {tab === "read" && (
-          <aside className={styles.picker}>
+      {tab === "read" && pickerOpen && (
+        <div
+          className={styles.pickerOverlay}
+          onClick={() => setPickerOpen(false)}
+        >
+          <div
+            id="picker"
+            role="menu"
+            className={styles.pickerMenu}
+            onClick={(e) => e.stopPropagation()}
+          >
             <label>
               Translation
               <select
@@ -183,34 +201,10 @@ export function App() {
                 )}
               </select>
             </label>
-
-            <nav className={styles.chapterNav}>
-              {prev && (
-                <button
-                  type="button"
-                  className={styles.navBtn}
-                  onClick={() => {
-                    setRef(prev);
-                  }}
-                >
-                  ← Previous
-                </button>
-              )}
-              {next && (
-                <button
-                  type="button"
-                  className={styles.navBtn}
-                  onClick={() => {
-                    setRef(next);
-                  }}
-                >
-                  Next →
-                </button>
-              )}
-            </nav>
-          </aside>
-        )}
-
+          </div>
+        </div>
+      )}
+      <div className={styles.layout}>
         <main ref={readingSurfaceRef} className={styles.readingSurface}>
           {tab === "read" ? (
             <>
@@ -218,14 +212,45 @@ export function App() {
                 <div className={styles.spinner} aria-label="loading" />
               )}
               {!loading && html && (
-                <article
-                  className={
-                    toggles.include_word_of_christ
-                      ? "passage"
-                      : "passage no-woc"
-                  }
-                  dangerouslySetInnerHTML={{ __html: html }}
-                />
+                <div className={styles.readArticle}>
+                  <article
+                    className={
+                      toggles.include_word_of_christ
+                        ? "passage"
+                        : "passage no-woc"
+                    }
+                    dangerouslySetInnerHTML={{ __html: html }}
+                  />
+                  {(prev || next) && (
+                    <nav
+                      className={styles.chapterFooter}
+                      aria-label="Chapter navigation"
+                    >
+                      {prev ? (
+                        <button
+                          type="button"
+                          className={styles.navBtn}
+                          onClick={() => setRef(prev)}
+                        >
+                          ← Previous
+                        </button>
+                      ) : (
+                        <span />
+                      )}
+                      {next ? (
+                        <button
+                          type="button"
+                          className={styles.navBtn}
+                          onClick={() => setRef(next)}
+                        >
+                          Next →
+                        </button>
+                      ) : (
+                        <span />
+                      )}
+                    </nav>
+                  )}
+                </div>
               )}
             </>
           ) : (
