@@ -18,5 +18,6 @@ landing), **Shipped** (user-visible), **Deprecated** (being removed).
 | [multi-translation](./multi-translation.md) | Shipped | Pluggable translation foundation; ESV at launch, per-user persisted preference, highlights/notes scoped per translation |
 | [niv](./niv.md) | Shipped | NIV translation via YouVersion Platform API; per-translation verse-anchor dispatcher; "Powered by YouVersion" attribution |
 | [notes](./notes.md) | Shipped | Private per-user written notes attached to passages |
+| [oauth-auth](./oauth-auth.md) | Draft | Replace email + password with Google OAuth (single provider); supersedes [accounts](./accounts.md) |
 | [passage-reader](./passage-reader.md) | Shipped | Read a chapter or contiguous passage range; ESV proxied through the server |
 | [reader-ui-refresh](./reader-ui-refresh.md) | Shipped | iPad/Safari touch polish, light + dark theme, design tokens; rides a Vite/React/TS bump |
