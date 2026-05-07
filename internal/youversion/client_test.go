@@ -20,8 +20,13 @@ func TestToUSFM(t *testing.T) {
 		{"John 3:16", "JHN.3.16"},
 		{"John 3:1-21", "JHN.3.1-JHN.3.21"},
 		{"Psalms 119-120", "PSA.119-PSA.120"},
+		// Hope reading-plan cells use the singular "Psalm"; canon.LookupBook
+		// resolves it to "Psalms" so the USFM lookup still finds PSA.
+		{"Psalm 5", "PSA.5"},
+		{"Psalm 119:33-40", "PSA.119.33-PSA.119.40"},
 		{"1 Corinthians 13:4-7", "1CO.13.4-1CO.13.7"},
 		{"Song of Solomon 2:10", "SNG.2.10"},
+		{"Song of Songs 2:10", "SNG.2.10"},
 		{"3 John 1", "3JN.1"},
 	}
 	for _, c := range cases {
@@ -39,6 +44,39 @@ func TestToUSFM(t *testing.T) {
 func TestToUSFM_UnknownBook(t *testing.T) {
 	if _, err := toUSFM("Gibberish 3"); err == nil {
 		t.Error("expected error for unknown book, got nil")
+	}
+}
+
+func TestExpandChapterRange(t *testing.T) {
+	cases := []struct {
+		in   string
+		want []string
+	}{
+		// Single chapter — pass through.
+		{"Genesis 1", []string{"Genesis 1"}},
+		// Chapter range — fan out per-chapter so each call hits the
+		// YouVersion endpoint with one passage at a time.
+		{"Genesis 1-3", []string{"Genesis 1", "Genesis 2", "Genesis 3"}},
+		{"Matthew 11-12", []string{"Matthew 11", "Matthew 12"}},
+		// Verse-range queries pass through (YouVersion handles them).
+		{"Psalm 119:33-40", []string{"Psalm 119:33-40"}},
+		{"John 3:16", []string{"John 3:16"}},
+		// Multi-word book names still parse correctly.
+		{"Song of Solomon 1-2", []string{"Song of Solomon 1", "Song of Solomon 2"}},
+	}
+	for _, c := range cases {
+		got := expandChapterRange(c.in)
+		if len(got) != len(c.want) {
+			t.Errorf("expandChapterRange(%q) = %v (len %d), want %v (len %d)",
+				c.in, got, len(got), c.want, len(c.want))
+			continue
+		}
+		for i := range got {
+			if got[i] != c.want[i] {
+				t.Errorf("expandChapterRange(%q)[%d] = %q, want %q",
+					c.in, i, got[i], c.want[i])
+			}
+		}
 	}
 }
 
