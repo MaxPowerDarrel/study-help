@@ -59,8 +59,7 @@ rationale is logged in Decisions below.
 **Sign-in panel.** The `AuthPanel` slide-in becomes a single button: "Continue
 with Google". The email/password form, "Create account" toggle, and password
 strength helper are gone. The sign-in nudge popover reads "Sign in with Google
-to save highlights" (and "Sign in with Google to save notes" for the notes
-nudge); the link inside it jumps straight to the OAuth start URL.
+to save highlights"; the link inside it jumps straight to the OAuth start URL.
 
 **Sign-in flow.**
 1. User clicks **Continue with Google** → server redirects to Google with a
@@ -129,7 +128,7 @@ sessions package, cookie helpers, middleware, per-IP rate limiter.
 `POST /api/auth/signup` and `POST /api/auth/signin` are removed (404 to anyone
 still calling them, including any cached SPA in the wild).
 
-### Schema migration — `00006_oauth.sql`
+### Schema migration — `00007_oauth.sql`
 
 Single migration; the server ships and the SPA ship in the same release
 (server 404s `/signup`/`/signin` immediately, SPA no longer calls them).
@@ -235,7 +234,7 @@ implementation rather than spec.
   the rest.
 - **2026-05-06** — **Single-release cutover, not a two-step migration.**
   Server stops accepting `/signup` / `/signin` (404), SPA stops calling
-  them, and `password_hash` is dropped in one migration (`00006_oauth.sql`)
+  them, and `password_hash` is dropped in one migration (`00007_oauth.sql`)
   in the same release. Rationale: pre-prod user base is the developer
   alone, so the staged window a two-step migration buys has no value to
   trade for the extra mechanism. The migration includes a pre-DROP
@@ -290,12 +289,11 @@ implementation rather than spec.
   new normalisation code path; the migration step cites the existing
   contract directly.
 - **2026-05-06** — **Guest sign-in nudge names the provider.** The
-  popover reads "Sign in with Google to save highlights" / "Sign in with
-  Google to save notes" instead of the prior "Sign in to save…" form.
-  Rationale: removes the password-field expectation users carry over
-  from the email + password era; matches the "Continue with Google"
-  button label inside `AuthPanel` so users don't see two different
-  framings of the same action.
+  popover reads "Sign in with Google to save highlights" instead of the
+  prior "Sign in to save…" form. Rationale: removes the password-field
+  expectation users carry over from the email + password era; matches
+  the "Continue with Google" button label inside `AuthPanel` so users
+  don't see two different framings of the same action.
 
 ## Verification
 
@@ -306,9 +304,9 @@ implementation rather than spec.
   `users` row with `email`, `oauth_provider=google`, `oauth_sub`, and the
   default translation populated.
 - Existing-user-by-email migration: pre-create a user with email
-  `nate@example.com` (and a `password_hash`, in the world before 00006);
-  first OAuth sign-in stamps `oauth_sub` and reuses the same `user_id`;
-  existing highlights/notes survive.
+  `nate@example.com` (and a `password_hash`, in the world before this
+  migration); first OAuth sign-in stamps `oauth_sub` and reuses the
+  same `user_id`; existing highlights survive.
 - Same-email collision: pre-create an OAuth-linked user, then run the flow
   with a *different* `sub` for the same verified email → 409 (or the chosen
   decision per Open questions).
@@ -388,7 +386,7 @@ Replace with:
   unchanged; `PATCH /api/auth/me` still works because the user record key
   (`user_id`) survives the migration. New OAuth-created users get the same
   default translation (`'ESV'`) the migration sets.
-- [`highlights.md`](./highlights.md), [`notes.md`](./notes.md) — both
-  reference `users.id` via a foreign key; nothing changes for them.
+- [`highlights.md`](./highlights.md) — references `users.id` via a
+  foreign key; nothing changes.
 - [`deploy-aws.md`](./deploy-aws.md) — `.env` for the Lightsail deploy gains
   `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `OAUTH_REDIRECT_URL`.

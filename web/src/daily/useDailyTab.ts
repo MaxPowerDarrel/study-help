@@ -2,7 +2,6 @@ import {
   type RefObject,
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
 } from "react";
@@ -58,18 +57,11 @@ export type UseDailyTab = {
   setActivePill: (idx: number) => void;
   selectedDate: string;
   setSelectedDate: (date: string) => void;
-  activePill: DailyPill | null;
-  activeChapterNumbers: number[];
   getArticleRef: (
     planID: PlanID,
     book: string,
     chapter: number,
   ) => RefObject<HTMLElement | null>;
-  getArticleEl: (book: string, chapter: number) => HTMLElement | null;
-  // If a tap targets a chapter inside an inactive pill, switch active
-  // and return the new pill index. Returns null when no switch was
-  // needed.
-  switchToOwningPill: (book: string, chapter: number) => number | null;
 };
 
 // useDailyTab owns the daily-reading state machine: date selection,
@@ -118,18 +110,6 @@ export function useDailyTab(
       const ref: RefObject<HTMLElement | null> = { current: null };
       articleRefs.current.set(key, ref);
       return ref;
-    },
-    [],
-  );
-  // Note-tap callers don't know which plan owns a chapter; look across
-  // all currently-mapped refs and return the first DOM node we have.
-  const getArticleEl = useCallback(
-    (book: string, chapter: number): HTMLElement | null => {
-      const suffix = `|${book}:${chapter}`;
-      for (const [key, ref] of articleRefs.current) {
-        if (key.endsWith(suffix) && ref.current) return ref.current;
-      }
-      return null;
     },
     [],
   );
@@ -226,35 +206,12 @@ export function useDailyTab(
     );
   }, []);
 
-  const activePill = useMemo(() => activePillState(daily), [daily]);
-  const activeChapterNumbers = useMemo(
-    () => activePill?.chapters.map((c) => c.chapter) ?? [],
-    [activePill],
-  );
-
-  const switchToOwningPill = useCallback(
-    (book: string, chapter: number): number | null => {
-      if (daily.kind !== "ready") return null;
-      const idx = daily.state.pills.findIndex((p) =>
-        p.chapters.some((c) => c.book === book && c.chapter === chapter),
-      );
-      if (idx < 0 || idx === daily.state.activeIdx) return null;
-      setActivePill(idx);
-      return idx;
-    },
-    [daily, setActivePill],
-  );
-
   return {
     daily,
     setActivePill,
     selectedDate,
     setSelectedDate,
-    activePill,
-    activeChapterNumbers,
     getArticleRef,
-    getArticleEl,
-    switchToOwningPill,
   };
 }
 
@@ -321,13 +278,6 @@ function updateChapter(
     i === pillIdx ? { ...p, chapters } : p,
   );
   return { ...prev, state: { ...prev.state, pills } };
-}
-
-function activePillState(daily: DailyLoad): DailyPill | null {
-  if (daily.kind !== "ready") return null;
-  const { pills, activeIdx } = daily.state;
-  if (activeIdx < 0 || activeIdx >= pills.length) return null;
-  return pills[activeIdx];
 }
 
 function todayString(): string {

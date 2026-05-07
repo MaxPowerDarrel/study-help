@@ -5,6 +5,8 @@
 **Last updated:** 2026-05-04
 **Owner:** unassigned
 
+> **Editor's note (2026-05-07):** references in this spec to notes as a future surface predate the removal of the Notes feature on 2026-05-07 (see [notes.md](./notes.md)). The token / theme work described here was unaffected.
+
 ## Why
 
 The reader surface ships, works, and is the product (per

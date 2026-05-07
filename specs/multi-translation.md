@@ -5,6 +5,8 @@
 **Last updated:** 2026-05-05
 **Owner:** unassigned
 
+> **Editor's note (2026-05-07):** references in this spec to the `notes` table, `useNotes` hook, and notes API endpoints predate the removal of the Notes feature on 2026-05-07 (see [notes.md](./notes.md)). The `00005_translation.sql` migration described below did add a `translation` column to the `notes` table at the time; the table itself has since been dropped via `00006_remove_notes.sql`. Per-translation scoping for highlights still applies.
+
 ## Why
 
 `PROJECT_CONSTITUTION.md` previously locked v1 to ESV-only because we wanted to ship reading and annotation against a single, known-good API before introducing the variability that comes with multiple translations. With reader, accounts, highlights, and notes all shipped, the abstraction can land safely. This PR amends §2 ("Multi-translation, ESV at launch") and §5 ("No cross-translation rendering") and refactors the server, schema, and SPA so additional translations can be added in subsequent PRs without touching highlights, notes, or auth.

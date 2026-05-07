@@ -5,6 +5,8 @@
 **Last updated:** 2026-05-04
 **Owner:** unassigned
 
+> **Editor's note (2026-05-07):** historical references in this spec to "highlights and notes" predate the removal of the Notes feature on 2026-05-07 (see [notes.md](./notes.md)). The constitution quotes below reflect §1/§2 as they read at the time of this spec; both sections have since been amended to drop notes. Highlights ship and remain in scope.
+
 ## Why
 
 Users read scripture in study-help to engage carefully with the text. Highlighting a passage is the most fundamental annotation act — it lets a reader mark what struck them without altering the text itself. This feature delivers the first layer of personal annotation described in PROJECT_CONSTITUTION.md §1 (purpose: "personal highlights and notes") and §2 (in-scope: "Highlighting passages — range-based, persistent, per-user"). It sits directly on top of the accounts feature (specs/accounts.md), using the session cookie and per-user identity already in place, and constitutes the first exercise of the server-authoritative user-data principle (§4).

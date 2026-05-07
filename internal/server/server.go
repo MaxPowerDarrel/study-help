@@ -12,7 +12,6 @@ import (
 	"study-help/internal/auth"
 	"study-help/internal/config"
 	"study-help/internal/highlights"
-	"study-help/internal/notes"
 	"study-help/internal/scripture"
 	webclient "study-help/internal/web"
 )
@@ -20,7 +19,7 @@ import (
 // New builds the public HTTP server: health, the passage proxy, the
 // auth endpoints, and the static SPA bundle. The /metrics endpoint
 // runs on a separate localhost listener — see NewMetricsServer.
-func New(cfg config.Config, db *sql.DB, counter *ESVCallCounter, daily *DailyCounter, reg *scripture.Registry, authSvc *auth.Service, authLimiter *auth.Limiter, highlightsSvc *highlights.Service, notesSvc *notes.Service) *http.Server {
+func New(cfg config.Config, db *sql.DB, counter *ESVCallCounter, daily *DailyCounter, reg *scripture.Registry, authSvc *auth.Service, authLimiter *auth.Limiter, highlightsSvc *highlights.Service) *http.Server {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
@@ -47,10 +46,6 @@ func New(cfg config.Config, db *sql.DB, counter *ESVCallCounter, daily *DailyCou
 	apiMux.HandleFunc("GET /api/highlights", highlightsSvc.HandleList())
 	apiMux.HandleFunc("POST /api/highlights", highlightsSvc.HandleCreate())
 	apiMux.HandleFunc("DELETE /api/highlights/{id}", highlightsSvc.HandleDelete())
-	apiMux.HandleFunc("GET /api/notes", notesSvc.HandleList())
-	apiMux.HandleFunc("POST /api/notes", notesSvc.HandleCreate())
-	apiMux.HandleFunc("PATCH /api/notes/{id}", notesSvc.HandlePatch())
-	apiMux.HandleFunc("DELETE /api/notes/{id}", notesSvc.HandleDelete())
 	mux.Handle("/api/", authSvc.Middleware(apiMux))
 
 	mux.Handle("/", spaHandler(webclient.DistFS()))

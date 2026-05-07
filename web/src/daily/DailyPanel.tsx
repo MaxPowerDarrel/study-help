@@ -1,5 +1,4 @@
 import type { RefObject } from "react";
-import type { ToolbarTuple } from "../highlights/HighlightToolbar";
 import { PassageView } from "../highlights/PassageView";
 import { defaultTimezoneProvider } from "../platform/TimezoneProvider";
 import { Attribution } from "../translations/Attribution";
@@ -19,7 +18,6 @@ export type DailyPanelProps = {
   setTranslation: (id: TranslationID) => Promise<UpdateTranslationResult>;
   isSignedIn: boolean;
   onGuestSignin: () => void;
-  onAddNote: (tuple: ToolbarTuple, book: string, chapter: number) => void;
   getArticleRef: (
     planID: PlanID,
     book: string,
@@ -37,7 +35,6 @@ export function DailyPanel({
   setTranslation,
   isSignedIn,
   onGuestSignin,
-  onAddNote,
   getArticleRef,
 }: DailyPanelProps) {
   const dateNav = (
@@ -181,7 +178,6 @@ export function DailyPanel({
                 isSignedIn={isSignedIn}
                 showWordsOfChrist={showWordsOfChrist}
                 onGuestSignin={onGuestSignin}
-                onAddNote={onAddNote}
                 articleRef={getArticleRef(activePill.planID, c.book, c.chapter)}
               />
             ))}
@@ -200,7 +196,6 @@ function DailyChapterBlock({
   isSignedIn,
   showWordsOfChrist,
   onGuestSignin,
-  onAddNote,
   articleRef,
 }: {
   chapterState: DailyChapterState;
@@ -208,7 +203,6 @@ function DailyChapterBlock({
   isSignedIn: boolean;
   showWordsOfChrist: boolean;
   onGuestSignin: () => void;
-  onAddNote: (tuple: ToolbarTuple, book: string, chapter: number) => void;
   articleRef: RefObject<HTMLElement | null>;
 }) {
   return (
@@ -231,7 +225,6 @@ function DailyChapterBlock({
           isSignedIn={isSignedIn}
           showWordsOfChrist={showWordsOfChrist}
           onGuestSignin={onGuestSignin}
-          onAddNote={onAddNote}
           articleRef={articleRef}
         />
       )}

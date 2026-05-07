@@ -1,12 +1,12 @@
 # study-help
 
-A Bible reader optimized for **focused study** of scripture a chapter or section at a time, with personal highlights and notes. A web app, designed to be enjoyable in any modern browser — including Safari on iPad.
+A Bible reader optimized for **focused study** of scripture a chapter or section at a time, with personal highlights. A web app, designed to be enjoyable in any modern browser — including Safari on iPad.
 
 See [`PROJECT_CONSTITUTION.md`](./PROJECT_CONSTITUTION.md) for purpose, principles, and non-goals, and [`STACK.md`](./STACK.md) for the tech choices.
 
 ## Status
 
-Reader, accounts, highlights, notes, multi-translation (ESV + NIV), and daily-reading annotations have all shipped — see the per-feature specs under [`specs/`](./specs/). The Go server proxies all scripture requests (upstream API keys never reach the browser), exposes a localhost-only Prometheus counter, and serves the React SPA from an embedded Vite build.
+Reader, accounts, highlights, multi-translation (ESV + NIV), and daily-reading annotations have all shipped — see the per-feature specs under [`specs/`](./specs/). The Go server proxies all scripture requests (upstream API keys never reach the browser), exposes a localhost-only Prometheus counter, and serves the React SPA from an embedded Vite build.
 
 ## Stack
 
@@ -54,12 +54,12 @@ cd web && npm run format
 
 ## Layout
 
-- `main.go` — wires config → DB → auth, scripture provider registry (ESV + NIV), highlights / notes services into the public + private servers, with graceful SIGINT/SIGTERM shutdown.
+- `main.go` — wires config → DB → auth, scripture provider registry (ESV + NIV), highlights service into the public + private servers, with graceful SIGINT/SIGTERM shutdown.
 - `internal/config/` — env-var-driven `Config`.
 - `internal/db/` — opens SQLite (WAL, foreign keys, 5s busy timeout) and runs embedded goose migrations.
-- `internal/server/` — public HTTP server (`/healthz`, `/api/passage`, `/api/daily-reading`, `/api/auth/*`, `/api/highlights*`, `/api/notes*`, embedded SPA) + private `127.0.0.1:9090/metrics`.
+- `internal/server/` — public HTTP server (`/healthz`, `/api/passage`, `/api/daily-reading`, `/api/auth/*`, `/api/highlights*`, embedded SPA) + private `127.0.0.1:9090/metrics`.
 - `internal/auth/` — accounts: bcrypt, cookie sessions, per-IP + per-account rate limiting.
-- `internal/highlights/` + `internal/notes/` — per-user range-anchored annotations behind `auth.RequireUser`.
+- `internal/highlights/` — per-user range-anchored highlights behind `auth.RequireUser`.
 - `internal/scripture/` — translation-provider abstraction; `internal/esv/` and `internal/youversion/` are the registered providers.
 - `internal/canon/` — 66-book canon: `LookupBook` and the canon-aware `q` allow-list validator.
 - `internal/web/` — embeds the Vite build output (`internal/web/dist/`) into the Go binary.

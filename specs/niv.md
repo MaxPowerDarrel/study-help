@@ -5,6 +5,8 @@
 **Last updated:** 2026-05-05
 **Owner:** Darrel
 
+> **Editor's note (2026-05-07):** references in this spec to notes (the per-translation verse-anchor dispatcher serving "highlights AND notes", `tupleToRange` for notes' tap-to-scroll, etc.) predate the removal of the Notes feature on 2026-05-07 (see [notes.md](./notes.md)). The dispatcher and `tupleToRange` remain — highlights still depend on them.
+
 ## Why
 
 The multi-translation foundation shipped with ESV-only ([`specs/multi-translation.md`](./multi-translation.md)) and an explicit follow-up to register a second provider. NIV is the most-requested next translation. Biblica licenses NIV through the YouVersion Platform API; YouVersion's public beta (Dec 2025) opened self-serve access on `platform.youversion.com`, so a hobby-scale OSS project can ship NIV without a partner contract.

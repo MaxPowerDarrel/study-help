@@ -5,6 +5,8 @@
 **Last updated:** 2026-05-05
 **Owner:** Darrel
 
+> **Editor's note (2026-05-07):** forward-looking references in this spec to future highlights/notes integration predate the removal of the Notes feature on 2026-05-07 (see [notes.md](./notes.md)). Highlights shipped and remain. The anchoring scheme described here still underpins highlights.
+
 ## Why
 
 The reading surface is the product. This feature delivers the core
