@@ -163,7 +163,6 @@ export function App() {
               Translation
               <select
                 value={translation}
-                disabled={!isSignedIn}
                 onChange={(e) => {
                   void translationState.setTranslation(
                     e.target.value as TranslationID,
@@ -176,11 +175,6 @@ export function App() {
                   </option>
                 ))}
               </select>
-              {!isSignedIn && (
-                <span className={styles.translationHint}>
-                  Sign in to choose
-                </span>
-              )}
               <Attribution translation={translation} />
             </label>
             <label>

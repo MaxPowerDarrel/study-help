@@ -6,6 +6,7 @@ import type { TranslationID } from "./catalog";
 
 export type UpdateTranslationResult =
   | { kind: "ok"; user: User }
+  | { kind: "ok-local" }
   | { kind: "guest" }
   | { kind: "invalid" }
   | { kind: "error" };

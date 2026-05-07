@@ -2,7 +2,7 @@
 
 **Status:** Shipped (foundation; only ESV registered at launch)
 **Created:** 2026-05-05
-**Last updated:** 2026-05-05
+**Last updated:** 2026-05-07
 **Owner:** unassigned
 
 > **Editor's note (2026-05-07):** references in this spec to the `notes` table, `useNotes` hook, and notes API endpoints predate the removal of the Notes feature on 2026-05-07 (see [notes.md](./notes.md)). The `00005_translation.sql` migration described below did add a `translation` column to the `notes` table at the time; the table itself has since been dropped via `00006_remove_notes.sql`. Per-translation scoping for highlights still applies.
@@ -22,21 +22,21 @@ The constitution still says "secrets stay server-side" — every translation pro
 - [x] Highlights and notes scoped per translation (`translation` column on both tables).
 - [x] `/api/passage` accepts `?translation=`, resolved against the registry, falling back to user pref.
 - [x] SPA `web/src/translations/` module with hook + catalog mirroring the server registry.
-- [x] Picker UI surfaces the selector (disabled for guests with sign-in nudge).
+- [x] Picker UI surfaces the selector. _Originally disabled for guests with a sign-in nudge; opened to guests on 2026-05-07 — see Decisions._
 
 ## Non-goals
 
 - **Adding NIV / KJV / WEB / etc. in this PR.** This PR ships the abstraction and persists ESV; subsequent PRs register additional providers.
 - **Cross-translation rendering.** Highlights and notes are stamped with their authoring translation and only render when active. Versification + verse-text differences make re-anchoring an unbounded problem (constitution §5).
 - **Multiple translations active simultaneously** (e.g., parallel reading). Out of scope.
-- **localStorage fallback for translation choice.** Guests are pinned to the registry default; signed-in users get persistence via the account.
+- ~~**localStorage fallback for translation choice.** Guests are pinned to the registry default; signed-in users get persistence via the account.~~ _Reversed 2026-05-07: guests can now swap translations and the choice persists in localStorage. See Decisions._
 - **Per-translation render toggles.** ESV's `include_word_of_christ` (CSS-only client toggle) and any future provider-specific knobs are deferred until a second provider lands.
 
 ## User-facing behavior
 
-**Picker.** A `Translation` `<select>` sits above the Book select in the picker pane. For signed-in users it's enabled, pre-selected from `user.translation`, and changing it triggers a `PATCH /api/auth/me` and a refetch of the current passage and highlights/notes. For guests the select is disabled with the inline hint "Sign in to choose" — same posture as the existing "Sign in to highlight" guard.
+**Picker.** A `Translation` `<select>` sits above the Book select in the picker pane (and in the Daily-tab header). It is always enabled — guests included. For signed-in users, changing it fires a `PATCH /api/auth/me` and refetches the active passage. For guests, the choice is written to localStorage under key `translation`. Highlights still require sign-in (separate gate, unchanged).
 
-**Persistence.** On sign-in, the SPA hydrates the active translation from `/api/auth/me`. On reload, hydration is the same — there is no localStorage path. Guests always see the registry default (ESV).
+**Persistence.** Signed in: source of truth is `user.translation`, hydrated from `/api/auth/me`. Guest: source of truth is the localStorage entry, falling back to the registry default. **Sign-in transition:** if the guest's local pick differs from `user.translation`, the SPA fires a single `PATCH /api/auth/me` to push the guest's choice up to the account (guest pick wins) and clears the localStorage entry on success. **Sign-out transition:** the last-active translation is written into the guest store so it survives across the sign-out.
 
 **Reading.** Every passage fetch carries `?translation=`. At launch, this only takes the `ESV` value, but the wire shape is correct so adding a provider in a follow-up PR is purely additive.
 
@@ -60,8 +60,9 @@ The constitution still says "secrets stay server-side" — every translation pro
 
 **SPA module `web/src/translations/`**
 - `catalog.ts` — `TRANSLATIONS`, `DEFAULT_TRANSLATION`, `isKnownTranslation`. Mirrors the server registry; future PRs add entries here in the same diff that registers the provider server-side.
-- `useTranslation.ts` — single source of truth. Hydrates from `user.translation`; `setTranslation(id)` calls `PATCH /api/auth/me` and updates state on 200.
-- `api.ts` — discriminated-union `updateTranslation(id)` matching the auth/highlights/notes shape.
+- `useTranslation.ts` — single source of truth. Hydrates from `user.translation` when signed in, else from the guest store; `setTranslation(id)` always updates local state and the guest store, and additionally `PATCH /api/auth/me` when signed in. Detects sign-in / sign-out transitions to push the guest pick up or persist the user's last pick down.
+- `store.ts` — guest-translation persistence. Thin wrapper over `defaultToggleStore` (the §4 platform abstraction) under key `translation`. Mirrors the shape of `web/src/theme.ts`.
+- `api.ts` — discriminated-union `updateTranslation(id)` matching the auth/highlights/notes shape. Includes an `ok-local` variant for guest writes that don't hit the network.
 
 **SPA wiring** — `fetchPassage`, `listHighlights`, `createHighlight`, `listNotes`, `createNote` take a required `translation` argument (TypeScript catches missed call sites). `useHighlights`/`useNotes` add it to their effect deps. The picker `<select>` lives in `App.tsx` above the Book select.
 
@@ -76,13 +77,14 @@ The constitution still says "secrets stay server-side" — every translation pro
 
 - **2026-05-05** — Pluggable abstraction first, ESV-only at launch. Adding a second translation is a follow-up PR. Rationale: the abstraction is the load-bearing change; subsequent providers are additive (one provider package, one catalog entry, one registration line).
 - **2026-05-05** — Per-translation scoping for highlights and notes via a `translation` column. Rejected: verse-level fallback when switching translations (loses precision and complicates rendering); translation-agnostic offsets (offsets drift when verse text differs across translations).
-- **2026-05-05** — Translation persists as a `users` column with `PATCH /api/auth/me`. No localStorage fallback. Rejected: localStorage-only (per-device, not per-account, and inconsistent with the server-authoritative principle); both/hybrid (more hydration code for negligible gain).
+- **2026-05-05** — Translation persists as a `users` column with `PATCH /api/auth/me`. No localStorage fallback. Rejected: localStorage-only (per-device, not per-account, and inconsistent with the server-authoritative principle); both/hybrid (more hydration code for negligible gain). _Partly reversed 2026-05-07 — see below._
 - **2026-05-05** — `internal/canon/` is its own package, not nested under `scripture`. Reused by `highlights`, `notes`, `dailyreader`, and `scripture`; nesting it under `scripture` would force these packages to import the provider machinery for the canon helper.
 - **2026-05-05** — `internal/esv/` stays where it is; a new `provider.go` wraps the existing `Client`. Each future provider lives in its own peer package (`internal/kjv/`, `internal/niv/`). Rejected: moving everything under `internal/scripture/<provider>/` — bigger diff, no real benefit at this size.
 - **2026-05-05** — Single migration (`00005_translation.sql`) covering all three tables. Atomic, one-file review surface. Rejected: three migrations — forces reviewers to mentally diff across files for one logical change.
 - **2026-05-05** — `PATCH /api/auth/me` over `PUT /api/auth/preferences`. Keeps the auth namespace cohesive; the user record is the only mutable account-scoped resource at v1.
-- **2026-05-05** — Picker shows a *disabled* `<select>` for guests with an inline "Sign in to choose" hint. Rejected: hide the picker — makes the capability undiscoverable.
+- **2026-05-05** — Picker shows a *disabled* `<select>` for guests with an inline "Sign in to choose" hint. Rejected: hide the picker — makes the capability undiscoverable. _Reversed 2026-05-07 — see below._
 - **2026-05-05** — NIV is the first follow-up provider, registered through the YouVersion Platform API. Per-translation verse-anchor dispatcher (the open question above) lands in the same change. See [`specs/niv.md`](./niv.md).
+- **2026-05-07** — Guests can now swap translations; the choice persists in localStorage under key `translation` (via the `ToggleStore` platform abstraction). On sign-in, if the guest's pick differs from `user.translation`, the guest pick wins — the SPA pushes it up via a single `PATCH /api/auth/me` and clears the local entry on success. On sign-out, the last-active translation is written into the guest store so the experience is continuous. **Why reverse 2026-05-05's "no localStorage fallback" call:** the original rationale (server-authoritative, simpler hydration) was correct for highlights and notes (per-user, per-translation rows), but translation choice itself is a low-stakes UI preference and gating it behind signup felt punitive — readers couldn't even sample NIV without an account. Highlights remain auth-gated; that's the load-bearing privacy and identity boundary, not translation.
 
 ## Verification
 
@@ -92,10 +94,13 @@ The constitution still says "secrets stay server-side" — every translation pro
 - `internal/highlights/handlers_test.go` — `POST` rejects unknown translation; `GET ?translation=BOGUS` → 400; cross-translation isolation (a row stamped ESV is invisible when KJV is active, and vice versa).
 - `internal/server/passage_test.go` — `?translation=BOGUS` returns 400 without invoking the upstream stub.
 
+**SPA tests** (`web/src/translations/useTranslation.test.tsx`) — guest setTranslation writes localStorage without fetching; signed-in setTranslation PATCHes and clears the guest entry; sign-in transition pushes a divergent guest pick up to the account; sign-out persists the last-active translation into the guest store.
+
 **Manual smoke**
-1. `cd web && npm install && npm run build && cd .. && ESV_API_KEY=… SESSION_SECRET=… ENV=dev go run .`
-2. Sign up → `GET /api/auth/me` returns `"translation":"ESV"`.
-3. Picker shows the `Translation` select; for guests it's disabled with the "Sign in to choose" hint.
-4. `PATCH /api/auth/me` with `{"translation":"NIV"}` → 400 unknown.
-5. `PATCH /api/auth/me` with `{"translation":"ESV"}` → 200 + updated user.
-6. Reload → picker still shows ESV; existing highlights/notes still render.
+1. `cd web && npm install && npm run build && cd .. && ESV_API_KEY=… SESSION_SECRET=… YOUVERSION_APP_KEY=… ENV=dev go run .`
+2. Open as guest. Read tab → Translation select is enabled, no "Sign in" hint. Switch to NIV → passage refetches in NIV.
+3. Reload → still NIV. Switch to Daily tab → picker enabled there too.
+4. Sign in to an account stored as ESV → picker shows NIV (guest pick wins). Network tab shows one `PATCH /api/auth/me` with `{"translation":"NIV"}`. localStorage `translation` is cleared.
+5. Reload signed in → picker hydrates from `user.translation` (now NIV).
+6. Sign out → translation stays NIV; localStorage `translation` is set back to NIV. Subsequent changes write to localStorage only.
+7. Selecting text as a guest still surfaces the "Sign in to highlight" toolbar — auth gate on highlights is unchanged.
