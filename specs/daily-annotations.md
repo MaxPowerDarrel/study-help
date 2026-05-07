@@ -2,8 +2,10 @@
 
 **Status:** Shipped
 **Created:** 2026-05-05
-**Last updated:** 2026-05-06
+**Last updated:** 2026-05-07
 **Owner:** unassigned
+
+> **Editor's note (2026-05-07):** the Notes feature has since been removed (see [notes.md](./notes.md)). Sections of this spec describe the now-removed notes drawer, `useDailyNotes`, and "Add note" toolbar affordance — they are preserved as the historical design record but the live behavior on the Daily tab is highlights + translation picker only. The `onAddNote` callback, `useDailyNotes` hook, `findArticle`/`getArticleEl` lookup, and `switchToOwningPill` are no longer present in the codebase.
 
 ## Why
 

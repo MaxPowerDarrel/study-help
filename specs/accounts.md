@@ -5,6 +5,8 @@
 **Last updated:** 2026-05-04 <!-- PR 2 (client) shipped; feature complete 2026-05-04 -->
 **Owner:** unassigned
 
+> **Editor's note (2026-05-07):** references in this spec to "notes" predate the removal of the Notes feature on 2026-05-07 (see [notes.md](./notes.md)). Accounts still underpin highlights and any future per-user data; the historical wording is preserved as the design record at the time of writing.
+
 ## Why
 
 Highlights and notes are per-user (PROJECT_CONSTITUTION.md §2), and user data is server-authoritative (§4). Before either can ship, the app needs accounts: a way for a person to register, sign in, and sign out so the server can attribute reads, highlights, and notes to a specific user. This spec covers the foundational identity layer; highlights and notes will sit on top of it.

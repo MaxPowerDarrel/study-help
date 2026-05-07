@@ -1,7 +1,6 @@
 // Package httpx contains small HTTP helpers shared across handler
 // packages: JSON response writing, a bad-request error constructor, and
-// passage-query / translation parsers shared by /api/highlights and
-// /api/notes.
+// passage-query / translation parsers shared by /api/highlights.
 package httpx
 
 import (

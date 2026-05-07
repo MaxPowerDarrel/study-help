@@ -22,7 +22,6 @@ export type ToolbarMode =
 type Props = {
   mode: ToolbarMode;
   onHighlight: () => void;
-  onAddNote: () => void;
   onRemove: (id: number) => void;
   onSignin: () => void;
   onDismiss: () => void;
@@ -34,7 +33,6 @@ const GAP = 8;
 export function HighlightToolbar({
   mode,
   onHighlight,
-  onAddNote,
   onRemove,
   onSignin,
   onDismiss,
@@ -78,14 +76,9 @@ export function HighlightToolbar({
       onMouseDown={(e) => e.preventDefault()}
     >
       {mode.kind === "selection" && (
-        <>
-          <button type="button" className={styles.button} onClick={onHighlight}>
-            Highlight
-          </button>
-          <button type="button" className={styles.button} onClick={onAddNote}>
-            Add note
-          </button>
-        </>
+        <button type="button" className={styles.button} onClick={onHighlight}>
+          Highlight
+        </button>
       )}
       {mode.kind === "existing" && (
         <button

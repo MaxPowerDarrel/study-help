@@ -50,7 +50,6 @@ describe("PassageView click-on-mark", () => {
         isSignedIn={true}
         showWordsOfChrist={true}
         onGuestSignin={() => {}}
-        onAddNote={() => {}}
         articleRef={articleRef}
       />,
     );

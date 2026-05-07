@@ -67,8 +67,8 @@ Format:
 
 **Scope** is optional but encouraged. Pick the package or area
 touched. In this repo, common scopes are `esv`, `auth`, `reader`,
-`notes`, `highlights`, `api`, `web`. For repo-wide changes (e.g. a
-top-level rename, adding `PROJECT_CONSTITUTION.md`), omit the scope.
+`highlights`, `api`, `web`. For repo-wide changes (e.g. a top-level
+rename, adding `PROJECT_CONSTITUTION.md`), omit the scope.
 
 **Body** is optional. Include one when:
 

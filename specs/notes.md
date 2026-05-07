@@ -1,9 +1,16 @@
 # Notes
 
-**Status:** Shipped <!-- Draft | In Progress | Shipped | Deprecated -->
+**Status:** Deprecated <!-- Draft | In Progress | Shipped | Deprecated -->
 **Created:** 2026-05-04
-**Last updated:** 2026-05-05
+**Last updated:** 2026-05-07
+**Removed:** 2026-05-07
 **Owner:** Darrel
+
+## Removal
+
+The Notes feature shipped per the spec below and was then removed end-to-end on 2026-05-07. The reason: free-form, user-authored prose attached to scripture is sensitive information this project chose not to retain. Removal covered the `internal/notes/` Go package, the `web/src/notes/` SPA module, the four `/api/notes*` routes, the "Add note" affordance on the highlight toolbar, the "Notes" header toggle, and the `notes` SQLite table (dropped via `00006_remove_notes.sql`, which actually deletes any retained user data). `PROJECT_CONSTITUTION.md` §5 was amended in the same change to add an explicit "No personal notes" non-goal so that re-introduction requires re-amending the constitution.
+
+The body of this spec is preserved below as the historical design record.
 
 ## Why
 

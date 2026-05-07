@@ -10,11 +10,7 @@ import {
   type SelectionAdapter,
 } from "../platform/SelectionAdapter";
 import { applyHighlights, findHighlightId } from "./applyHighlights";
-import {
-  HighlightToolbar,
-  type ToolbarMode,
-  type ToolbarTuple,
-} from "./HighlightToolbar";
+import { HighlightToolbar, type ToolbarMode } from "./HighlightToolbar";
 import { rangeToTuple } from "./parseSelection";
 import { useHighlights } from "./useHighlights";
 import type { TranslationID } from "../translations/catalog";
@@ -27,9 +23,6 @@ type Props = {
   isSignedIn: boolean;
   showWordsOfChrist: boolean;
   onGuestSignin: () => void;
-  // book and chapter are passed back so multi-container surfaces (Daily
-  // tab) can route the pending note to the correct chapter.
-  onAddNote: (tuple: ToolbarTuple, book: string, chapter: number) => void;
   articleRef: RefObject<HTMLElement | null>;
   selectionAdapter?: SelectionAdapter;
 };
@@ -49,7 +42,6 @@ export function PassageView({
   isSignedIn,
   showWordsOfChrist,
   onGuestSignin,
-  onAddNote,
   articleRef,
   selectionAdapter = defaultSelectionAdapter,
 }: Props) {
@@ -217,13 +209,6 @@ export function PassageView({
     [remove],
   );
 
-  const handleAddNote = useCallback(() => {
-    if (mode.kind !== "selection") return;
-    onAddNote(mode.tuple, book, chapter);
-    selectionAdapter.clear();
-    setMode({ kind: "idle" });
-  }, [book, chapter, mode, onAddNote, selectionAdapter]);
-
   // Memoized so React's dangerouslySetInnerHTML diff sees a stable
   // object across renders. Without this, every render re-applies
   // innerHTML and wipes the <mark> spans that applyHighlights added.
@@ -239,7 +224,6 @@ export function PassageView({
       <HighlightToolbar
         mode={mode}
         onHighlight={handleHighlight}
-        onAddNote={handleAddNote}
         onRemove={handleRemove}
         onSignin={onGuestSignin}
         onDismiss={() => setMode({ kind: "idle" })}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   CANON,
   ChapterRef,
@@ -13,13 +13,7 @@ import { SettingsPane } from "./SettingsPane";
 import { AuthChip } from "./auth/AuthChip";
 import { AuthPanel } from "./auth/AuthPanel";
 import { useUser } from "./auth/useUser";
-import type { ToolbarTuple } from "./highlights/HighlightToolbar";
-import { tupleToRange } from "./highlights/parseSelection";
 import { PassageView } from "./highlights/PassageView";
-import { NotesDrawer } from "./notes/NotesDrawer";
-import { type Note } from "./notes/api";
-import { useNotes } from "./notes/useNotes";
-import { useDailyNotes } from "./notes/useDailyNotes";
 import { Attribution } from "./translations/Attribution";
 import { TRANSLATIONS, type TranslationID } from "./translations/catalog";
 import { useTranslation } from "./translations/useTranslation";
@@ -29,8 +23,6 @@ import { usePlanSelection } from "./daily/usePlanSelection";
 import styles from "./App.module.css";
 
 type Tab = "read" | "daily";
-
-type PendingNote = { tuple: ToolbarTuple; book: string; chapter: number };
 
 export function App() {
   const [tab, setTab] = useState<Tab>("read");
@@ -45,8 +37,6 @@ export function App() {
   const [toast, setToast] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
-  const [notesOpen, setNotesOpen] = useState(false);
-  const [pendingNote, setPendingNote] = useState<PendingNote | null>(null);
   const articleRef = useRef<HTMLElement | null>(null);
   const readingSurfaceRef = useRef<HTMLElement | null>(null);
   const userState = useUser();
@@ -89,103 +79,12 @@ export function App() {
 
   const isSignedIn = userState.user !== null;
 
-  // Read tab uses per-chapter useNotes; Daily aggregates per-pill chapters
-  // via useDailyNotes. Both are called unconditionally; the active surface
-  // routes drawer mutations to the right hook.
-  const readNotes = useNotes(book.name, ref.chapter, translation, isSignedIn);
-  const dailyNotes = useDailyNotes(
-    dailyTab.activePill?.passage.book ?? null,
-    dailyTab.activeChapterNumbers,
-    translation,
-    isSignedIn,
-  );
-  const notesApi = tab === "daily" ? dailyNotes : readNotes;
-  const drawerTitle =
-    tab === "daily"
-      ? dailyTab.activePill
-        ? `${dailyTab.activePill.passage.book} ${dailyTab.activePill.passage.chapters}`
-        : "Daily"
-      : `${book.name} ${ref.chapter}`;
-
-  const handleAddNote = (
-    tuple: ToolbarTuple,
-    addBook: string,
-    addChapter: number,
-  ) => {
-    setPendingNote({ tuple, book: addBook, chapter: addChapter });
-    setNotesOpen(true);
-  };
-
-  const closeNotesDrawer = () => {
-    setNotesOpen(false);
-    setPendingNote(null);
-  };
-
-  const createPendingNote = async (body: string) => {
-    if (!pendingNote) {
-      return { kind: "error" as const };
-    }
-    const res = await notesApi.create({
-      book: pendingNote.book,
-      chapter: pendingNote.chapter,
-      start_verse: pendingNote.tuple.start_verse,
-      start_offset: pendingNote.tuple.start_offset,
-      end_verse: pendingNote.tuple.end_verse,
-      end_offset: pendingNote.tuple.end_offset,
-      body,
-    });
-    if (res.kind === "ok") setPendingNote(null);
-    return res;
-  };
-
-  const scrollToInArticle = useCallback(
-    (article: HTMLElement, n: Note) => {
-      const range = tupleToRange(
-        {
-          start_verse: n.start_verse,
-          start_offset: n.start_offset,
-          end_verse: n.end_verse,
-          end_offset: n.end_offset,
-        },
-        article,
-        translation,
-      );
-      range?.startContainer.parentElement?.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-      });
-    },
-    [translation],
-  );
-
   const activePillIdx =
     dailyTab.daily.kind === "ready" ? dailyTab.daily.state.activeIdx : -1;
   useEffect(() => {
     if (tab !== "daily" || activePillIdx < 0) return;
     readingSurfaceRef.current?.scrollTo({ top: 0, behavior: "smooth" });
   }, [activePillIdx, tab]);
-
-  const scrollToNote = (n: Note) => {
-    if (tab === "daily") {
-      const switched = dailyTab.switchToOwningPill(n.book, n.chapter);
-      if (switched !== null) {
-        // Wait for the inactive pill's chapter blocks to mount, then
-        // scroll. Two animation frames is enough for React's commit +
-        // layout.
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            const el = dailyTab.getArticleEl(n.book, n.chapter);
-            if (el) scrollToInArticle(el, n);
-          });
-        });
-        return;
-      }
-      const el = dailyTab.getArticleEl(n.book, n.chapter);
-      if (el) scrollToInArticle(el, n);
-      return;
-    }
-    if (articleRef.current) scrollToInArticle(articleRef.current, n);
-  };
 
   return (
     <div className={styles.app}>
@@ -225,15 +124,6 @@ export function App() {
             onOpenSignin={() => setAuthOpen(true)}
             onSignout={() => userState.signout()}
           />
-          {isSignedIn && (
-            <button
-              type="button"
-              className={styles.notesToggle}
-              onClick={() => setNotesOpen((v) => !v)}
-            >
-              Notes
-            </button>
-          )}
           <button
             type="button"
             className={styles.gear}
@@ -259,21 +149,6 @@ export function App() {
         onClose={() => setAuthOpen(false)}
         signin={userState.signin}
         signup={userState.signup}
-      />
-      <NotesDrawer
-        open={notesOpen}
-        onClose={closeNotesDrawer}
-        title={drawerTitle}
-        notes={notesApi.notes}
-        loading={notesApi.loading}
-        pendingTuple={pendingNote?.tuple ?? null}
-        onCancelPending={() => setPendingNote(null)}
-        onCreate={createPendingNote}
-        onUpdate={notesApi.update}
-        onRemove={notesApi.remove}
-        onScrollToAnchor={scrollToNote}
-        onError={(msg) => setToast(msg)}
-        showChapter={tab === "daily"}
       />
       <div
         className={
@@ -430,7 +305,6 @@ export function App() {
                   isSignedIn={isSignedIn}
                   showWordsOfChrist={toggles.include_word_of_christ}
                   onGuestSignin={() => setAuthOpen(true)}
-                  onAddNote={handleAddNote}
                   articleRef={articleRef}
                 />
               )}
@@ -446,7 +320,6 @@ export function App() {
               setTranslation={translationState.setTranslation}
               isSignedIn={isSignedIn}
               onGuestSignin={() => setAuthOpen(true)}
-              onAddNote={handleAddNote}
               getArticleRef={dailyTab.getArticleRef}
             />
           )}
