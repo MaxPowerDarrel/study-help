@@ -129,7 +129,6 @@ export function DailyPanel({
             <span className={styles.dailyTranslationLabel}>Translation</span>
             <select
               value={translation}
-              disabled={!isSignedIn}
               onChange={(e) => {
                 void setTranslation(e.target.value as TranslationID);
               }}
@@ -140,9 +139,6 @@ export function DailyPanel({
                 </option>
               ))}
             </select>
-            {!isSignedIn && (
-              <span className={styles.translationHint}>Sign in to choose</span>
-            )}
           </label>
         </div>
         <div className={styles.dailyDate}>{formatDate(selectedDate)}</div>
