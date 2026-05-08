@@ -13,6 +13,7 @@ landing), **Shipped** (user-visible), **Deprecated** (being removed).
 | [auto-load-daily-reading](./auto-load-daily-reading.md) | Shipped | Auto-load a daily passage on startup; toggle in settings |
 | [daily-annotations](./daily-annotations.md) | Deprecated | Highlights and per-chapter chunking on the Daily tab — reverted 2026-05-07; daily-header translation picker kept |
 | [deploy-aws](./deploy-aws.md) | Draft | Single-VM AWS Lightsail deployment with Caddy TLS termination and Litestream → S3 backup |
+| [deploy-home](./deploy-home.md) | Draft | Self-host on home hardware via Duck DNS + Caddy/Let's Encrypt; dynamic-IP updater sidecar |
 | [docker](./docker.md) | Shipped | Package the app as a Docker image for reproducible, portable deployment |
 | [highlights](./highlights.md) | Deprecated | Range-based, persistent, per-user passage highlights — removed 2026-05-07; see spec for context |
 | [multi-plan](./multi-plan.md) | Shipped | Multiple daily reading plans (Bible-in-One-Year + Hope 2026); checkbox picker in settings |
