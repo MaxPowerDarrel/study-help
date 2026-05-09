@@ -1,6 +1,6 @@
 # Deploy at Home
 
-**Status:** Draft
+**Status:** Deprecated
 **Created:** 2026-05-07
 **Last updated:** 2026-05-08
 **Owner:** unassigned
@@ -52,7 +52,7 @@ removing the recurring hosting cost for an operator with spare hardware.
   stateless posture of the current binary (PROJECT_CONSTITUTION.md §4);
   no SQLite, no Litestream, no host-mount data volume.
 - **No IPv6-only path.** Duck DNS supports AAAA records, but residential
-  CGNAT and dual-stack quirks make IPv4 + DNS-01 the documented
+  CGNAT and dual-stack quirks make IPv4 + HTTP-01 the documented
   default. IPv6 is a follow-up if the operator's ISP demands it.
 
 ## User-facing behavior
@@ -60,9 +60,9 @@ removing the recurring hosting cost for an operator with spare hardware.
 The operator (also the only user):
 
 1. Registers a subdomain at `duckdns.org` and copies the account token.
-2. Forwards TCP `443` from the router to the host's LAN IP. Port 80
-   is **not** required because the deploy uses the DNS-01 ACME
-   challenge (see Decisions).
+2. Forwards TCP `80` and `443` from the router to the host's LAN IP.
+   Both are required: `:80` for the HTTP-01 ACME challenge, `:443` for
+   the site itself (see Decisions 2026-05-08 (HTTP-01 supersede)).
 3. Drops `ESV_API_KEY`, `YOUVERSION_APP_KEY`, `DUCKDNS_SUBDOMAIN`, and
    `DUCKDNS_TOKEN` into `deploy/home/.env`.
 4. Runs `docker compose up -d`. Within a few minutes, navigating to
@@ -76,20 +76,18 @@ The operator (also the only user):
 - New directory `deploy/home/`:
   - `compose.yaml` — three services: `app` (image pulled from registry,
     same as Lightsail), `caddy` (TLS termination + reverse proxy,
-    custom image built from the Caddy builder with the
-    `caddy-dns/duckdns` plugin baked in), and `duckdns`
+    stock `caddy:2-alpine` digest-pinned, listening on :80 for the
+    HTTP-01 ACME challenge and :443 for the site), and `duckdns`
     (`lscr.io/linuxserver/duckdns` sidecar that keeps the A record in
     sync with the home WAN IP).
   - `Caddyfile` — single site block for `<subdomain>.duckdns.org`
-    using the `tls` directive with `dns duckdns {env.DUCKDNS_TOKEN}`,
-    plus `reverse_proxy app:8080`.
-  - `Caddy.Dockerfile` — two-stage build using `caddy:2-builder` to
-    compile a Caddy binary with `github.com/caddy-dns/duckdns`, then
-    copy it onto `caddy:2-alpine`. Both base images are
-    digest-pinned (`@sha256:...`); see Decisions 2026-05-08
-    (superseding) for the reproducibility rationale (the home
-    stack now diverges from Lightsail's `sha-<git>` tag-pin
-    deliberately, not as a mistake).
+    with `reverse_proxy app:8080`. No `tls` directive: Caddy defaults
+    to HTTP-01 (and TLS-ALPN-01).
+  - No custom Caddy build. The original spec called for a
+    `Caddy.Dockerfile` two-stage build with the `caddy-dns/duckdns`
+    plugin baked in for DNS-01; that file was retired with the
+    HTTP-01 supersede (Decisions 2026-05-08), since stock
+    `caddy:2-alpine` does HTTP-01 out of the box.
   - `.env.example` — `APP_IMAGE` (digest-pinned in the form
     `ghcr.io/<you>/study-help@sha256:<digest>` — placeholder mirrors
     Lightsail's image-ref shape but uses digest pinning per
@@ -397,6 +395,57 @@ The operator (also the only user):
   which violates the append-only rule. Reason: redundancy in
   prose is the price of preserving the audit trail at the
   granularity of the questions that drove each entry.
+- 2026-05-08 (HTTP-01 supersede; supersedes the 2026-05-07 DNS-01
+  decision): **HTTP-01 is the documented ACME challenge type, not
+  DNS-01.** During operator first-cert testing on 2026-05-08, the
+  DNS-01 path consistently failed with `SERVFAIL` on the CA's TXT
+  lookup of `_acme-challenge.<sub>.duckdns.org`. letsdebug.net
+  reproduced the failure and surfaced a `TXTDoubleLabel` finding:
+  the `caddy-dns/duckdns` plugin was setting the TXT at
+  `_acme-challenge.<sub>.duckdns.org.<sub>.duckdns.org` (a
+  malformed name produced by appending the FQDN onto the zone)
+  rather than calling Duck DNS's update API for the apex sub.
+  Pinning Caddy's challenge resolvers to `1.1.1.1`/`8.8.8.8`
+  cleared an earlier SOA-walk SERVFAIL but couldn't reach the
+  plugin-side bug. Switching to HTTP-01 sidesteps every Duck DNS
+  TXT moving part: Caddy listens on :80, Boulder fetches an inbound
+  challenge token over plaintext HTTP, no plugin or TXT involved.
+  Caddy then redirects all :80 traffic to :443 once the cert is
+  issued, so no plaintext content is ever served. Trade: the
+  operator now forwards both 443 and 80 from the router (the
+  original "ISP blocks :80" question moves from "resolved by
+  DNS-01" to "operator's problem; documented as a CGNAT-style
+  pre-flight" — out of scope here since the spec assumes a
+  residential ISP that doesn't block :80) and the host firewall
+  must allow both. The custom Caddy build (`Caddy.Dockerfile`,
+  `xcaddy build --with caddy-dns/duckdns`) is retired in favor of
+  stock `caddy:2-alpine`. The earlier 2026-05-07 DNS-01 decision
+  stands in the log as the initial choice and as the audit trail
+  for why the stack was structured the way it was; the prose in
+  Implementation outline and User-facing behavior is updated to
+  reflect the new state, while the original DNS-01 reasoning is
+  preserved here.
+- 2026-05-08 (deprecated): **The home self-hosted deploy is
+  deprecated; `deploy/home/` is removed.** After the HTTP-01
+  supersede above, operator testing surfaced a second, independent
+  DuckDNS reliability failure: Caddy correctly served the HTTP
+  challenge to Boulder's primary perspective, but Boulder's
+  secondary multi-perspective validation consistently timed out
+  resolving the A record on DuckDNS's NS pool (`ns1`–`ns9.duckdns.org`,
+  several of which were intermittently unreachable from the
+  operator's vantage point and from public recursive resolvers).
+  Combined with the earlier `caddy-dns/duckdns` plugin bug
+  (TXT-double-label, see HTTP-01 supersede entry), DuckDNS is
+  untenable as the ACME backstop for this stack: one failure was
+  a plugin/libdns bug, the other is upstream NS infrastructure we
+  can't fix from this side. The `deploy/lightsail/` cloud variant
+  remains the supported deploy path; local development continues
+  to use `go run .` and the repo-root `compose.yaml`. The
+  `deploy/home/` operational artifacts (`Caddyfile`,
+  `compose.yaml`, `README.md`, `.env`, `.env.example`) are
+  deleted; this spec is kept as the historical record of why the
+  path was attempted and dropped, matching the precedent set by
+  `notes`, `accounts`, `highlights`, and `daily-annotations`.
 
 ## Verification
 
