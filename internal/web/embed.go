@@ -9,7 +9,16 @@ package web
 import (
 	"embed"
 	"io/fs"
+	"mime"
 )
+
+func init() {
+	// Go's default MIME table maps neither `.webmanifest` nor the
+	// recommended type, so http.FileServer would otherwise serve the
+	// PWA manifest as application/octet-stream and browsers would skip
+	// it.
+	_ = mime.AddExtensionType(".webmanifest", "application/manifest+json")
+}
 
 //go:embed all:dist
 var distFS embed.FS

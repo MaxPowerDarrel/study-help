@@ -22,4 +22,5 @@ landing), **Shipped** (user-visible), **Deprecated** (being removed).
 | [notes](./notes.md) | Deprecated | Private per-user written notes attached to passages — removed 2026-05-07; see spec for context |
 | [oauth-auth](./oauth-auth.md) | Deprecated | Drafted as a replacement for email + password auth; deprecated 2026-05-07 when the auth layer was retired entirely |
 | [passage-reader](./passage-reader.md) | Shipped | Read a chapter or contiguous passage range; ESV proxied through the server |
+| [pwa-install](./pwa-install.md) | Shipped | Install-only PWA: Web App Manifest + Apple meta tags so the app can be added to the iPad/Android home screen and launched standalone; no service worker |
 | [reader-ui-refresh](./reader-ui-refresh.md) | Shipped | iPad/Safari touch polish, light + dark theme, design tokens; rides a Vite/React/TS bump |
