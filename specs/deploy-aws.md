@@ -2,7 +2,7 @@
 
 **Status:** Draft
 **Created:** 2026-05-06
-**Last updated:** 2026-05-07
+**Last updated:** 2026-05-09
 **Owner:** unassigned
 
 > **Editor's note (2026-05-07):** the design below assumes a SQLite-backed app and devotes most of its complexity to Litestream → S3 replication, a one-shot `restore` init container, and the IAM scaffolding around them. None of that is required anymore: the auth, highlights, and notes features that needed a database were retired on 2026-05-07 (see [accounts.md](./archive/accounts.md), [highlights.md](./archive/highlights.md), [notes.md](./archive/notes.md)), so the binary is fully stateless. The live `deploy/lightsail/` stack now runs **two services only — `app` + `caddy` — with no `restore`, `litestream`, S3 bucket, or AWS IAM key**. Caddy + DNS + a static IP remain the deployment shape; everything below tied to data persistence is preserved as the historical design record and would need to be reintroduced if a future feature brings back server-owned state.
@@ -33,9 +33,12 @@ SQLite. We accept that for v1.
       runbook) live in `deploy/lightsail/` and are versioned alongside
       the app.
 - [ ] CI builds and pushes the image to GHCR on every `main` push and
-      on `v*` tags. A separate `workflow_dispatch` deploy job SSHes
-      into the VM and runs `deploy.sh`, which atomically swaps the
-      image, healthchecks `/healthz`, and rolls back on failure.
+      on `v*` tags. A chained deploy job (auto on successful build via
+      `workflow_run`, plus `workflow_dispatch` for manual overrides)
+      SSHes into the VM, performs a transient `docker login` with the
+      workflow's `GITHUB_TOKEN`, and runs `deploy.sh`, which atomically
+      swaps the image, healthchecks `/healthz`, and rolls back on
+      failure.
 - [ ] Steady-state cost ≤ $15/mo for a personal-scale deployment.
 
 ## Non-goals
@@ -44,10 +47,9 @@ SQLite. We accept that for v1.
   Revisit with a Postgres migration spec.
 - **No Kubernetes / ECS / Fargate.** Single-VM Docker Compose is the
   smallest thing that works given the SQLite constraint.
-- **No auto-deploy on push to main.** Image build is automatic; the
-  deploy step is operator-triggered via `workflow_dispatch` (or a
-  manual SSH invocation of `deploy.sh`). Auto-deploy on every commit
-  is too aggressive for a personal-scale service.
+- ~~**No auto-deploy on push to main.**~~ *(Reversed 2026-05-09 — see
+  Decisions. Deploy now auto-fires on each successful build, gated only
+  by an optional `production` environment approval.)*
 - **No production observability stack.** The internal metrics port stays
   bound to `127.0.0.1:9090` inside the container (per `docker.md`); a
   later spec can add a scraper sidecar or Grafana Cloud agent.
@@ -108,6 +110,22 @@ WAL companion.
   `deploy.sh`. Rationale: build cycles are cheap and the image is the
   audit trail of what could be deployed; rolling forward to production
   should be a deliberate act, not a side-effect of a merge.
+  *(Superseded 2026-05-09 — deploy is now auto-chained from build.)*
+- **2026-05-09** — **Deploy auto-chains from build.** `deploy.yml`
+  fires via `workflow_run` on every successful `build-image` run on
+  `main`, in addition to the existing `workflow_dispatch` path. The
+  prior "deliberate act" argument doesn't carry weight now that the
+  server is stateless (no DB to corrupt; rollback in `deploy.sh` is
+  already atomic). Operators who want a click-through gate keep it by
+  adding required reviewers to the `production` environment — the
+  workflow already targets that environment.
+- **2026-05-09** — **GHCR auth is transient, not persistent on the
+  VM.** The deploy workflow forwards its own `GITHUB_TOKEN` (with
+  `packages: read`) over SSH and runs a one-shot `docker login
+  ghcr.io` inside the SSH session, then `docker logout`. Nothing
+  long-lived lives on the host. Trade: ad-hoc `docker compose pull`
+  outside of CI requires the operator to `docker login` first; cached
+  images on the VM cover restarts and reboots without re-auth.
 - **2026-05-06** — **Healthcheck via the Caddy container, not the app
   container.** The app's distroless image has no shell or wget, so we
   can't curl `/healthz` from inside it. Caddy's alpine base has both,
