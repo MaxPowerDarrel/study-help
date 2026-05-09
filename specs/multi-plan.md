@@ -1,8 +1,8 @@
 # Multi-plan
 
-**Status:** In Progress
+**Status:** Shipped
 **Created:** 2026-05-06
-**Last updated:** 2026-05-06
+**Last updated:** 2026-05-09
 **Owner:** unassigned
 
 ## Why
@@ -72,11 +72,12 @@ The daily-reading feature ships a single embedded plan ("Bible in One Year"). Th
 - **2026-05-06** — Special-day rows (catch-up, holiday, quote) render as info cards above the pill row, not as empty days. Rationale: preserves the pastoral content of the Hope plan without trying to fetch scripture for it.
 - **2026-05-06** — Plan IDs are slugs (`bible-year`, `hope`) decoupled from display names. Rationale: stable across label changes; URL-safe in the `?plans=` query; safe `localStorage` value.
 - **2026-05-06** — Hope-plan testament tagging via a small static `bookTestament` map in the parser package, not by adding a `Testament` field to `canon.Book`. Rationale: keeps `canon` translation-neutral and keeps the change scoped to dailyreader.
+- **2026-05-09** — Marked Shipped to match the index and CLAUDE.md status paragraph; all goals above are landed.
 
 ## Related
 
 - [`multi-translation.md`](./multi-translation.md) — translation picker is the closest precedent for a per-user reading preference; this spec deliberately diverges on persistence (client-only vs server) for the reasons in Decisions / Non-goals.
-- [`daily-annotations.md`](./daily-annotations.md) — established the per-pill chapter-block model on the Daily tab; multi-plan keeps that posture and just generalises pill identity from `OT`/`NT` to plan-tagged.
+- [`daily-annotations.md`](./archive/daily-annotations.md) — established the per-pill chapter-block model on the Daily tab; multi-plan keeps that posture and just generalises pill identity from `OT`/`NT` to plan-tagged.
 - [`auto-load-daily-reading.md`](./auto-load-daily-reading.md) — established the daily-reading load flow; this spec only refactors the response shape and the pill state machine, not the auto-load posture.
 - [`PROJECT_CONSTITUTION.md`](../PROJECT_CONSTITUTION.md) — §1 (study-first), §3 (respect the text — plans schedule reading, never mutate scripture), §4 (server still proxies all scripture; no upstream call from client; `ToggleStore` remains the platform abstraction).
 

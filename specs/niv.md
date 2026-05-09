@@ -5,7 +5,7 @@
 **Last updated:** 2026-05-05
 **Owner:** Darrel
 
-> **Editor's note (2026-05-07):** references in this spec to notes (the per-translation verse-anchor dispatcher serving "highlights AND notes", `tupleToRange` for notes' tap-to-scroll, etc.) predate the removal of the Notes feature on 2026-05-07 (see [notes.md](./notes.md)). The dispatcher and `tupleToRange` remain — highlights still depend on them.
+> **Editor's note (2026-05-07):** references in this spec to notes (the per-translation verse-anchor dispatcher serving "highlights AND notes", `tupleToRange` for notes' tap-to-scroll, etc.) predate the removal of the Notes feature on 2026-05-07 (see [notes.md](./archive/notes.md)). The dispatcher and `tupleToRange` remain — highlights still depend on them.
 
 ## Why
 
