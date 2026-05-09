@@ -5,7 +5,7 @@
 **Last updated:** 2026-05-07
 **Owner:** unassigned
 
-> **Editor's note (2026-05-07):** references in this spec to the `notes` table, `useNotes` hook, and notes API endpoints predate the removal of the Notes feature on 2026-05-07 (see [notes.md](./notes.md)). The `00005_translation.sql` migration described below did add a `translation` column to the `notes` table at the time; the table itself has since been dropped via `00006_remove_notes.sql`. Per-translation scoping for highlights still applies.
+> **Editor's note (2026-05-07):** references in this spec to the `notes` table, `useNotes` hook, and notes API endpoints predate the removal of the Notes feature on 2026-05-07 (see [notes.md](./archive/notes.md)). The `00005_translation.sql` migration described below did add a `translation` column to the `notes` table at the time; the table itself has since been dropped via `00006_remove_notes.sql`. Per-translation scoping for highlights still applies.
 
 ## Why
 

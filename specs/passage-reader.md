@@ -7,7 +7,7 @@
 
 > **Editor's note (2026-05-07):** the live behavior is narrower than the body below describes.
 > - **Verse-range references retired.** The reader is now chapter-level only — `<book> <chapter>` and `<book> <chapter>-<chapter>` are accepted; the colon-bearing forms `<book> <chapter>:<verse>[-<verse>]` are rejected by `canon.ValidateQuery` with HTTP 400. The Read-tab "Verse range" picker is gone. Reason: NIV/ESV parity — YouVersion's passage endpoint doesn't accept verse-range USFM identifiers, so granting parity by lowering ESV to chapter-level beat fixing NIV's verse support.
-> - **Highlights and notes retired.** Both shipped and were removed on 2026-05-07 (see [accounts.md](./accounts.md), [highlights.md](./highlights.md), [notes.md](./notes.md)). The verse-anchor markup, the per-character offset scheme, and the in-text `<mark>` overlay described later in this spec no longer have a consumer in the live code.
+> - **Highlights and notes retired.** Both shipped and were removed on 2026-05-07 (see [accounts.md](./archive/accounts.md), [highlights.md](./archive/highlights.md), [notes.md](./archive/notes.md)). The verse-anchor markup, the per-character offset scheme, and the in-text `<mark>` overlay described later in this spec no longer have a consumer in the live code.
 >
 > The body is preserved as the historical design record.
 

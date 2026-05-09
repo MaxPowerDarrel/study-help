@@ -137,6 +137,6 @@ How we'll know it's working: tests, manual flows, metrics, screenshots.
 
 ## Related
 
-- Other specs this depends on or extends: [accounts](./accounts.md), [highlights](./highlights.md), [passage-reader](./passage-reader.md)
+- Other specs this depends on or extends: [accounts](./accounts.md), [highlights](./highlights.md), [passage-reader](../passage-reader.md)
 - Constitution sections: `PROJECT_CONSTITUTION.md §2`, `§3`, `§4`, `§5`
 - External references: ESV API docs (https://api.esv.org/docs/) — only relevant if note anchoring uses verse anchors like highlights does

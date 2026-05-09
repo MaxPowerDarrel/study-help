@@ -12,7 +12,7 @@ The product exists to support careful, slow reading — not to be a search engin
 
 ## 2. Users & Scope
 
-- **Single-user, no accounts.** Originally multi-user with per-account highlights; the auth and highlights features were retired on 2026-05-07 (see [`specs/accounts.md`](./specs/accounts.md), [`specs/highlights.md`](./specs/highlights.md)). The server holds no user state. Reintroducing per-user data requires re-amending this section.
+- **Single-user, no accounts.** Originally multi-user with per-account highlights; the auth and highlights features were retired on 2026-05-07 (see [`specs/archive/accounts.md`](./specs/archive/accounts.md), [`specs/archive/highlights.md`](./specs/archive/highlights.md)). The server holds no user state. Reintroducing per-user data requires re-amending this section.
 - **In scope:**
   - Reading a chapter or a contiguous passage range
   - Daily reading plans (Bible-in-One-Year, Hope 2026)
@@ -42,7 +42,7 @@ A constitution without non-goals is a wishlist. The following are explicitly **o
 - **No bundled commentary or study-note library.** This is a reader, not a library.
 - **No social, community, or sharing features.** No comments, no public profiles, no shared highlights.
 - **No original-language tooling.** No Greek/Hebrew interlinears, lexicons, or parsing aids.
-- **No personal annotations.** Highlights and notes were retired on 2026-05-07 (see [`specs/highlights.md`](./specs/highlights.md), [`specs/notes.md`](./specs/notes.md)). Free-form per-user prose attached to scripture is sensitive data we chose not to retain; range-based highlights were retired alongside the rest of the auth layer when no other per-user feature remained. Reintroducing either requires re-amending this section.
+- **No personal annotations.** Highlights and notes were retired on 2026-05-07 (see [`specs/archive/highlights.md`](./specs/archive/highlights.md), [`specs/archive/notes.md`](./specs/archive/notes.md)). Free-form per-user prose attached to scripture is sensitive data we chose not to retain; range-based highlights were retired alongside the rest of the auth layer when no other per-user feature remained. Reintroducing either requires re-amending this section.
 - **No offline-first sync engine at v1.** Offline is a best-effort cache, not a guarantee.
 
 ## 6. Decision Rules

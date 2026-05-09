@@ -5,7 +5,7 @@
 **Last updated:** 2026-05-07
 **Owner:** unassigned
 
-> **Editor's note (2026-05-07):** references in this spec to notes as a future surface predate the removal of the Notes feature on 2026-05-07 (see [notes.md](./notes.md)). The token / theme work described here was unaffected.
+> **Editor's note (2026-05-07):** references in this spec to notes as a future surface predate the removal of the Notes feature on 2026-05-07 (see [notes.md](./archive/notes.md)). The token / theme work described here was unaffected.
 
 ## Why
 

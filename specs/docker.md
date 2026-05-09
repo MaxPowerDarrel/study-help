@@ -5,7 +5,7 @@
 **Last updated:** 2026-05-07
 **Owner:** unassigned
 
-> **Editor's note (2026-05-07):** the spec body below references `SESSION_SECRET`, `DATABASE_URL`, and a SQLite host-mount volume. Those were correct at the time of writing; they are no longer applicable. The auth + highlights features that needed a database were retired on 2026-05-07 (see [accounts.md](./accounts.md), [highlights.md](./highlights.md)), and the live `Dockerfile` / `compose.yaml` no longer mount a data volume or pass those env vars. Current required env: `ESV_API_KEY` and `YOUVERSION_APP_KEY`.
+> **Editor's note (2026-05-07):** the spec body below references `SESSION_SECRET`, `DATABASE_URL`, and a SQLite host-mount volume. Those were correct at the time of writing; they are no longer applicable. The auth + highlights features that needed a database were retired on 2026-05-07 (see [accounts.md](./archive/accounts.md), [highlights.md](./archive/highlights.md)), and the live `Dockerfile` / `compose.yaml` no longer mount a data volume or pass those env vars. Current required env: `ESV_API_KEY` and `YOUVERSION_APP_KEY`.
 
 ## Why
 
