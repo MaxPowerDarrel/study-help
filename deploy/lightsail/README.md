@@ -47,12 +47,19 @@ Node and Go and the build is heavy on a 1 GB instance.
 
 ## First deploy
 
-On the Lightsail VM (one-time host setup):
+The bootstrap doesn't need the full repo — only the five files in this
+directory (`bootstrap.sh`, `compose.yaml`, `Caddyfile`, `deploy.sh`,
+`.env.example`). Ship them to the VM with `scp` so the host never needs
+GitHub credentials of its own:
 
 ```bash
-git clone https://github.com/<you>/study-help.git
-cd study-help
-./deploy/lightsail/bootstrap.sh
+# from your laptop, in the repo root
+scp -r deploy/lightsail/ <user>@<host>:~/study-help-bootstrap/
+
+# then on the VM
+ssh <user>@<host>
+cd ~/study-help-bootstrap
+./bootstrap.sh
 ```
 
 `bootstrap.sh` is idempotent. On first run it installs Docker and the
@@ -68,7 +75,7 @@ cd /opt/study-help
 $EDITOR .env                            # fill in every CHANGEME
 $EDITOR Caddyfile                       # replace study.example.com
 
-docker login ghcr.io                    # if pulling a private image
+docker login ghcr.io                    # one-time, for the first pull
 
 # DNS must resolve to the static IP before this step or Caddy can't get
 # a cert. Verify with `dig +short study.example.com`.
@@ -84,15 +91,28 @@ The app should be reachable at `https://study.example.com/`.
 ### Deploy a new version (CI-driven)
 
 CI builds and pushes the image to GHCR on every push to `main` and on
-`v*` tags (see `.github/workflows/build-image.yml`). To roll a new
-version onto the VM:
+`v*` tags (see `.github/workflows/build-image.yml`). The **deploy**
+workflow then auto-fires on each successful main build and rolls the
+new image onto the VM:
+
+1. Push to `main` → `build-image` runs → `deploy` runs (chained via
+   `workflow_run` on success).
+2. The deploy workflow forwards its workflow-scoped `GITHUB_TOKEN` over
+   SSH and runs a transient `docker login ghcr.io` on the VM, so no
+   long-lived GHCR credential needs to live on the host.
+3. `/opt/study-help/deploy.sh` atomically updates `APP_IMAGE` in `.env`,
+   pulls the new image, restarts the `app` container, polls `/healthz`,
+   and rolls back to the previous image if the healthcheck fails.
+
+For a manual override (deploy a specific tag, redeploy `main`, or roll
+back to a known-good `sha-…`):
 
 1. Open the GitHub Actions UI → **deploy** workflow → **Run workflow**.
 2. Enter the image tag (e.g. `sha-abc1234`, `v1.2.3`, or `main`).
-3. The workflow SSHes into the VM and runs `/opt/study-help/deploy.sh`,
-   which atomically updates `APP_IMAGE` in `.env`, pulls the new image,
-   restarts the `app` container, polls `/healthz`, and rolls back to
-   the previous image if the healthcheck fails.
+
+To gate auto-deploys behind a one-click approval, configure required
+reviewers on the `production` environment in repo settings; the workflow
+already targets that environment.
 
 Repository secrets required by the deploy workflow:
 
@@ -102,8 +122,8 @@ Repository secrets required by the deploy workflow:
 | `DEPLOY_USER`    | SSH user on the VM (e.g. `ubuntu`)                     |
 | `DEPLOY_SSH_KEY` | PEM-encoded private key (no passphrase)                |
 
-For an extra approval gate, configure a `production` environment in
-the repo settings with required reviewers.
+`GITHUB_TOKEN` is provided automatically; the workflow declares
+`packages: read` so it can pull the private image.
 
 ### Deploy by hand
 

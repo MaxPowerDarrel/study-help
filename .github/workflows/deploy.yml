@@ -1,17 +1,23 @@
 name: deploy
 
-# Deploy a previously-built image to the Lightsail VM. Manual trigger
-# only — auto-deploy on every main commit feels too aggressive for a
-# personal-scale service. The image must already exist in GHCR (built
-# by the build-image workflow). Repository secrets required:
+# Deploy a previously-built image to the Lightsail VM. Triggers:
+#   - workflow_run after a successful build-image run on main → auto deploy
+#   - workflow_dispatch with an explicit image tag         → manual override
+#
+# The job targets the `production` environment; configure required reviewers
+# on that environment in repo settings if you want a one-click approval gate
+# between build and deploy. Without reviewers, deploys are fully automatic
+# on every successful main build.
+#
+# Repository secrets required:
 #
 #   DEPLOY_HOST     — Lightsail static IP or FQDN
 #   DEPLOY_USER     — SSH user (e.g. "ubuntu")
 #   DEPLOY_SSH_KEY  — private key for the VM (PEM, no passphrase)
 #
-# Optional: configure a "production" environment in the repo settings
-# with required reviewers if you want a manual approval gate before
-# the deploy step runs.
+# GHCR auth is handled by the workflow's own GITHUB_TOKEN, forwarded over
+# SSH and used for a transient `docker login ghcr.io` on the VM. Nothing
+# long-lived lands on disk; the credential dies with the workflow run.
 
 on:
   workflow_dispatch:
@@ -21,6 +27,14 @@ on:
         required: true
         default: "main"
         type: string
+  workflow_run:
+    workflows: ["build-image"]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+  packages: read
 
 concurrency:
   group: deploy
@@ -28,22 +42,35 @@ concurrency:
 
 jobs:
   deploy:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     environment: production
     steps:
       - name: Resolve image reference
         id: image
-        run: |
-          echo "ref=ghcr.io/${GITHUB_REPOSITORY}:${TAG}" >> "$GITHUB_OUTPUT"
         env:
-          TAG: ${{ inputs.image_tag }}
+          DISPATCH_TAG: ${{ inputs.image_tag }}
+          RUN_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          if [ -n "${DISPATCH_TAG:-}" ]; then
+            echo "ref=ghcr.io/${GITHUB_REPOSITORY}:${DISPATCH_TAG}" >> "$GITHUB_OUTPUT"
+          else
+            short="${RUN_SHA:0:7}"
+            echo "ref=ghcr.io/${GITHUB_REPOSITORY}:sha-${short}" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: SSH and deploy
         uses: appleboy/ssh-action@v1
+        env:
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
+          envs: GHCR_USER,GHCR_TOKEN
           script_stop: true
           script: |
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
             /opt/study-help/deploy.sh "${{ steps.image.outputs.ref }}"
+            docker logout ghcr.io || true

@@ -6,15 +6,20 @@
 # Caddyfile, deploy.sh) into place. Leaves .env as a copy of
 # .env.example for the operator to fill in.
 #
-# Usage (on the VM, after cloning the repo):
-#   ./deploy/lightsail/bootstrap.sh
+# Usage: scp this directory to the VM (no full repo clone needed),
+# then on the VM:
+#   cd <wherever-you-scp'd-it>
+#   ./bootstrap.sh
 #
 # Run as a non-root user with sudo. After this script completes you
 # still need to:
 #   1. Edit /opt/study-help/.env (set image tag, API keys)
 #   2. Edit /opt/study-help/Caddyfile (set the FQDN)
-#   3. docker login ghcr.io        (if pulling a private image)
-#   4. cd /opt/study-help && docker compose up -d
+#   3. cd /opt/study-help && docker compose up -d
+#
+# CI handles GHCR auth at deploy time (transient `docker login` over SSH
+# from the deploy workflow). For ad-hoc `docker compose pull` outside of
+# CI, run `docker login ghcr.io` manually first.
 
 set -euo pipefail
 
@@ -68,7 +73,10 @@ cat <<EOF
 Next steps:
   1. \$EDITOR $APP_DIR/.env              # fill in every CHANGEME
   2. \$EDITOR $APP_DIR/Caddyfile         # replace study.example.com
-  3. docker login ghcr.io               # if using a private image
-  4. cd $APP_DIR && docker compose up -d
-  5. docker compose logs -f caddy       # watch the first cert issue
+  3. cd $APP_DIR && docker compose up -d
+  4. docker compose logs -f caddy       # watch the first cert issue
+
+The deploy workflow handles GHCR auth automatically at deploy time. For
+the very first \`docker compose up -d\` (or any ad-hoc \`docker compose
+pull\` outside CI), run \`docker login ghcr.io\` manually first.
 EOF
