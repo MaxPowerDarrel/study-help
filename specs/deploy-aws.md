@@ -2,7 +2,7 @@
 
 **Status:** Shipped
 **Created:** 2026-05-06
-**Last updated:** 2026-05-10 (live at study.darrel.io)
+**Last updated:** 2026-05-10 (live at study.example.com)
 **Owner:** unassigned
 
 > **Editor's note (2026-05-07):** the design below assumes a SQLite-backed app and devotes most of its complexity to Litestream → S3 replication, a one-shot `restore` init container, and the IAM scaffolding around them. None of that is required anymore: the auth, highlights, and notes features that needed a database were retired on 2026-05-07 (see [accounts.md](./archive/accounts.md), [highlights.md](./archive/highlights.md), [notes.md](./archive/notes.md)), so the binary is fully stateless. The live `deploy/lightsail/` stack now runs **two services only — `app` + `caddy` — with no `restore`, `litestream`, S3 bucket, or AWS IAM key**. Caddy + DNS + a static IP remain the deployment shape; everything below tied to data persistence is preserved as the historical design record and would need to be reintroduced if a future feature brings back server-owned state.
@@ -135,7 +135,7 @@ WAL companion.
   `contents:read` on this repo. Rationale: `scp` required a laptop
   with the repo cloned; self-clone makes "ssh + curl + bash"
   sufficient from any fresh shell.
-- **2026-05-10** — **Live at study.darrel.io.** Five small fixes
+- **2026-05-10** — **Live at study.example.com.** Five small fixes
   surfaced during launch and were rolled in: (1) `git -c
   http.extraHeader=Authorization: Basic …` for the bootstrap clone
   (Bearer is unrecognized by GitHub's git smart-HTTP and falls back to
@@ -170,7 +170,7 @@ WAL companion.
 - ~~**Image registry: GHCR vs ECR.**~~ *Resolved 2026-05-10: GHCR.
   Auto-published by `build-image.yml`, pulled by the VM with a
   transient `GITHUB_TOKEN`.*
-- ~~**Domain.**~~ *Resolved 2026-05-10: `study.darrel.io`.*
+- ~~**Domain.**~~ *Resolved 2026-05-10: `study.example.com`.*
 - ~~**Region.**~~ *Resolved 2026-05-10: operator's choice (Caddyfile
   / `.env` are region-agnostic).*
 - **Backups for non-DB state.** Lightsail snapshots cover the whole

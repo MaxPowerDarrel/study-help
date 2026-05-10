@@ -31,7 +31,7 @@
 # Env contract:
 #   GH_TOKEN  required on the cloning pass; PAT or fine-grained token
 #             with `contents:read` on $REPO.
-#   REPO      defaults to MaxPowerDarrel/study-help.
+#   REPO      required, format: owner/repo (e.g. owner/study-help).
 #   REPO_REF  branch or tag to clone; defaults to main.
 #   APP_DIR   install target; defaults to /opt/study-help.
 #
@@ -46,7 +46,7 @@
 
 set -euo pipefail
 
-REPO="${REPO:-MaxPowerDarrel/study-help}"
+: "${REPO:?REPO env var is required (format: owner/repo)}"
 REPO_REF="${REPO_REF:-main}"
 APP_DIR="${APP_DIR:-/opt/study-help}"
 
