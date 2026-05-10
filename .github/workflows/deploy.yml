@@ -52,11 +52,15 @@ jobs:
           DISPATCH_TAG: ${{ inputs.image_tag }}
           RUN_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
+          # Docker repo segments must be lowercase. GITHUB_REPOSITORY
+          # preserves the case of the GitHub user, so lowercase it here
+          # to match what docker/metadata-action publishes from build-image.yml.
+          repo="${GITHUB_REPOSITORY,,}"
           if [ -n "${DISPATCH_TAG:-}" ]; then
-            echo "ref=ghcr.io/${GITHUB_REPOSITORY}:${DISPATCH_TAG}" >> "$GITHUB_OUTPUT"
+            echo "ref=ghcr.io/${repo}:${DISPATCH_TAG}" >> "$GITHUB_OUTPUT"
           else
             short="${RUN_SHA:0:7}"
-            echo "ref=ghcr.io/${GITHUB_REPOSITORY}:sha-${short}" >> "$GITHUB_OUTPUT"
+            echo "ref=ghcr.io/${repo}:sha-${short}" >> "$GITHUB_OUTPUT"
           fi
 
       - name: SSH and deploy
