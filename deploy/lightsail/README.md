@@ -47,26 +47,33 @@ Node and Go and the build is heavy on a 1 GB instance.
 
 ## First deploy
 
-The bootstrap doesn't need the full repo — only the five files in this
-directory (`bootstrap.sh`, `compose.yaml`, `Caddyfile`, `deploy.sh`,
-`.env.example`). Ship them to the VM with `scp` so the host never needs
-GitHub credentials of its own:
+`bootstrap.sh` is self-contained: download it once with a fine-grained
+PAT, run it twice (first run installs Docker; second run sparse-checkout
+clones the deploy artifacts using the same PAT and scaffolds the host).
+The token is carried in `Authorization` headers for both fetches and
+never lands in `.git/config` or `git remote -v` output; the cloned
+working tree is removed on script exit.
 
 ```bash
-# from your laptop, in the repo root
-scp -r deploy/lightsail/ <user>@<host>:~/study-help-bootstrap/
-
-# then on the VM
 ssh <user>@<host>
-cd ~/study-help-bootstrap
-./bootstrap.sh
+
+# fine-grained PAT, contents:read on this repo only
+TOKEN=ghp_xxx
+
+curl -fsSL -H "Authorization: Bearer $TOKEN" \
+     https://raw.githubusercontent.com/MaxPowerDarrel/study-help/main/deploy/lightsail/bootstrap.sh \
+     -o bootstrap.sh
+chmod +x bootstrap.sh
+
+./bootstrap.sh                           # installs docker + git, exits
+# log out, log back in for the docker group to take effect
+
+GH_TOKEN=$TOKEN ./bootstrap.sh           # clones artifacts, scaffolds /opt/study-help/
 ```
 
-`bootstrap.sh` is idempotent. On first run it installs Docker and the
-Compose plugin, then asks you to log out / log back in for the docker
-group to take effect. Re-run after re-login and it scaffolds
-`/opt/study-help/` with `compose.yaml`, `Caddyfile`, `deploy.sh`, and a
-starter `.env` (mode `0600`).
+`bootstrap.sh` is idempotent. The second run scaffolds `/opt/study-help/`
+with `compose.yaml`, `Caddyfile`, `deploy.sh`, and a starter `.env`
+(mode `0600`).
 
 Fill in the placeholders, then bring the stack up:
 
