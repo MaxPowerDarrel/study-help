@@ -2,7 +2,7 @@
 
 **Status:** Draft
 **Created:** 2026-05-06
-**Last updated:** 2026-05-09
+**Last updated:** 2026-05-09 (self-cloning bootstrap)
 **Owner:** unassigned
 
 > **Editor's note (2026-05-07):** the design below assumes a SQLite-backed app and devotes most of its complexity to Litestream → S3 replication, a one-shot `restore` init container, and the IAM scaffolding around them. None of that is required anymore: the auth, highlights, and notes features that needed a database were retired on 2026-05-07 (see [accounts.md](./archive/accounts.md), [highlights.md](./archive/highlights.md), [notes.md](./archive/notes.md)), so the binary is fully stateless. The live `deploy/lightsail/` stack now runs **two services only — `app` + `caddy` — with no `restore`, `litestream`, S3 bucket, or AWS IAM key**. Caddy + DNS + a static IP remain the deployment shape; everything below tied to data persistence is preserved as the historical design record and would need to be reintroduced if a future feature brings back server-owned state.
@@ -126,6 +126,17 @@ WAL companion.
   long-lived lives on the host. Trade: ad-hoc `docker compose pull`
   outside of CI requires the operator to `docker login` first; cached
   images on the VM cover restarts and reboots without re-auth.
+- **2026-05-09** — **Bootstrap clones its own siblings via transient
+  PAT, no `scp`.** `bootstrap.sh` accepts a `GH_TOKEN` env var and
+  sparse-checkout clones `deploy/lightsail/` (`http.extraHeader` +
+  `--filter=blob:none --sparse`) to a `mktemp -d` working tree, copies
+  artifacts into `/opt/study-help/`, and removes the working tree on
+  exit. The token never lands in `.git/config` or process args. Trade:
+  operator must mint a fine-grained PAT scoped to `contents:read` on
+  this repo. Rationale: `scp` required a laptop with the repo cloned;
+  self-clone makes "ssh + curl + bash" sufficient from any fresh shell,
+  and the operator already has GitHub creds — adding one more place to
+  use them is cheaper than a laptop-side prerequisite.
 - **2026-05-06** — **Healthcheck via the Caddy container, not the app
   container.** The app's distroless image has no shell or wget, so we
   can't curl `/healthz` from inside it. Caddy's alpine base has both,
