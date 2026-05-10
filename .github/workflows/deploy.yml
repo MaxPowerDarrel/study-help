@@ -69,8 +69,8 @@ jobs:
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           envs: GHCR_USER,GHCR_TOKEN
-          script_stop: true
           script: |
+            set -euo pipefail
             echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
+            trap 'docker logout ghcr.io >/dev/null 2>&1 || true' EXIT
             /opt/study-help/deploy.sh "${{ steps.image.outputs.ref }}"
-            docker logout ghcr.io || true
