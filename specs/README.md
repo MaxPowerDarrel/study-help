@@ -16,7 +16,7 @@ and why it was retired.
 | Spec | Status | Summary |
 |---|---|---|
 | [auto-load-daily-reading](./auto-load-daily-reading.md) | Shipped | Auto-load a daily passage on startup; toggle in settings |
-| [deploy-aws](./deploy-aws.md) | Draft | Single-VM AWS Lightsail deployment with Caddy TLS termination; original SQLite/Litestream design retracted by an editor's note (server is now stateless) |
+| [deploy-aws](./deploy-aws.md) | Shipped | Single-VM AWS Lightsail deployment with Caddy TLS termination, auto-deploy chained from `build-image`, transient GHCR + bootstrap auth; live at study.darrel.io |
 | [docker](./docker.md) | Shipped | Package the app as a Docker image for reproducible, portable deployment |
 | [multi-plan](./multi-plan.md) | Shipped | Multiple daily reading plans (Bible-in-One-Year + Hope 2026); checkbox picker in settings |
 | [multi-translation](./multi-translation.md) | Shipped | Pluggable translation foundation; ESV at launch, localStorage-persisted preference |

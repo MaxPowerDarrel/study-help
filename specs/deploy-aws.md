@@ -1,8 +1,8 @@
 # Deploy on AWS
 
-**Status:** Draft
+**Status:** Shipped
 **Created:** 2026-05-06
-**Last updated:** 2026-05-09 (self-cloning bootstrap)
+**Last updated:** 2026-05-10 (live at study.darrel.io)
 **Owner:** unassigned
 
 > **Editor's note (2026-05-07):** the design below assumes a SQLite-backed app and devotes most of its complexity to Litestream → S3 replication, a one-shot `restore` init container, and the IAM scaffolding around them. None of that is required anymore: the auth, highlights, and notes features that needed a database were retired on 2026-05-07 (see [accounts.md](./archive/accounts.md), [highlights.md](./archive/highlights.md), [notes.md](./archive/notes.md)), so the binary is fully stateless. The live `deploy/lightsail/` stack now runs **two services only — `app` + `caddy` — with no `restore`, `litestream`, S3 bucket, or AWS IAM key**. Caddy + DNS + a static IP remain the deployment shape; everything below tied to data persistence is preserved as the historical design record and would need to be reintroduced if a future feature brings back server-owned state.
@@ -128,15 +128,28 @@ WAL companion.
   images on the VM cover restarts and reboots without re-auth.
 - **2026-05-09** — **Bootstrap clones its own siblings via transient
   PAT, no `scp`.** `bootstrap.sh` accepts a `GH_TOKEN` env var and
-  sparse-checkout clones `deploy/lightsail/` (`http.extraHeader` +
-  `--filter=blob:none --sparse`) to a `mktemp -d` working tree, copies
-  artifacts into `/opt/study-help/`, and removes the working tree on
-  exit. The token never lands in `.git/config` or process args. Trade:
-  operator must mint a fine-grained PAT scoped to `contents:read` on
-  this repo. Rationale: `scp` required a laptop with the repo cloned;
-  self-clone makes "ssh + curl + bash" sufficient from any fresh shell,
-  and the operator already has GitHub creds — adding one more place to
-  use them is cheaper than a laptop-side prerequisite.
+  shallow-clones the repo (`http.extraHeader` Basic auth, `mktemp -d`
+  + `trap rm -rf`) to copy `deploy/lightsail/` artifacts into
+  `/opt/study-help/`. The token never lands in `.git/config` or
+  process args. Trade: operator must mint a fine-grained PAT scoped to
+  `contents:read` on this repo. Rationale: `scp` required a laptop
+  with the repo cloned; self-clone makes "ssh + curl + bash"
+  sufficient from any fresh shell.
+- **2026-05-10** — **Live at study.darrel.io.** Five small fixes
+  surfaced during launch and were rolled in: (1) `git -c
+  http.extraHeader=Authorization: Basic …` for the bootstrap clone
+  (Bearer is unrecognized by GitHub's git smart-HTTP and falls back to
+  the credential helper / interactive prompt), (2) drop `script_stop`
+  from `appleboy/ssh-action@v1` and use `set -euo pipefail` + `trap …
+  EXIT` inside the script block, (3) lowercase
+  `${GITHUB_REPOSITORY}` when constructing the deploy image ref so it
+  matches what `docker/metadata-action` publishes, (4) operator must
+  set the `DEPLOY_HOST` / `DEPLOY_USER` / `DEPLOY_SSH_KEY` repo
+  secrets before the first deploy fires, (5) Lightsail's
+  instance-level firewall (Networking tab in the console) is separate
+  from any OS-level firewall — both 80 and 443 must be opened
+  explicitly there or the cert will issue but external HTTPS will
+  time out.
 - **2026-05-06** — **Healthcheck via the Caddy container, not the app
   container.** The app's distroless image has no shell or wget, so we
   can't curl `/healthz` from inside it. Caddy's alpine base has both,
@@ -154,58 +167,71 @@ WAL companion.
 
 ## Open questions
 
-- **Image registry: GHCR vs ECR.** Both work. GHCR keeps everything
-  GitHub-side (no extra AWS console); ECR keeps everything AWS-side.
-  Decide before wiring CI. *Default in `.env.example` is GHCR.*
-- **Domain.** The Caddyfile ships with `study.example.com` as a
-  placeholder. Need a real FQDN with an A record before first deploy.
-- **Region.** No latency-sensitive path; pick whichever region is
-  closest to the operator. The S3 bucket region is independent.
+- ~~**Image registry: GHCR vs ECR.**~~ *Resolved 2026-05-10: GHCR.
+  Auto-published by `build-image.yml`, pulled by the VM with a
+  transient `GITHUB_TOKEN`.*
+- ~~**Domain.**~~ *Resolved 2026-05-10: `study.darrel.io`.*
+- ~~**Region.**~~ *Resolved 2026-05-10: operator's choice (Caddyfile
+  / `.env` are region-agnostic).*
 - **Backups for non-DB state.** Lightsail snapshots cover the whole
   disk including the Caddy `/data` directory (issued cert + ACME
   account key). On full disaster recovery, Caddy will re-issue rather
-  than restore — acceptable, but worth flagging.
+  than restore — acceptable, but worth flagging. Snapshots are
+  operator-managed in the Lightsail console; not yet enabled by
+  default.
 
 ## Verification
 
 End-to-end smoke (from the deploy README):
 
-1. Provision Lightsail VM, static IP, S3 bucket, IAM user, Route 53 A
-   record per `deploy/lightsail/README.md`.
-2. CI build on push to `main` produces a `ghcr.io/.../study-help:sha-<git>`
-   image. Confirm in the Actions tab.
-3. SSH to the VM. Run `git clone <repo> && ./deploy/lightsail/bootstrap.sh`
-   (twice, with a re-login between to pick up the docker group). Fill
-   in `.env` / `Caddyfile` / `litestream.yml`.
-4. `docker compose up -d`; watch `docker compose logs -f caddy` for the
-   first cert issue.
-5. Open the FQDN in a browser. Sign up, sign in, fetch a passage,
-   highlight a verse, leave a note — confirm `Secure; HttpOnly` cookie
-   in devtools.
-6. Set GitHub repo secrets (`DEPLOY_HOST`, `DEPLOY_USER`,
-   `DEPLOY_SSH_KEY`). Run the **deploy** workflow with `image_tag=main`.
-   Confirm the workflow exits zero and the running container picks up
-   the new image (`docker compose ps` on the VM).
-7. Failed-deploy drill: tag a known-bad image (e.g. one that exits on
-   start), trigger the deploy workflow, confirm the workflow exits
-   non-zero AND `.env` has been reverted to the prior `APP_IMAGE`.
-8. Disaster-recovery drill: `docker volume rm study-help_data` and
-   `docker compose up -d`; the `restore` container should pull the
-   latest snapshot from S3 and the app should come back with the same
-   data.
+1. **AWS setup.** Provision Lightsail VM, static IP, and DNS A record
+   per `deploy/lightsail/README.md`. Open ports 80 and 443 in the
+   Lightsail Networking tab; restrict 22 to the operator's IP. (No
+   S3 / IAM user — server is stateless.)
+2. **CI image.** Push to `main` (or trigger `build-image` manually).
+   Confirm the image lands at
+   `ghcr.io/<owner-lowercase>/study-help:sha-<short>` in the Actions
+   tab and the Packages page.
+3. **GitHub repo secrets.** Set `DEPLOY_HOST`, `DEPLOY_USER`, and
+   `DEPLOY_SSH_KEY` (PEM, no passphrase) at the repo level. Pipe the
+   key in via `gh secret set DEPLOY_SSH_KEY < key.pem` to preserve the
+   PEM newlines.
+4. **Bootstrap.** `ssh` to the VM, `curl` `bootstrap.sh` from
+   `raw.githubusercontent.com` with a fine-grained PAT, run twice
+   (first run installs Docker + git; re-login; second run with
+   `GH_TOKEN=…` clones the artifacts into `/opt/study-help/`). Edit
+   `.env` and `Caddyfile` for the chosen FQDN.
+5. **First bring-up.** `docker login ghcr.io` once interactively, then
+   `docker compose up -d`; watch `docker compose logs -f caddy` for
+   the first Let's Encrypt issuance. Hit the FQDN in a browser and
+   confirm a 200 plus a valid TLS chain.
+6. **Auto-deploy chain.** Land a commit on `main`. Confirm
+   `build-image` succeeds, then `deploy` auto-fires (or sits at
+   "Waiting" if approval is configured), the SSH step performs a
+   transient `docker login`, and `deploy.sh` reports a healthy
+   `/healthz`.
+7. **Manual override.** Trigger `deploy` via `workflow_dispatch` with
+   an explicit tag; confirm the resolved ref is the lowercase
+   `ghcr.io/<owner>/study-help:<tag>` form and the deploy succeeds.
+8. **Failed-deploy drill.** Tag a known-bad image (e.g. one that
+   exits on start), dispatch the workflow, confirm it exits non-zero
+   AND `.env` has been reverted to the prior `APP_IMAGE`.
+9. **External reachability.** From outside the VPC: `curl -I
+   https://<fqdn>` returns 200; `letsdebug.net` reports green for the
+   FQDN.
 
 ## Cost (steady state)
 
-| Item                                      | Monthly |
-|-------------------------------------------|---------|
-| Lightsail micro (1 vCPU, 1 GB)            | $5      |
-| Lightsail daily snapshots (7-day rotation)| ~$1     |
-| Route 53 hosted zone                      | $0.50   |
-| S3 backup (single-digit MB, versioned)    | <$0.10  |
-| **Total**                                 | **~$7** |
+| Item                                       | Monthly  |
+|--------------------------------------------|----------|
+| Lightsail micro (1 vCPU, 1 GB)             | $5       |
+| Lightsail daily snapshots (operator-opt-in)| ~$1      |
+| DNS hosted zone                            | $0.50    |
+| **Total**                                  | **~$6**  |
 
-A `small_3_0` instance brings it to ~$12/mo with a lot more headroom.
+A `small_3_0` instance brings it to ~$11/mo with a lot more headroom.
 ESV / YouVersion API calls are unchanged from local dev (free tier).
+No S3 / IAM costs — server is stateless.
 
 ## Related
 

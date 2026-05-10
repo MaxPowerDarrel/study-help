@@ -28,8 +28,14 @@ this stack carries no per-app volumes (only Caddy's cert / state caches).
 1. **Lightsail instance** — Ubuntu 22.04 LTS, `micro_3_0` ($5/mo, 1 GB) or
    `small_3_0` ($10/mo, 2 GB) for headroom. Pick a region near you.
 2. **Static IP** — attach to the instance (free while attached).
-3. **Networking** — open ports 80 and 443. Restrict 22 to your IP.
-4. **Route 53** — hosted zone for your domain, A record at the static IP.
+3. **Networking** — in the instance's **Networking** tab, open both
+   80 (HTTP) and 443 (HTTPS) under IPv4 Firewall (and IPv6 Firewall
+   if enabled). This is the Lightsail-side firewall, not anything on
+   the VM itself; if 443 is missing here, Caddy will issue a cert
+   over HTTP-01 (port 80) but external HTTPS clients will time out.
+   Restrict 22 to your IP.
+4. **DNS** — A record at the static IP. Route 53 works; any DNS
+   provider is fine.
 
 ## Image distribution
 
