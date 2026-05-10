@@ -2,12 +2,12 @@
 # bootstrap.sh — first-time provisioning on a fresh Lightsail VM.
 #
 # Self-contained: only this file needs to be on the VM. With a GH_TOKEN
-# env var set, the script sparse-checkout-clones the repo's
-# deploy/lightsail/ directory into a tmpdir, copies compose.yaml,
-# Caddyfile, deploy.sh, and .env.example into /opt/study-help/, and
-# removes the tmpdir. The token is carried in `http.extraHeader` for
-# the single clone command, so nothing lands in .git/config and there
-# is no on-disk credential footprint after the script returns.
+# env var set, the script shallow-clones the repo into a tmpdir, copies
+# deploy/lightsail/{compose.yaml,Caddyfile,deploy.sh,.env.example} into
+# /opt/study-help/, and removes the tmpdir on exit. The token is carried
+# in `http.extraHeader` (Basic auth, x-access-token:$GH_TOKEN) for the
+# single clone command, so nothing lands in .git/config or the clone URL
+# and there is no on-disk credential footprint after the script returns.
 #
 # Idempotent: safe to re-run.
 #
@@ -88,13 +88,20 @@ fi
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
-log "fetching deploy artifacts from $REPO @ $REPO_REF (sparse: deploy/lightsail/)"
-git -c http.extraHeader="Authorization: Bearer $GH_TOKEN" \
-    clone --depth=1 --no-tags --filter=blob:none --sparse \
-    --branch "$REPO_REF" --quiet \
-    "https://github.com/${REPO}.git" "$WORK/repo"
+# GitHub's git smart-HTTP endpoint speaks Basic auth (with the PAT as
+# the password), not Bearer — Bearer is for the REST API and for App
+# installation tokens. We carry the auth as a one-shot extraHeader so
+# the token never lands in .git/config or the clone URL, and disable
+# the interactive credential prompt so any auth failure fails loudly
+# instead of hanging on a tty.
+AUTH_BASIC="$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 | tr -d '\n')"
 
-(cd "$WORK/repo" && git sparse-checkout set deploy/lightsail >/dev/null)
+log "fetching deploy artifacts from $REPO @ $REPO_REF"
+GIT_TERMINAL_PROMPT=0 git \
+    -c "http.extraHeader=Authorization: Basic ${AUTH_BASIC}" \
+    clone --depth=1 --no-tags --quiet \
+    --branch "$REPO_REF" \
+    "https://github.com/${REPO}.git" "$WORK/repo"
 
 ARTIFACTS="$WORK/repo/deploy/lightsail"
 for f in compose.yaml Caddyfile deploy.sh .env.example; do
