@@ -1,11 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  CANON,
-  ChapterRef,
-  nextChapter,
-  prevChapter,
-  refToQuery,
-} from "./canon";
+import { CANON, nextChapter, prevChapter, refToQuery } from "./canon";
 import { fetchPassage } from "./api";
 import { useToggles } from "./toggles";
 import { useTheme } from "./theme";
@@ -14,15 +8,14 @@ import { Attribution } from "./translations/Attribution";
 import { TRANSLATIONS, type TranslationID } from "./translations/catalog";
 import { useTranslation } from "./translations/useTranslation";
 import { DailyPanel } from "./daily/DailyPanel";
-import { useDailyTab } from "./daily/useDailyTab";
+import { todayString, useDailyTab } from "./daily/useDailyTab";
 import { usePlanSelection } from "./daily/usePlanSelection";
+import { useStoredDailyDate, useStoredReadRef, useStoredTab } from "./restore";
 import styles from "./App.module.css";
 
-type Tab = "read" | "daily";
-
 export function App() {
-  const [tab, setTab] = useState<Tab>("read");
-  const [ref, setRef] = useState<ChapterRef>({ bookIndex: 42, chapter: 3 }); // John 3
+  const [tab, setTab] = useStoredTab();
+  const [ref, setRef] = useStoredReadRef();
   const [toggles, setToggles] = useToggles();
   const [theme, setTheme] = useTheme();
   const [html, setHtml] = useState<string>("");
@@ -33,7 +26,18 @@ export function App() {
   const { translation, setTranslation } = useTranslation();
   const [planIDs, setPlanIDs] = usePlanSelection();
   const [pickerOpen, setPickerOpen] = useState(false);
-  const dailyTab = useDailyTab(tab === "daily", toggles, translation, planIDs);
+  // `today` is computed once per render so the daily-date hydration and
+  // the daily tab itself agree on what "today" means (snap-to-today rule).
+  const today = useMemo(() => todayString(), []);
+  const [selectedDate, setSelectedDate] = useStoredDailyDate(today);
+  const dailyTab = useDailyTab(
+    tab === "daily",
+    toggles,
+    translation,
+    planIDs,
+    selectedDate,
+    setSelectedDate,
+  );
 
   const q = useMemo(() => refToQuery(ref), [ref]);
 
