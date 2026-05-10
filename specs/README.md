@@ -24,6 +24,7 @@ and why it was retired.
 | [passage-reader](./passage-reader.md) | Shipped | Read a chapter or contiguous passage range; ESV proxied through the server |
 | [pwa-install](./pwa-install.md) | Shipped | Install-only PWA: Web App Manifest + Apple meta tags so the app can be added to the iPad/Android home screen and launched standalone; no service worker |
 | [reader-ui-refresh](./reader-ui-refresh.md) | Shipped | iPad/Safari touch polish, light + dark theme, design tokens; rides a Vite/React/TS bump |
+| [restore-last-location](./restore-last-location.md) | In Progress | Reopen the app to the last-viewed tab + read passage + daily date (per device, localStorage) |
 
 ## Archive
 

@@ -5,6 +5,22 @@ import type { Toggles } from "../toggles";
 import type { TranslationID } from "../translations/catalog";
 import type { PlanID } from "./plans";
 
+// todayString returns today's local calendar date in YYYY-MM-DD form,
+// using the user's resolved timezone. Exported so callers (e.g.
+// useStoredDailyDate in restore.ts) can pass a single shared "today"
+// value in to keep the snap-to-today comparison consistent with what the
+// daily tab itself uses.
+export function todayString(): string {
+  const tz = defaultTimezoneProvider.get();
+  try {
+    return new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(
+      new Date(),
+    );
+  } catch {
+    return new Intl.DateTimeFormat("en-CA").format(new Date());
+  }
+}
+
 export type Testament = "OT" | "NT" | "";
 
 export type DailyPill = {
@@ -46,8 +62,10 @@ export type UseDailyTab = {
   setSelectedDate: (date: string) => void;
 };
 
-// useDailyTab owns the daily-reading state machine: date selection,
-// the per-pill load, and the active-pill switch. The load effect
+// useDailyTab owns the daily-reading state machine: the per-pill load
+// and the active-pill switch. `selectedDate` is owned by the caller
+// (App.tsx) so it can be hydrated from the restore-last-location store
+// alongside the active tab and read-tab passage. The load effect
 // snapshots `toggles` and `translation` via refs so identity changes
 // don't refire it; mid-flight requests are dropped via fetchId
 // comparison. Re-fetching is gated by daily.kind === "idle" (re-armed
@@ -57,9 +75,10 @@ export function useDailyTab(
   toggles: Toggles,
   translation: TranslationID,
   planIDs: PlanID[],
+  selectedDate: string,
+  setSelectedDate: (date: string) => void,
 ): UseDailyTab {
   const [daily, setDaily] = useState<DailyLoad>({ kind: "idle" });
-  const [selectedDate, setSelectedDate] = useState<string>(todayString);
   const fetchId = useRef(0);
 
   const togglesRef = useRef(toggles);
@@ -201,15 +220,4 @@ function updatePill(
     i === idx ? { ...p, ...patch } : p,
   );
   return { ...prev, state: { ...prev.state, pills } };
-}
-
-function todayString(): string {
-  const tz = defaultTimezoneProvider.get();
-  try {
-    return new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(
-      new Date(),
-    );
-  } catch {
-    return new Intl.DateTimeFormat("en-CA").format(new Date());
-  }
 }
