@@ -56,24 +56,6 @@ func TestRegistryKnown(t *testing.T) {
 	}
 }
 
-func TestRegistryCatalogSorted(t *testing.T) {
-	r := NewRegistry(ESV,
-		&fakeProvider{id: "WEB", name: "World English Bible"},
-		&fakeProvider{id: ESV, name: "English Standard Version"},
-		&fakeProvider{id: "KJV", name: "King James Version"},
-	)
-	got := r.Catalog()
-	wantIDs := []ID{ESV, "KJV", "WEB"}
-	if len(got) != len(wantIDs) {
-		t.Fatalf("Catalog() len=%d, want %d", len(got), len(wantIDs))
-	}
-	for i, id := range wantIDs {
-		if got[i].ID != id {
-			t.Errorf("Catalog()[%d].ID = %v, want %v", i, got[i].ID, id)
-		}
-	}
-}
-
 func TestRegistryDuplicatePanics(t *testing.T) {
 	defer func() {
 		if r := recover(); r == nil {

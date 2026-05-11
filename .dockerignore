@@ -9,12 +9,6 @@ internal/web/dist
 .vscode
 .claude
 
-# Local SQLite database files.
-*.db
-*.db-shm
-*.db-wal
-*.db-journal
-
 # Locally-built binary.
 /study-help
 
@@ -27,4 +21,4 @@ CLAUDE.md
 Dockerfile
 .dockerignore
 docker-compose.yml
-deploy.sh
+deploy-local.sh
