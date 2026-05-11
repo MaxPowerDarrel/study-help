@@ -1,19 +1,11 @@
 package scripture
 
-import "sort"
-
 // Registry resolves translation IDs to providers. Built once at startup
 // (main.go) and read-only thereafter — no locks needed.
 type Registry struct {
 	providers map[ID]Provider
 	order     []ID
 	fallback  ID
-}
-
-// CatalogEntry is the SPA-facing summary of a registered provider.
-type CatalogEntry struct {
-	ID          ID     `json:"id"`
-	DisplayName string `json:"display_name"`
 }
 
 // NewRegistry builds a registry. fallback must match one of the
@@ -57,18 +49,4 @@ func (r *Registry) Default() ID { return r.fallback }
 func (r *Registry) Known(id ID) bool {
 	_, ok := r.providers[id]
 	return ok
-}
-
-// Catalog returns every registered provider as a SPA-facing summary,
-// sorted by ID for stable ordering across requests.
-func (r *Registry) Catalog() []CatalogEntry {
-	ids := make([]ID, len(r.order))
-	copy(ids, r.order)
-	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
-	out := make([]CatalogEntry, 0, len(ids))
-	for _, id := range ids {
-		p := r.providers[id]
-		out = append(out, CatalogEntry{ID: id, DisplayName: p.DisplayName()})
-	}
-	return out
 }

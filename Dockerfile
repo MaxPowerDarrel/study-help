@@ -12,7 +12,7 @@ RUN npm run build
 
 # Stage 2: compile the Go binary with the SPA embedded.
 # CGO_ENABLED=0 keeps the binary statically linked so it can run on
-# distroless/static (no libc). modernc.org/sqlite is pure-Go, so this works.
+# distroless/static (no libc).
 FROM golang:1.26-alpine AS backend
 WORKDIR /app
 COPY go.mod go.sum ./

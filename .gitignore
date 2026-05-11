@@ -1,16 +1,6 @@
 # Compiled binary
 study-help
 
-# SQLite database files
-sqlite.db
-sqlite.db-journal
-sqlite.db-wal
-sqlite.db-shm
-*.db
-*.db-journal
-*.db-wal
-*.db-shm
-
 # Local environment
 .env
 
