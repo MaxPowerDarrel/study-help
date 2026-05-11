@@ -4,6 +4,10 @@ A Bible reader optimized for **focused study** of scripture a chapter or section
 
 See [`PROJECT_CONSTITUTION.md`](./PROJECT_CONSTITUTION.md) for purpose, principles, and non-goals, and [`STACK.md`](./STACK.md) for the tech choices.
 
+## About this project
+
+This is a personal project, built and maintained by one developer for personal use and as a public reference. The code is shared openly so others can read, learn from, or fork it, but I am not actively soliciting contributions — issues and PRs may not get a timely response, and scope is intentionally narrow per the constitution. If you'd like to run your own copy, see [Quickstart](#quickstart) below.
+
 ## Status
 
 Reader, multi-translation (ESV + NIV), and daily reading (Bible-in-One-Year + Hope 2026) have shipped — see the per-feature specs under [`specs/`](./specs/). The Go server proxies all scripture requests (upstream API keys never reach the browser), exposes a localhost-only Prometheus counter, and serves the React SPA from an embedded Vite build. The accounts, highlights, and notes features were retired on 2026-05-07; the server is now stateless.
