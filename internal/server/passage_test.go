@@ -263,6 +263,34 @@ func TestPassageHandlerRoutesByTranslation(t *testing.T) {
 	}
 }
 
+func TestPassageHandlerForwardsCrossrefToggle(t *testing.T) {
+	var gotCrossrefs string
+	stub := func(w http.ResponseWriter, r *http.Request) {
+		gotCrossrefs = r.URL.Query().Get("include-crossrefs")
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"passages":["<p>...</p>"]}`))
+	}
+	reg, srv := newStubRegistry(t, stub)
+	defer srv.Close()
+
+	h := passageHandler(reg, &ESVCallCounter{})
+
+	// Explicit opt-in forwards true.
+	req := httptest.NewRequest(http.MethodGet, "/api/passage?q=John+3&include_cross_references=true", nil)
+	h(httptest.NewRecorder(), req)
+	if gotCrossrefs != "true" {
+		t.Errorf("include-crossrefs = %q, want true", gotCrossrefs)
+	}
+
+	// Absent param defaults to off.
+	gotCrossrefs = ""
+	req = httptest.NewRequest(http.MethodGet, "/api/passage?q=John+3", nil)
+	h(httptest.NewRecorder(), req)
+	if gotCrossrefs != "false" {
+		t.Errorf("default include-crossrefs = %q, want false", gotCrossrefs)
+	}
+}
+
 func TestMetricsExposesCounter(t *testing.T) {
 	counter := &ESVCallCounter{}
 	counter.Inc()

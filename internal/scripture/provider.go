@@ -37,6 +37,7 @@ type Options struct {
 	IncludeFootnotes         bool
 	IncludeVerseNumbers      bool
 	IncludePassageReferences bool
+	IncludeCrossReferences   bool
 	Extra                    map[string]string
 }
 

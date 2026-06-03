@@ -25,6 +25,7 @@ const SHOW_OPTIONS: { key: keyof Toggles; label: string }[] = [
   { key: "include_footnotes", label: "Footnotes" },
   { key: "include_verse_numbers", label: "Verse numbers" },
   { key: "include_passage_references", label: "Passage reference" },
+  { key: "include_cross_references", label: "Cross-references (ESV)" },
   { key: "include_word_of_christ", label: "Words of Christ" },
 ];
 

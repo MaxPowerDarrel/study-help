@@ -25,6 +25,7 @@ func New(cfg config.Config, counter *ESVCallCounter, daily *DailyCounter, reg *s
 	})
 
 	mux.HandleFunc("GET /api/passage", passageHandler(reg, counter))
+	mux.HandleFunc("GET /api/crossref", crossrefHandler(reg, counter))
 	mux.HandleFunc("GET /api/daily-reading", dailyReadingHandler(daily))
 
 	mux.Handle("/", spaHandler(webclient.DistFS()))

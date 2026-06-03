@@ -119,22 +119,13 @@ func ValidateQuery(q string) error {
 		return errors.New("verse references are not supported; use \"<book> <chapter>\" or \"<book> <chapter>-<chapter>\"")
 	}
 
-	// Split book name from "chapter[-chapter]" tail. The tail starts
-	// at the last space before a digit.
-	tailStart := -1
-	for i := len(q) - 1; i > 0; i-- {
-		if q[i] == ' ' && i+1 < len(q) && q[i+1] >= '0' && q[i+1] <= '9' {
-			tailStart = i
-			break
-		}
-	}
-	if tailStart <= 0 {
+	// Split book name from "chapter[-chapter]" tail.
+	bookName, tail, ok := splitBookTail(q)
+	if !ok {
 		return errors.New("missing chapter")
 	}
-	bookName := strings.TrimSpace(q[:tailStart])
-	tail := strings.TrimSpace(q[tailStart+1:])
 
-	book, ok := canonByName[strings.ToLower(bookName)]
+	book, ok := LookupBook(bookName)
 	if !ok {
 		return fmt.Errorf("unknown book: %q", bookName)
 	}
@@ -165,6 +156,73 @@ func ValidateQuery(q string) error {
 		return fmt.Errorf("chapter %d out of range for %s (1-%d)", chapter, book.Name, book.Chapters)
 	}
 	return nil
+}
+
+// ValidateRefList checks that q is a plausible list of cross-reference
+// targets before it's forwarded to the ESV passage API by the cross-ref
+// endpoint (internal/server/crossref.go). Unlike ValidateQuery — which
+// is chapter-level and deliberately rejects verse syntax — these
+// references come from ESV's own crossref markup and are verse-level
+// (e.g. "Job 38:4-7; Psalm 33:6; Revelation 4:11"), so colons, commas,
+// and ";"-separated lists are allowed.
+//
+// The point, as with ValidateQuery, is to reject obvious garbage before
+// consuming an upstream call — not to fully parse every reference (ESV
+// is the arbiter of reference grammar). It enforces three things:
+//
+//   - a length cap (lists concatenate several references);
+//   - a restricted character set (letters, digits, and the punctuation
+//     ESV emits: space . , : ; - and the en-dash "–");
+//   - that the FIRST reference names a canonical book. ESV omits the
+//     book name on same-book continuations ("Ps. 33:6; 136:5"), so only
+//     the leading reference is checked for a book.
+func ValidateRefList(q string) error {
+	q = strings.TrimSpace(q)
+	if q == "" {
+		return errors.New("empty reference list")
+	}
+	if len(q) > 256 {
+		return errors.New("reference list too long")
+	}
+	for _, r := range q {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z':
+		case r >= '0' && r <= '9':
+		case r == ' ' || r == '.' || r == ',' || r == ':' || r == ';' || r == '-' || r == '–':
+		default:
+			return fmt.Errorf("invalid character in reference list: %q", r)
+		}
+	}
+
+	first := strings.TrimSpace(strings.SplitN(q, ";", 2)[0])
+	bookName, _, ok := splitBookTail(first)
+	if !ok {
+		return errors.New("missing book in first reference")
+	}
+	if _, ok := LookupBook(bookName); !ok {
+		return fmt.Errorf("unknown book: %q", bookName)
+	}
+	return nil
+}
+
+// splitBookTail separates a reference's book name from its trailing
+// chapter/verse portion. The tail starts at the last space that is
+// immediately followed by a digit, so multi-word and numbered book
+// names ("Song of Solomon 1", "1 Corinthians 13:1") split correctly.
+// ok is false when no chapter/verse tail is present.
+func splitBookTail(ref string) (book, tail string, ok bool) {
+	ref = strings.TrimSpace(ref)
+	tailStart := -1
+	for i := len(ref) - 1; i > 0; i-- {
+		if ref[i] == ' ' && i+1 < len(ref) && ref[i+1] >= '0' && ref[i+1] <= '9' {
+			tailStart = i
+			break
+		}
+	}
+	if tailStart <= 0 {
+		return "", "", false
+	}
+	return strings.TrimSpace(ref[:tailStart]), strings.TrimSpace(ref[tailStart+1:]), true
 }
 
 func parsePositiveInt(s string) (int, error) {

@@ -61,6 +61,31 @@ export async function fetchPassage(
   return { kind: "ok", html, canonical: data.canonical ?? q };
 }
 
+// fetchCrossref looks up the verse text behind a cross-reference marker
+// for the popover. `q` is the reference string lifted from the marker's
+// href (e.g. "Job 38:4-7; Psalm 33:6"). The endpoint is ESV-only — see
+// internal/server/crossref.go — and returns the same {passages} envelope
+// as /api/passage, so the result renders with the shared .passage styles.
+export async function fetchCrossref(q: string): Promise<FetchResult> {
+  const params = new URLSearchParams({ q });
+  let resp: Response;
+  try {
+    resp = await fetch(`/api/crossref?${params.toString()}`);
+  } catch {
+    return { kind: "error" };
+  }
+  if (resp.status === 429) return { kind: "rate_limited" };
+  if (!resp.ok) return { kind: "error" };
+  let data: EsvJson;
+  try {
+    data = await resp.json();
+  } catch {
+    return { kind: "error" };
+  }
+  const html = (data.passages ?? []).join("");
+  return { kind: "ok", html, canonical: data.canonical ?? q };
+}
+
 export async function fetchDailyReading(
   tz: string,
   planIDs: PlanID[],
