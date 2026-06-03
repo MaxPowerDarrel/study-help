@@ -3,7 +3,9 @@
  * container. The class names here are emitted by the upstream APIs,
  * not by our React tree, so they can't be scoped via CSS Modules.
  *
- * ESV: .verse-num (verse label), .woc (words of Christ), h2/h3 (section).
+ * ESV: .verse-num (verse label), .woc (words of Christ), h2/h3 (section),
+ * .cf (cross-reference marker — ESV-only, gated by the cross-references
+ * toggle; PassageArticle turns clicks into the cross-ref popover).
  * YouVersion (NIV): .yv-vlbl (verse label), .wj (words of Jesus),
  * .yv-v (empty boundary anchor — used by parseSelection), .p (paragraph).
  */
@@ -32,6 +34,15 @@
   font-size: 0.7em;
   vertical-align: super;
   margin-right: 0.15em;
+}
+
+/* ESV cross-reference markers: small superscript letters. Clickable —
+ * PassageArticle intercepts the click to open the cross-ref popover, so
+ * cue interactivity with the accent color and a pointer cursor. */
+.passage .cf {
+  color: var(--color-accent);
+  cursor: pointer;
+  text-decoration: none;
 }
 
 /* YouVersion emits an empty boundary span before each verse; it pairs

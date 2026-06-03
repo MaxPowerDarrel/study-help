@@ -1,3 +1,4 @@
+import { PassageArticle } from "../PassageArticle";
 import { defaultTimezoneProvider } from "../platform/TimezoneProvider";
 import { Attribution } from "../translations/Attribution";
 import { TRANSLATIONS, type TranslationID } from "../translations/catalog";
@@ -156,9 +157,9 @@ export function DailyPanel({
               <div className={styles.spinner} aria-label="loading" />
             )}
             {!activePill.loading && activePill.html && (
-              <article
-                className={showWordsOfChrist ? "passage" : "passage no-woc"}
-                dangerouslySetInnerHTML={{ __html: activePill.html }}
+              <PassageArticle
+                html={activePill.html}
+                showWoc={showWordsOfChrist}
               />
             )}
             {activePill.error && (

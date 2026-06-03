@@ -39,6 +39,7 @@ func (p *Provider) Fetch(ctx context.Context, q string, o scripture.Options) (*s
 		IncludeFootnotes:         o.IncludeFootnotes,
 		IncludeVerseNumbers:      o.IncludeVerseNumbers,
 		IncludePassageReferences: o.IncludePassageReferences,
+		IncludeCrossReferences:   o.IncludeCrossReferences,
 	})
 	switch {
 	case errors.Is(err, ErrRateLimited):

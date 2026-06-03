@@ -43,6 +43,7 @@ type Options struct {
 	IncludeFootnotes         bool
 	IncludeVerseNumbers      bool
 	IncludePassageReferences bool
+	IncludeCrossReferences   bool
 }
 
 // Result is a verbatim ESV API response.
@@ -72,6 +73,13 @@ func (c *Client) Fetch(ctx context.Context, q string, opts Options) (*Result, er
 	params.Set("include-footnotes", boolParam(opts.IncludeFootnotes))
 	params.Set("include-verse-numbers", boolParam(opts.IncludeVerseNumbers))
 	params.Set("include-passage-references", boolParam(opts.IncludePassageReferences))
+	// Cross-references are off by default upstream. With include-crossrefs
+	// on, ESV emits inline <sup><a class="cf" href="<refs>/"> markers; the
+	// referenced verses ride in the href. crossref-url is the base ESV
+	// prepends to that href — we keep it empty so the href is the bare
+	// reference string (the SPA parses it to drive the cross-ref popover).
+	params.Set("include-crossrefs", boolParam(opts.IncludeCrossReferences))
+	params.Set("crossref-url", "")
 	// Audio playback is a Non-goal in specs/passage-reader.md; ESV's
 	// passage/html defaults this to true and would otherwise emit a
 	// <a class="mp3link">Listen</a> link in every payload.

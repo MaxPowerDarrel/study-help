@@ -37,6 +37,7 @@ func passageHandler(reg *scripture.Registry, counter *ESVCallCounter) http.Handl
 			IncludeFootnotes:         boolParam(r, "include_footnotes", true),
 			IncludeVerseNumbers:      boolParam(r, "include_verse_numbers", true),
 			IncludePassageReferences: boolParam(r, "include_passage_references", true),
+			IncludeCrossReferences:   boolParam(r, "include_cross_references", false),
 		}
 
 		result, err := provider.Fetch(r.Context(), q, opts)

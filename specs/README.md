@@ -16,6 +16,7 @@ and why it was retired.
 | Spec | Status | Summary |
 |---|---|---|
 | [auto-load-daily-reading](./auto-load-daily-reading.md) | Shipped | Auto-load a daily passage on startup; toggle in settings |
+| [cross-references](./cross-references.md) | Shipped | ESV cross-references: opt-in toggle adds inline markers; clicking one opens a verse-text popover (ESV-only) |
 | [deploy-aws](./deploy-aws.md) | Shipped | Single-VM AWS Lightsail deployment with Caddy TLS termination, auto-deploy chained from `build-image`, transient GHCR + bootstrap auth; live at study.example.com |
 | [docker](./docker.md) | Shipped | Package the app as a Docker image for reproducible, portable deployment |
 | [multi-plan](./multi-plan.md) | Shipped | Multiple daily reading plans (Bible-in-One-Year + Hope 2026); checkbox picker in settings |

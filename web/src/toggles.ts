@@ -6,6 +6,7 @@ export type Toggles = {
   include_footnotes: boolean;
   include_verse_numbers: boolean;
   include_passage_references: boolean;
+  include_cross_references: boolean;
   include_word_of_christ: boolean;
 };
 
@@ -14,6 +15,9 @@ export const DEFAULT_TOGGLES: Toggles = {
   include_footnotes: true,
   include_verse_numbers: true,
   include_passage_references: true,
+  // Off by default: matches the ESV API default and keeps the default
+  // reading view uncluttered. ESV-only — NIV emits no cross-references.
+  include_cross_references: false,
   include_word_of_christ: true,
 };
 
@@ -48,6 +52,7 @@ export function togglesToQuery(t: Toggles): string {
     "include_passage_references",
     String(t.include_passage_references),
   );
+  params.set("include_cross_references", String(t.include_cross_references));
   // include_word_of_christ is intentionally not sent: ESV's /passage/html/
   // endpoint does not support an upstream toggle for it. The toggle is
   // applied client-side by suppressing .woc styling (see passage.css).

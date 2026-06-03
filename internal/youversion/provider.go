@@ -34,7 +34,9 @@ func (p *Provider) DisplayName() string { return "New International Version" }
 // Fetch implements scripture.Provider. YouVersion's passage endpoint
 // renders a fixed HTML shape and doesn't honor per-request formatting
 // toggles; the keys are forwarded for future use without behavioral
-// change today.
+// change today. In particular it has no cross-reference parameter, so
+// scripture.Options.IncludeCrossReferences is silently ignored — NIV
+// passages carry no .cf markers and never trigger the cross-ref popover.
 func (p *Provider) Fetch(ctx context.Context, q string, o scripture.Options) (*scripture.Result, error) {
 	res, err := p.client.Fetch(ctx, q, Options{
 		IncludeHeadings:          o.IncludeHeadings,

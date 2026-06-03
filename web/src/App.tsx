@@ -4,6 +4,7 @@ import { fetchPassage } from "./api";
 import { useToggles } from "./toggles";
 import { useTheme } from "./theme";
 import { SettingsPane } from "./SettingsPane";
+import { PassageArticle } from "./PassageArticle";
 import { Attribution } from "./translations/Attribution";
 import { TRANSLATIONS, type TranslationID } from "./translations/catalog";
 import { useTranslation } from "./translations/useTranslation";
@@ -217,13 +218,9 @@ export function App() {
               )}
               {!loading && html && (
                 <div className={styles.readArticle}>
-                  <article
-                    className={
-                      toggles.include_word_of_christ
-                        ? "passage"
-                        : "passage no-woc"
-                    }
-                    dangerouslySetInnerHTML={{ __html: html }}
+                  <PassageArticle
+                    html={html}
+                    showWoc={toggles.include_word_of_christ}
                   />
                   {(prev || next) && (
                     <nav
