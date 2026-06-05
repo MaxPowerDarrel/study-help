@@ -1,0 +1,83 @@
+# study-help — iOS app & widget
+
+A thin native iOS client whose **only reason to exist is the home-screen
+widget** that shows the day's reading assignment. iOS widgets cannot be built
+with web technology, so a native shell is required. The reading surface itself
+is the existing hosted SPA loaded in a `WKWebView` — there is no second reader.
+
+See [`../specs/native-ios.md`](../specs/native-ios.md) for the design and
+[`../PROJECT_CONSTITUTION.md`](../PROJECT_CONSTITUTION.md) §1 for the amendment
+that permits this narrow native shell.
+
+## What's here
+
+| Path | Role |
+|---|---|
+| `Shared/` | Compiled into **both** targets: API client, Codable models, plan/translation catalog, App Group cache, date helpers. |
+| `StudyHelp/` | App target — a `WKWebView` over `Config.backendBaseURL` plus pull-to-refresh and `studyhelp://` deep-link handling. |
+| `DailyWidget/` | WidgetKit extension — `AppIntentTimelineProvider` that fetches `GET /api/daily-reading`, caches to the App Group, and refreshes at the user's next local midnight. Configurable (plan + translation) via long-press. |
+| `StudyHelpTests/` | XCTest decode/round-trip tests for the models. |
+| `project.yml` | [XcodeGen](https://github.com/yonyz/XcodeGen) spec — the `.xcodeproj` is generated, not committed. |
+
+The Go backend needs **no changes**; it already proxies scripture with secrets
+server-side and is stateless (constitution §4). The widget consumes only daily
+*references* (book + chapters), never scripture text — so caching them
+on-device is fine under the ESV/YouVersion ToU.
+
+## Build & run
+
+Prerequisites: a Mac with **Xcode 15+** and (for on-device + TestFlight) an
+**Apple Developer Program** membership.
+
+```sh
+brew install xcodegen        # one-time
+cd ios
+xcodegen generate            # produces StudyHelp.xcodeproj from project.yml
+open StudyHelp.xcodeproj
+```
+
+In Xcode:
+
+1. Set your **Team** on both targets (StudyHelp, DailyWidgetExtension) under
+   Signing & Capabilities, or set `DEVELOPMENT_TEAM` in `project.yml` and
+   re-run `xcodegen generate`.
+2. Confirm the **App Group** `group.com.darrelross.studyhelp` is enabled on
+   both targets (it's declared in the `.entitlements` files). If you change the
+   bundle prefix, update the group id in the entitlements **and**
+   `Shared/AppGroup.swift` so they match.
+3. Run the **StudyHelp** scheme on a simulator or device. Add the widget from
+   the widget gallery; long-press → **Edit Widget** to pick a plan/translation.
+
+## Pointing at a backend
+
+`Config.backendBaseURL` defaults to `https://study.example.com` (the Lightsail
+deployment, HTTPS via Caddy — see `../specs/deploy-aws.md`). Override it without
+editing code by setting the `BACKEND_BASE_URL` environment variable in the Run
+scheme.
+
+For local dev against `go run .` on your Mac:
+
+- Use your Mac's LAN IP (`http://192.168.x.x:8080`), not `localhost`, so a
+  physical device can reach it.
+- Plain HTTP needs an **App Transport Security** exception. Add to
+  `StudyHelp/Info.plist` *temporarily* (do not ship it):
+
+  ```xml
+  <key>NSAppTransportSecurity</key>
+  <dict>
+    <key>NSAllowsLocalNetworking</key><true/>
+  </dict>
+  ```
+
+## Tests
+
+```sh
+xcodegen generate
+xcodebuild test -scheme StudyHelp -destination 'platform=iOS Simulator,name=iPhone 15'
+```
+
+## Distribution (TestFlight)
+
+Archive the **StudyHelp** scheme (Product → Archive) and upload to App Store
+Connect → TestFlight. Internal testers (incl. family) install via the
+TestFlight app. No public App Store listing is required.

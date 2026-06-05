@@ -6,7 +6,9 @@ This document is the canonical answer to *"why is this project shaped this way?"
 
 ## 1. Purpose
 
-`study-help` is a Bible reader optimized for **focused study** of scripture a chapter or section at a time. It is a web application, served as a static SPA from a Go binary. Safari on iPad is a first-class target, but it is reached as a regular browser — there is no native shell.
+`study-help` is a Bible reader optimized for **focused study** of scripture a chapter or section at a time. It is a web application, served as a static SPA from a Go binary. Safari on iPad is a first-class target, reached as a regular browser.
+
+One narrow exception to "no native shell" exists: a native iOS app may be built **solely to host a home-screen widget** that surfaces the day's reading assignment (widgets cannot be built with web technology). That app embeds the same hosted SPA in a web view for reading; it does not add a second reader. The web app remains the one and only reading implementation. *(Amended 2026-06-05 — see [`specs/native-ios.md`](./specs/native-ios.md). The widget consumes only daily reading **references**, never scripture text, and the backend is unchanged.)*
 
 The product exists to support careful, slow reading — not to be a search engine, a commentary library, or a social platform.
 
@@ -33,7 +35,7 @@ These keep the codebase clean, testable, and decoupled. They reflect how a small
 - **Frontend is decoupled.** The web client makes no assumptions about Node-only or server-only runtime APIs. It builds to a static bundle that the Go binary serves.
 - **Platform features behind an abstraction.** Anything browser-API-touching — local storage, notifications, share sheets, file pickers — goes through a thin interface so feature code stays portable and testable without mocking globals.
 - **Secrets stay server-side.** Translation API keys never reach the client. The server proxies scripture requests; the client never calls upstream translation APIs (e.g. `api.esv.org`) directly.
-- **The server is stateless.** Since the 2026-05-07 retirement of accounts and highlights, the server holds no user state and no database. The only client-side preference (translation choice) lives in `localStorage`. Reintroducing server-side state should be a deliberate spec-level decision, not a side effect of a feature.
+- **The server is stateless.** Since the 2026-05-07 retirement of accounts and highlights, the server holds no user state and no database. The only client-side preference (translation choice) lives in `localStorage`. Reintroducing server-side state should be a deliberate spec-level decision, not a side effect of a feature. The native iOS client (§1) honors this: its widget configuration and reference cache live on-device in an App Group — the statelessness guarantee is unchanged.
 
 ## 5. Non-Goals
 
