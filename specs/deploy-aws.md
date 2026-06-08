@@ -135,6 +135,15 @@ WAL companion.
   `contents:read` on this repo. Rationale: `scp` required a laptop
   with the repo cloned; self-clone makes "ssh + curl + bash"
   sufficient from any fresh shell.
+- **2026-06-08** — **Repo went public → bootstrap `GH_TOKEN` is now
+  optional.** With the source repo public, the `curl` of `bootstrap.sh`
+  and the artifact clone need no auth; `bootstrap.sh` now only attaches
+  the `http.extraHeader` when `GH_TOKEN` is set (private-repo fallback),
+  and no longer hard-requires it. The GHCR **image package remains
+  private**, so a manual host-side `docker login ghcr.io` still needs a
+  `read:packages` token; CI deploys continue to use the workflow's
+  built-in `GITHUB_TOKEN`. Net: no personal access token is required for
+  CI or auto-deploy — only for ad-hoc image pulls outside CI.
 - **2026-05-10** — **Live at study.example.com.** Five small fixes
   surfaced during launch and were rolled in: (1) `git -c
   http.extraHeader=Authorization: Basic …` for the bootstrap clone
@@ -197,11 +206,13 @@ End-to-end smoke (from the deploy README):
    key in via `gh secret set DEPLOY_SSH_KEY < key.pem` to preserve the
    PEM newlines.
 4. **Bootstrap.** `ssh` to the VM, `curl` `bootstrap.sh` from
-   `raw.githubusercontent.com` with a fine-grained PAT, run twice
-   (first run installs Docker + git; re-login; second run with
-   `GH_TOKEN=…` clones the artifacts into `/opt/study-help/`). Edit
-   `.env` and `Caddyfile` for the chosen FQDN.
-5. **First bring-up.** `docker login ghcr.io` once interactively, then
+   `raw.githubusercontent.com` (public repo — no auth), run twice
+   (first run installs Docker + git; re-login; second run clones the
+   artifacts into `/opt/study-help/`). Edit `.env` and `Caddyfile` for
+   the chosen FQDN. (If the repo is private, set `GH_TOKEN` with
+   `contents:read` for both fetches.)
+5. **First bring-up.** `docker login ghcr.io` once interactively (needs
+   a `read:packages` token — the image package is private), then
    `docker compose up -d`; watch `docker compose logs -f caddy` for
    the first Let's Encrypt issuance. Hit the FQDN in a browser and
    confirm a 200 plus a valid TLS chain.

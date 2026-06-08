@@ -1,23 +1,23 @@
 #!/usr/bin/env bash
 # bootstrap.sh — first-time provisioning on a fresh Lightsail VM.
 #
-# Self-contained: only this file needs to be on the VM. With a GH_TOKEN
-# env var set, the script shallow-clones the repo into a tmpdir, copies
+# Self-contained: only this file needs to be on the VM. The script
+# shallow-clones the repo into a tmpdir, copies
 # deploy/lightsail/{compose.yaml,Caddyfile,deploy.sh,.env.example} into
-# /opt/study-help/, and removes the tmpdir on exit. The token is carried
-# in `http.extraHeader` (Basic auth, x-access-token:$GH_TOKEN) for the
-# single clone command, so nothing lands in .git/config or the clone URL
-# and there is no on-disk credential footprint after the script returns.
+# /opt/study-help/, and removes the tmpdir on exit. The source repo is
+# public, so no auth is required. If GH_TOKEN is set (e.g. the repo is
+# made private again), it is carried in `http.extraHeader` (Basic auth,
+# x-access-token:$GH_TOKEN) for the single clone command, so nothing
+# lands in .git/config or the clone URL and there is no on-disk
+# credential footprint after the script returns.
 #
 # Idempotent: safe to re-run.
 #
 # Usage:
 #
-#   # one-time: download bootstrap.sh from the (private) repo. The same
-#   # PAT works on raw.githubusercontent.com via Authorization header.
+#   # one-time: download bootstrap.sh (public repo — no auth needed).
 #   ssh <user>@<host>
-#   TOKEN=ghp_xxx
-#   curl -fsSL -H "Authorization: Bearer $TOKEN" \
+#   curl -fsSL \
 #        https://raw.githubusercontent.com/MaxPowerDarrel/study-help/main/deploy/lightsail/bootstrap.sh \
 #        -o bootstrap.sh
 #   chmod +x bootstrap.sh
@@ -26,11 +26,15 @@
 #   ./bootstrap.sh
 #
 #   # second run (after relogin): clones artifacts, scaffolds host
-#   GH_TOKEN=$TOKEN ./bootstrap.sh
+#   ./bootstrap.sh
+#
+#   # if the repo is private, prefix both the curl (with
+#   # `-H "Authorization: Bearer $TOKEN"`) and the second run with
+#   # GH_TOKEN=$TOKEN.
 #
 # Env contract:
-#   GH_TOKEN  required on the cloning pass; PAT or fine-grained token
-#             with `contents:read` on $REPO.
+#   GH_TOKEN  optional; only needed if $REPO is private. PAT or
+#             fine-grained token with `contents:read` on $REPO.
 #   REPO      required, format: owner/repo (e.g. owner/study-help).
 #   REPO_REF  branch or tag to clone; defaults to main.
 #   APP_DIR   install target; defaults to /opt/study-help.
@@ -64,7 +68,7 @@ if ! command -v docker >/dev/null 2>&1; then
   sudo apt-get install -y docker.io docker-compose-plugin git
   sudo systemctl enable --now docker
   sudo usermod -aG docker "$USER"
-  log "docker installed; log out and back in for the docker group, then re-run this script with GH_TOKEN set"
+  log "docker installed; log out and back in for the docker group, then re-run this script (set GH_TOKEN only if the repo is private)"
   exit 0
 fi
 
@@ -79,26 +83,26 @@ if ! command -v git >/dev/null 2>&1; then
   sudo apt-get install -y git
 fi
 
-if [ -z "${GH_TOKEN:-}" ]; then
-  err "GH_TOKEN env var required (PAT with contents:read on $REPO)"
-  err "example: GH_TOKEN=ghp_xxx ./bootstrap.sh"
-  exit 1
-fi
-
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
+# The repo is public, so the clone needs no auth. If GH_TOKEN is set
+# (e.g. the repo was made private again), carry it as a one-shot
+# extraHeader so the token never lands in .git/config or the clone URL.
 # GitHub's git smart-HTTP endpoint speaks Basic auth (with the PAT as
 # the password), not Bearer — Bearer is for the REST API and for App
-# installation tokens. We carry the auth as a one-shot extraHeader so
-# the token never lands in .git/config or the clone URL, and disable
-# the interactive credential prompt so any auth failure fails loudly
-# instead of hanging on a tty.
-AUTH_BASIC="$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 | tr -d '\n')"
+# installation tokens. GIT_TERMINAL_PROMPT=0 makes any auth failure
+# (e.g. a private repo with no token) fail loudly instead of hanging on
+# a tty credential prompt.
+GIT_AUTH_ARGS=()
+if [ -n "${GH_TOKEN:-}" ]; then
+  AUTH_BASIC="$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 | tr -d '\n')"
+  GIT_AUTH_ARGS=(-c "http.extraHeader=Authorization: Basic ${AUTH_BASIC}")
+fi
 
 log "fetching deploy artifacts from $REPO @ $REPO_REF"
 GIT_TERMINAL_PROMPT=0 git \
-    -c "http.extraHeader=Authorization: Basic ${AUTH_BASIC}" \
+    ${GIT_AUTH_ARGS[@]+"${GIT_AUTH_ARGS[@]}"} \
     clone --depth=1 --no-tags --quiet \
     --branch "$REPO_REF" \
     "https://github.com/${REPO}.git" "$WORK/repo"
