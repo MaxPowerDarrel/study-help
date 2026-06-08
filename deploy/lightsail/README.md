@@ -43,8 +43,10 @@ Build the image in CI (or locally), push to a registry, pin the tag in
 `.env`. Two reasonable registries:
 
 - **GHCR** — `ghcr.io/<you>/study-help:sha-<git>`. Free, lives next to the
-  source. Authenticate with a GitHub personal access token; on the host
-  run `docker login ghcr.io` once.
+  source. The source repo is public, but the **image package is private**,
+  so a manual pull on the host needs a token with `read:packages`: run
+  `docker login ghcr.io` once. (CI pulls use the workflow's built-in
+  `GITHUB_TOKEN` — no personal token involved.)
 - **ECR private** — `<account>.dkr.ecr.<region>.amazonaws.com/study-help:sha-<git>`.
   Roughly free at this scale. Authenticate with `aws ecr get-login-password`.
 
@@ -53,20 +55,15 @@ Node and Go and the build is heavy on a 1 GB instance.
 
 ## First deploy
 
-`bootstrap.sh` is self-contained: download it once with a fine-grained
-PAT, run it twice (first run installs Docker; second run sparse-checkout
-clones the deploy artifacts using the same PAT and scaffolds the host).
-The token is carried in `Authorization` headers for both fetches and
-never lands in `.git/config` or `git remote -v` output; the cloned
-working tree is removed on script exit.
+`bootstrap.sh` is self-contained: download it once, then run it twice
+(first run installs Docker; second run shallow-clones the deploy
+artifacts and scaffolds the host). The source repo is public, so neither
+fetch needs auth. The cloned working tree is removed on script exit.
 
 ```bash
 ssh <user>@<host>
 
-# fine-grained PAT, contents:read on this repo only
-TOKEN=ghp_xxx
-
-curl -fsSL -H "Authorization: Bearer $TOKEN" \
+curl -fsSL \
      https://raw.githubusercontent.com/MaxPowerDarrel/study-help/main/deploy/lightsail/bootstrap.sh \
      -o bootstrap.sh
 chmod +x bootstrap.sh
@@ -74,8 +71,14 @@ chmod +x bootstrap.sh
 ./bootstrap.sh                           # installs docker + git, exits
 # log out, log back in for the docker group to take effect
 
-GH_TOKEN=$TOKEN ./bootstrap.sh           # clones artifacts, scaffolds /opt/study-help/
+./bootstrap.sh                           # clones artifacts, scaffolds /opt/study-help/
 ```
+
+> If the repo is ever made private again, set `GH_TOKEN` (a PAT or
+> fine-grained token with `contents:read`) for the clone — prefix the
+> `curl` with `-H "Authorization: Bearer $GH_TOKEN"` and the second run
+> with `GH_TOKEN=…`. The token is carried in an `Authorization` header
+> and never lands in `.git/config` or `git remote -v` output.
 
 `bootstrap.sh` is idempotent. The second run scaffolds `/opt/study-help/`
 with `compose.yaml`, `Caddyfile`, `deploy.sh`, and a starter `.env`
@@ -88,7 +91,7 @@ cd /opt/study-help
 $EDITOR .env                            # fill in every CHANGEME
 $EDITOR Caddyfile                       # replace study.example.com
 
-docker login ghcr.io                    # one-time, for the first pull
+docker login ghcr.io                    # one-time; needs a read:packages token (image package is private)
 
 # DNS must resolve to the static IP before this step or Caddy can't get
 # a cert. Verify with `dig +short study.example.com`.
