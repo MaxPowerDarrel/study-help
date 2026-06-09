@@ -76,6 +76,26 @@ xcodegen generate
 xcodebuild test -scheme StudyHelp -destination 'platform=iOS Simulator,name=iPhone 15'
 ```
 
+(If that destination doesn't exist on your machine, pick any simulator id
+from `xcrun simctl list devices available` and use `-destination 'id=…'`.)
+
+### Passage fixtures
+
+`StudyHelpTests/Fixtures/*.json` are real `GET /api/passage` /
+`GET /api/crossref` responses that pin both providers' markup for the
+native-reader parser (`specs/native-reader.md`). The parser tests assert
+`unknownClasses` is empty, so if ESV or YouVersion change their HTML, the
+suite flags it as soon as fixtures are re-recorded. Re-record any of them
+against the live backend (or `go run .`) with, e.g.:
+
+```sh
+curl -s "https://study.darrel.io/api/passage?q=Psalm%2023&translation=ESV" \
+  -o StudyHelpTests/Fixtures/esv-psalm23-default.json
+```
+
+Keep fixtures to short passages — they live in the repo and must stay within
+ESV's quoting allowances.
+
 ## Distribution (TestFlight)
 
 Archive the **StudyHelp** scheme (Product → Archive) and upload to App Store
