@@ -64,6 +64,21 @@ final class ReaderSettingsTests: XCTestCase {
         XCTAssertEqual(ReaderSettings(store: store).translation, .esv)
     }
 
+    // MARK: Theme (mirrors web/src/theme.ts)
+
+    func testThemeDefaultsToSystemAndPersists() {
+        let settings = ReaderSettings(store: store)
+        XCTAssertEqual(settings.theme, .system)
+
+        settings.theme = .dark
+        XCTAssertEqual(ReaderSettings(store: store).theme, .dark)
+    }
+
+    func testCorruptThemeFallsBackToSystem() {
+        store.set("sepia", forKey: "reader.theme")
+        XCTAssertEqual(ReaderSettings(store: store).theme, .system)
+    }
+
     // MARK: Plan selection (mirrors web/src/daily/usePlanSelection.ts)
 
     func testPlansDefaultToBibleYear() {

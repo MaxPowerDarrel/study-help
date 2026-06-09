@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// Custom URL schemes that make cross-reference and footnote markers
 /// tappable for free: the renderer attaches them as `.link` attributes and
@@ -41,15 +42,23 @@ enum ReaderLink {
     }
 }
 
-/// Colors for the inline semantics. Defaults approximate the web's design
-/// tokens (`web/src/styles/tokens.css`); phase ④ swaps in Asset Catalog
-/// colors with proper light/dark variants.
+/// Colors for the inline semantics, mirroring the web's design tokens
+/// (`web/src/styles/tokens.css`) in both appearances:
+/// `--color-woc` #c0392b / #ff6b5b, `--color-accent` #4a3a2a / #d4c8a8.
 struct PassageRenderPalette {
     var verseNumber: Color = .secondary
-    var wordsOfChrist: Color = Color(red: 0.72, green: 0.18, blue: 0.18)
+    var wordsOfChrist: Color = Color(uiColor: UIColor { trait in
+        trait.userInterfaceStyle == .dark
+            ? UIColor(red: 255 / 255, green: 107 / 255, blue: 91 / 255, alpha: 1)
+            : UIColor(red: 192 / 255, green: 57 / 255, blue: 43 / 255, alpha: 1)
+    })
     /// Cross-reference and footnote markers — interactive, so accent-colored
     /// like the web's `.cf` styling.
-    var marker: Color = .accentColor
+    var marker: Color = Color(uiColor: UIColor { trait in
+        trait.userInterfaceStyle == .dark
+            ? UIColor(red: 212 / 255, green: 200 / 255, blue: 168 / 255, alpha: 1)
+            : UIColor(red: 74 / 255, green: 58 / 255, blue: 42 / 255, alpha: 1)
+    })
 }
 
 /// Renders `InlineRun`s into `AttributedString`. Block-level presentation

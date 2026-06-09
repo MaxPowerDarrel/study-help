@@ -40,6 +40,15 @@ struct SettingsView: View {
                 Toggle("Words of Christ in red", isOn: $settings.showWordsOfChrist)
             }
 
+            Section("Appearance") {
+                Picker("Theme", selection: $settings.theme) {
+                    ForEach(ThemeChoice.allCases, id: \.self) { choice in
+                        Text(choice.label).tag(choice)
+                    }
+                }
+                .pickerStyle(.segmented)
+            }
+
             Section {
                 Toggle("Native reader (beta)", isOn: $settings.useNativeReader)
             } footer: {
