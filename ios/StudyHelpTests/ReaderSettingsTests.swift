@@ -63,4 +63,33 @@ final class ReaderSettingsTests: XCTestCase {
         store.set("KJV", forKey: "reader.translation")
         XCTAssertEqual(ReaderSettings(store: store).translation, .esv)
     }
+
+    // MARK: Plan selection (mirrors web/src/daily/usePlanSelection.ts)
+
+    func testPlansDefaultToBibleYear() {
+        XCTAssertEqual(ReaderSettings(store: store).selectedPlans, [.bibleYear])
+    }
+
+    func testPlansPersistAcrossRelaunch() {
+        let first = ReaderSettings(store: store)
+        first.selectedPlans = [.hope]
+        XCTAssertEqual(ReaderSettings(store: store).selectedPlans, [.hope])
+
+        first.selectedPlans = [.bibleYear, .hope]
+        XCTAssertEqual(ReaderSettings(store: store).selectedPlans, [.bibleYear, .hope])
+    }
+
+    func testClearingLastPlanFallsBackToDefault() {
+        let settings = ReaderSettings(store: store)
+        settings.selectedPlans = [.hope]
+        settings.selectedPlans = []
+        XCTAssertEqual(settings.selectedPlans, [.bibleYear], "never-empty fallback")
+        // And the fallback is what persisted.
+        XCTAssertEqual(ReaderSettings(store: store).selectedPlans, [.bibleYear])
+    }
+
+    func testUnknownStoredPlansFallBackToDefault() {
+        store.set(["not-a-plan"], forKey: "reader.plans")
+        XCTAssertEqual(ReaderSettings(store: store).selectedPlans, [.bibleYear])
+    }
 }

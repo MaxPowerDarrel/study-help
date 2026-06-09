@@ -21,6 +21,16 @@ struct SettingsView: View {
                 }
             }
 
+            Section {
+                ForEach(PlanOption.allCases, id: \.self) { plan in
+                    Toggle(plan.planName, isOn: planBinding(for: plan))
+                }
+            } header: {
+                Text("Reading plans")
+            } footer: {
+                Text("At least one plan stays selected; clearing the last one returns to Bible in One Year.")
+            }
+
             Section("Formatting") {
                 Toggle("Headings", isOn: $settings.headings)
                 Toggle("Footnotes", isOn: $settings.footnotes)
@@ -36,6 +46,25 @@ struct SettingsView: View {
                 Text("Turning this off returns to the embedded web reader, which has its own settings.")
             }
         }
+    }
+
+    /// Checkbox semantics over the plan array, keeping `allCases` order;
+    /// the never-empty fallback lives in `ReaderSettings.selectedPlans`.
+    private func planBinding(for plan: PlanOption) -> Binding<Bool> {
+        Binding(
+            get: { settings.selectedPlans.contains(plan) },
+            set: { isOn in
+                var plans = settings.selectedPlans
+                if isOn {
+                    if !plans.contains(plan) {
+                        plans = PlanOption.allCases.filter { plans.contains($0) || $0 == plan }
+                    }
+                } else {
+                    plans.removeAll { $0 == plan }
+                }
+                settings.selectedPlans = plans
+            }
+        )
     }
 }
 

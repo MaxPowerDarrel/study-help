@@ -20,6 +20,7 @@ final class ReaderSettings {
         static let passageReferences = "reader.toggle.passage-references"
         static let crossReferences = "reader.toggle.cross-references"
         static let wordsOfChrist = "reader.toggle.words-of-christ"
+        static let plans = "reader.plans"
     }
 
     @ObservationIgnored private let store: UserDefaults
@@ -50,6 +51,18 @@ final class ReaderSettings {
     var showWordsOfChrist: Bool {
         didSet { store.set(showWordsOfChrist, forKey: Keys.wordsOfChrist) }
     }
+    /// Daily-tab plan selection, mirroring the web's `usePlanSelection`:
+    /// persisted, and never empty — clearing the last plan snaps back to
+    /// the default so the Daily tab can't be stuck blank.
+    var selectedPlans: [PlanOption] {
+        didSet {
+            if selectedPlans.isEmpty {
+                selectedPlans = [.bibleYear] // re-enters didSet; persists below
+                return
+            }
+            store.set(selectedPlans.map(\.rawValue), forKey: Keys.plans)
+        }
+    }
 
     /// The five server-sent options, in the shape `PassageAPI` sends.
     var passageToggles: PassageToggles {
@@ -74,6 +87,9 @@ final class ReaderSettings {
         // Off by default: matches the ESV API default and the web UI.
         crossReferences = store.bool(forKey: Keys.crossReferences, default: false)
         showWordsOfChrist = store.bool(forKey: Keys.wordsOfChrist, default: true)
+        let storedPlans = (store.stringArray(forKey: Keys.plans) ?? [])
+            .compactMap(PlanOption.init(rawValue:))
+        selectedPlans = storedPlans.isEmpty ? [.bibleYear] : storedPlans
     }
 }
 
