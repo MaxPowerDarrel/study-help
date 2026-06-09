@@ -70,10 +70,24 @@ struct PassageRenderer {
 
     func attributedString(for runs: [InlineRun]) -> AttributedString {
         var out = AttributedString()
-        for run in runs {
+        for (i, run) in runs.enumerated() {
             out += attributedString(for: run)
+            if needsSeparator(after: run, before: i + 1 < runs.count ? runs[i + 1] : nil) {
+                out += AttributedString("\u{2009}") // thin space
+            }
         }
         return out
+    }
+
+    /// YouVersion emits verse labels with no following space (`<span
+    /// class="yv-vlbl">1</span>Now…`); the web compensates with a CSS
+    /// `margin-right` on the label. ESV labels carry their own trailing
+    /// `&nbsp;`. Insert a thin space only where the markup didn't.
+    private func needsSeparator(after run: InlineRun, before next: InlineRun?) -> Bool {
+        guard run.isVerseNumber, let next, !next.isVerseNumber else { return false }
+        guard let last = run.text.last, let first = next.text.first else { return false }
+        return !last.isWhitespace && last != "\u{00A0}"
+            && !first.isWhitespace && first != "\u{00A0}"
     }
 
     private func attributedString(for run: InlineRun) -> AttributedString {
