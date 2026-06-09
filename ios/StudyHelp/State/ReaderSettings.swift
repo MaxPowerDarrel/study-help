@@ -22,9 +22,9 @@ enum ThemeChoice: String, CaseIterable {
 /// (`web/src/toggles.ts`, `web/src/translations/store.ts`). Defaults match
 /// the web client exactly: cross-references off, everything else on, ESV.
 ///
-/// `useNativeReader` is the phase-③ beta switch: off by default, so the
-/// app keeps opening to the embedded SPA until the native surface reaches
-/// parity (`specs/native-reader.md`, Decisions 2026-06-09).
+/// `useNativeReader` shipped as an off-by-default beta switch and flipped
+/// to default-on at parity (`specs/native-reader.md`, phase ⑥). Users who
+/// explicitly chose the web reader keep their stored `false`.
 @Observable
 final class ReaderSettings {
     private enum Keys {
@@ -99,7 +99,7 @@ final class ReaderSettings {
 
     init(store: UserDefaults = AppGroup.defaults) {
         self.store = store
-        useNativeReader = store.bool(forKey: Keys.native, default: false)
+        useNativeReader = store.bool(forKey: Keys.native, default: true)
         translation = store.string(forKey: Keys.translation)
             .flatMap(TranslationOption.init(rawValue:)) ?? .esv
         headings = store.bool(forKey: Keys.headings, default: true)
