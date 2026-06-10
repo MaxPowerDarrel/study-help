@@ -1,6 +1,6 @@
 # Native Reader (iOS)
 
-**Status:** Shipped <!-- Draft | In Progress | Shipped | Deprecated -->
+**Status:** In Progress <!-- Draft | In Progress | Shipped | Deprecated -->
 **Created:** 2026-06-09
 **Last updated:** 2026-06-09
 **Owner:** Darrel
@@ -27,26 +27,25 @@ reader is just a second consumer of the existing JSON API
 
 Parity with the web reading surface as of 2026-06-09:
 
-- [x] **Read tab** — book/chapter picker over the 66-book canon, single
+- [ ] **Read tab** — book/chapter picker over the 66-book canon, single
       chapter or chapter range, prev/next chapter navigation.
-- [x] **Daily tab** — per-plan passage pills, date back/forward + Today,
+- [ ] **Daily tab** — per-plan passage pills, date back/forward + Today,
       daily-header translation picker, plan `message` days, comma-chapter
       fan-out into one concatenated pill body.
-- [x] **Six formatting toggles** matching web defaults (headings, footnotes,
+- [ ] **Six formatting toggles** matching web defaults (headings, footnotes,
       verse numbers, passage references, cross-references [ESV-only, default
       off], words-of-Christ red [client-side, no re-fetch]).
-- [x] **ESV + NIV**, with "Powered by YouVersion" rendered whenever NIV text
+- [ ] **ESV + NIV**, with "Powered by YouVersion" rendered whenever NIV text
       is visible and ESV's in-HTML attribution preserved verbatim.
-- [x] **Cross-references** — tapping an ESV `.cf` marker opens a native
-      sheet backed by `GET /api/crossref`.
-- [x] **Footnotes** — tapping a footnote marker shows the note body.
-- [x] **Theme** light/dark/system.
-- [x] **Session restore** — active tab, last read location, last daily date
+- [ ] **Cross-references** — tapping an ESV `.cf` marker opens a native
+      popover backed by `GET /api/crossref`.
+- [ ] **Footnotes** — tapping a footnote marker shows the note body.
+- [ ] **Theme** light/dark/system.
+- [ ] **Session restore** — active tab, last read location, last daily date
       (snaps to today on a new calendar day), mirroring
       [`restore-last-location.md`](./restore-last-location.md) on-device.
-- [x] The embedded-SPA web view stays reachable from Settings as a fallback.
-- [x] Each phase lands as one mergeable PR, shippable to TestFlight
-      (PRs #66–#71, 2026-06-09).
+- [ ] The embedded-SPA web view stays reachable from Settings as a fallback.
+- [ ] Each phase lands as one mergeable PR, shippable to TestFlight.
 
 ### Parity / accepted gaps (living list)
 
@@ -84,12 +83,13 @@ Tapping an ESV cross-reference letter opens a small popover with the verse
 text; tapping a footnote marker shows the note. Reading position, active tab,
 and daily date survive relaunch.
 
-Until parity was reached the web view remained the default surface, gaining
-one piece of native chrome: a small gear button in the top trailing corner
-opening the native Settings sheet that hosted the beta switch. Since the
-phase-⑥ default flip the native reader is the surface; the embedded web view
-stays one switch away (the same toggle, from either side) as the fallback,
-and it keeps the gear button so the path back to native is always visible.
+Until parity is reached the web view remains the default surface, gaining one
+piece of native chrome: a small gear button in the top trailing corner that
+opens the native Settings sheet, which hosts the "Native reader (beta)"
+switch (the web app keeps its own in-page settings while it is the surface).
+Flipping the switch swaps the whole surface to the native tab layout, whose
+Settings tab offers the reverse "Use web reader" switch. The default flips to
+native once parity lands (phase ⑥).
 
 ## Implementation outline
 
@@ -134,26 +134,27 @@ sync.
 
 ## Open questions
 
-- [x] Exact ESV footnote markup — *resolved in phase ② from recorded
-      fixtures* (see Decisions, 2026-06-09 — fixture-driven parser).
-      `div.footnotes` tail with `span.footnote > a[id]`, `span.footnote-ref`,
-      and `<note>` bodies; inline markers are `sup.footnote > a.fn`.
-- [x] `DailyReadingAPI` multi-plan — *resolved in phase ④*: an overload
-      with a joined `plans=` param; the widget keeps its single-plan call.
+- [ ] Exact ESV footnote markup (container/marker classes) — to be pinned
+      down from recorded fixtures in phase ②, not from memory.
+- [ ] Does `Shared/DailyReadingAPI.swift` grow a multi-plan overload (joined
+      `plans=` param) or does the app loop per selected plan? Decide in
+      phase ④ when porting plan selection.
 - [ ] Lock-screen widget families and richer deep links remain open in
-      [`native-ios.md`](./native-ios.md); `studyhelp://daily` now routes to
-      the native Daily tab, but a date-specific deep link is still a
-      possible later addition.
-- [x] Session restore store — *resolved in phase ⑥* (see Decisions,
-      2026-06-09): App Group `UserDefaults`, same store as the rest of the
-      reader preferences.
-- [x] Fixture matrix — *resolved in phase ②*: fixtures recorded at
-      default / all-off / cross-refs-on combinations covered every markup
-      feature; the toggles are server-applied so no client path needed
-      exercising.
-- [x] Default-flip gate — *resolved in phase ⑥* (see Decisions,
-      2026-06-09): all Goals checked with an empty accepted-gaps list;
-      flipped in the same PR that shipped session restore.
+      [`native-ios.md`](./native-ios.md); a native Daily tab may make the
+      `studyhelp://daily` deep link richer (specific date). Revisit in
+      phase ⑥.
+- [ ] Session restore on App Group `UserDefaults` vs. standard
+      `UserDefaults` — App Group would let the widget read last-read state
+      later (richer deep links), but standard is sufficient today. Decide in
+      phase ⑥.
+- [ ] Fixture matrix for phase ②: the five server-sent toggles arrive
+      pre-applied in the HTML, so "toggle coverage" means recording fixtures
+      at representative toggle combinations (default / all-on / all-off),
+      not exercising a client-side path. Confirm the combinations suffice
+      when recording.
+- [ ] What concretely gates the phase-⑥ default flip: all Goals checkboxes
+      checked, or an explicit owner sign-off that the "Parity / accepted
+      gaps" list is empty? (Owner sign-off proposed.)
 
 ## Decisions
 
@@ -182,35 +183,22 @@ sync.
   TestFlight users see no regression mid-experiment.
 - 2026-06-09: Test fixtures are short recorded excerpts (a few verses each)
   kept within ESV quoting allowances.
-- 2026-06-09: Session restore lives on the **App Group** `UserDefaults` —
-  the same store as the other reader preferences (one store, one mental
-  model), and it leaves the door open for the widget to read last-read
-  state for richer deep links later. (Resolves the open question.)
-- 2026-06-09: **Default flipped to native** in the phase-⑥ PR: every Goals
-  item is checked and the "Parity / accepted gaps" list is empty. The
-  switch label drops "(beta)"; users who explicitly chose the web reader
-  keep their stored preference, and the in-app web view remains the
-  documented fallback.
 
 ## Verification
 
-- [x] Phase ②: `xcodegen generate && xcodebuild test` green; fixture tests
+- [ ] Phase ②: `xcodegen generate && xcodebuild test` green; fixture tests
       cover verse-number runs per toggle, woc/wj tagging in both markup
       dialects, `.cf` hrefs lifted verbatim, attribution tail surviving the
       round-trip, malformed HTML degrading to plain text instead of throwing.
-- [x] Phases ③–⑤: simulator vs live backend — John 3 ESV+NIV (woc red in
-      both dialects, YouVersion footer with NIV), today's daily pills
-      (Jeremiah 12–14 / Matthew 22), dark-mode cross-ref markers matching
-      the web tokens; comma-chapter ordering and plan-`message` days covered
-      by unit tests; cross-ref/footnote tap flow covered by `CrossrefLookup`
-      tests (73 tests total at ship).
-- [x] Phase ⑥: relaunch restores tab + passage (verified: seeded
-      Psalm 117 restored on a fresh launch with the native default active);
-      daily snap-to-today and corrupt/out-of-range fallbacks covered by
-      `SessionRestoreTests`; `studyhelp://daily` routes to the native Daily
-      tab; the web-fallback switch round-trips.
-- [x] Widget regression check each phase (`Shared/` additions are additive;
-      decode tests stayed green throughout).
+- [ ] Phases ③–⑤: side-by-side simulator vs live web app — John 3 / Psalm 23
+      in ESV and NIV with every toggle flipped; a comma-chapter daily day and
+      a plan-`message` day; Mark 1 cross-ref tap; NIV shows the YouVersion
+      footer wherever its text renders.
+- [ ] Phase ⑥: kill/relaunch restores tab + passage; daily date snaps to
+      today across a simulated midnight; widget tap lands on the native Daily
+      tab; the web-fallback switch round-trips cleanly.
+- [ ] Widget regression check each phase (`Shared/` types untouched or
+      test-covered).
 
 ## Related
 

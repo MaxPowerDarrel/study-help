@@ -9,12 +9,10 @@ struct ReaderRootView: View {
 
     var settings: ReaderSettings
     @State private var selection: Tab
-    private let restore: SessionRestore
 
-    init(settings: ReaderSettings, restore: SessionRestore = SessionRestore()) {
+    init(settings: ReaderSettings) {
         self.settings = settings
-        self.restore = restore
-        var initial: Tab = restore.storedTab() == .daily ? .daily : .read
+        var initial = Tab.read
         #if DEBUG
         // Launch-time override for simulator screenshot automation, e.g.
         // `SIMCTL_CHILD_STUDYHELP_TAB=daily xcrun simctl launch …`.
@@ -44,15 +42,6 @@ struct ReaderRootView: View {
             // which always loads against the current day by default.
             if url.host == "daily" {
                 selection = .daily
-            }
-        }
-        .onChange(of: selection) {
-            // Settings is deliberately not a restorable destination —
-            // relaunching into Settings would feel like a glitch.
-            switch selection {
-            case .read: restore.saveTab(.read)
-            case .daily: restore.saveTab(.daily)
-            case .settings: break
             }
         }
         .preferredColorScheme(colorScheme)

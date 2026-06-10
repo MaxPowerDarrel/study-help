@@ -46,22 +46,17 @@ final class DailyViewModel {
     /// Index into `pills`; -1 on info-card-only days.
     var activeIndex = -1
 
-    /// `YYYY-MM-DD` in the device timezone; seeded from session restore
-    /// (which snaps to today on a new calendar day).
-    var selectedDate: String
+    /// `YYYY-MM-DD` in the device timezone. Session restore replaces the
+    /// default in phase ⑥.
+    var selectedDate = DateTZ.todayString()
 
     @ObservationIgnored private let dailyAPI: DailyReadingAPI
     @ObservationIgnored private let passageAPI: PassageAPI
     @ObservationIgnored private var fetchID = 0
 
-    init(
-        dailyAPI: DailyReadingAPI = DailyReadingAPI(),
-        passageAPI: PassageAPI = PassageAPI(),
-        selectedDate: String = DateTZ.todayString()
-    ) {
+    init(dailyAPI: DailyReadingAPI = DailyReadingAPI(), passageAPI: PassageAPI = PassageAPI()) {
         self.dailyAPI = dailyAPI
         self.passageAPI = passageAPI
-        self.selectedDate = selectedDate
     }
 
     var isToday: Bool { selectedDate == DateTZ.todayString() }
