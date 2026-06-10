@@ -1,6 +1,6 @@
 # Native Reader (iOS)
 
-**Status:** In Progress <!-- Draft | In Progress | Shipped | Deprecated -->
+**Status:** Draft <!-- Draft | In Progress | Shipped | Deprecated -->
 **Created:** 2026-06-09
 **Last updated:** 2026-06-09
 **Owner:** Darrel

@@ -22,7 +22,7 @@ and why it was retired.
 | [multi-plan](./multi-plan.md) | Shipped | Multiple daily reading plans (Bible-in-One-Year + Hope 2026); checkbox picker in settings |
 | [multi-translation](./multi-translation.md) | Shipped | Pluggable translation foundation; ESV at launch, localStorage-persisted preference |
 | [native-ios](./native-ios.md) | In Progress | Native iOS app + home-screen widget showing the day's reading references; thin WKWebView shell over the hosted SPA, backend unchanged |
-| [native-reader](./native-reader.md) | In Progress | Native SwiftUI reading surface in the iOS app, parsing publisher HTML from the unchanged JSON API; web app stays canonical, web view kept as in-app fallback |
+| [native-reader](./native-reader.md) | Draft | Native SwiftUI reading surface in the iOS app, parsing publisher HTML from the unchanged JSON API; web app stays canonical, web view kept as in-app fallback |
 | [niv](./niv.md) | Shipped | NIV translation via YouVersion Platform API; "Powered by YouVersion" attribution |
 | [passage-reader](./passage-reader.md) | Shipped | Read a chapter or contiguous passage range; ESV proxied through the server |
 | [pwa-install](./pwa-install.md) | Shipped | Install-only PWA: Web App Manifest + Apple meta tags so the app can be added to the iPad/Android home screen and launched standalone; no service worker |
