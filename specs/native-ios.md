@@ -44,16 +44,11 @@ native-client state lives on-device.
 
 - **No native reader.** The reading surface is the web SPA in a web view. We do
   not reimplement the daily-tab state machine, picker, or HTML rendering in
-  Swift. *(Superseded 2026-06-09 — a native reading surface is being added per
-  [`native-reader.md`](./native-reader.md); see Decisions below. This spec's
-  widget/shell scope is unchanged.)*
+  Swift.
 - **No scripture-text caching.** ESV/YouVersion ToU restrict caching scripture
   content (see `pwa-install.md`). The widget caches only daily *references*
   (book + chapters), which are not scripture text. `GET /api/passage` HTML is
-  never cached natively. *(Clarified 2026-06-09: still true for anything
-  **persistent**; the native reader of
-  [`native-reader.md`](./native-reader.md) holds passage data in memory for
-  the session only.)*
+  never cached natively.
 - **No server-side state, accounts, or cross-device sync.** Constitution §2/§4
   stand. Widget config + cache are on-device only (App Group).
 - **No public App Store listing at v1.** TestFlight only (owner's choice).
@@ -185,12 +180,6 @@ blocker for this feature.
 - **2026-06-05** — Cache daily *references* on-device but never scripture text.
   Reason: ToU restrict caching scripture content; references are plan metadata
   and safe, and they let the widget survive offline.
-- **2026-06-09** — *Superseded in part:* the first decision above ("Thin
-  web-view shell over a full native SwiftUI reader") no longer holds. A native
-  SwiftUI reading surface is being added per
-  [`native-reader.md`](./native-reader.md), under a second §1 constitution
-  amendment. The web app remains canonical and the web-view shell stays in the
-  app as a fallback; this spec's widget scope is unchanged.
 
 ## Open questions
 
