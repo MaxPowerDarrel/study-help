@@ -20,25 +20,13 @@ struct DailyReadingAPI {
         date: String,
         timeZone: TimeZone = .current
     ) async throws -> DailyResponse {
-        try await fetch(plans: [plan], date: date, timeZone: timeZone)
-    }
-
-    /// Multi-plan variant for the app's Daily tab: one request with a
-    /// joined `plans=` param, matching `web/src/api.ts`'s
-    /// `fetchDailyReading`. The widget keeps the single-plan call above
-    /// (one plan per widget).
-    func fetch(
-        plans: [PlanOption],
-        date: String,
-        timeZone: TimeZone = .current
-    ) async throws -> DailyResponse {
         var comps = URLComponents(
             url: baseURL.appendingPathComponent("api/daily-reading"),
             resolvingAgainstBaseURL: false
         )
         comps?.queryItems = [
             URLQueryItem(name: "tz", value: timeZone.identifier),
-            URLQueryItem(name: "plans", value: plans.map(\.rawValue).joined(separator: ",")),
+            URLQueryItem(name: "plans", value: plan.rawValue),
             URLQueryItem(name: "date", value: date),
         ]
         guard let url = comps?.url else { throw APIError.invalidURL }
