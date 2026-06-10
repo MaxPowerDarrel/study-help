@@ -1,22 +1,6 @@
 import Foundation
 import Observation
 
-/// Reading-surface appearance, mirroring the web's three-way theme
-/// (`web/src/theme.ts`: light / dark / follow-the-system).
-enum ThemeChoice: String, CaseIterable {
-    case system
-    case light
-    case dark
-
-    var label: String {
-        switch self {
-        case .system: return "System"
-        case .light: return "Light"
-        case .dark: return "Dark"
-        }
-    }
-}
-
 /// Reader preferences, persisted to the App Group `UserDefaults` — the
 /// native equivalent of the web's localStorage-backed stores
 /// (`web/src/toggles.ts`, `web/src/translations/store.ts`). Defaults match
@@ -37,7 +21,6 @@ final class ReaderSettings {
         static let crossReferences = "reader.toggle.cross-references"
         static let wordsOfChrist = "reader.toggle.words-of-christ"
         static let plans = "reader.plans"
-        static let theme = "reader.theme"
     }
 
     @ObservationIgnored private let store: UserDefaults
@@ -67,11 +50,6 @@ final class ReaderSettings {
     /// (`AttributedRendering.swift`), so it is not part of `passageToggles`.
     var showWordsOfChrist: Bool {
         didSet { store.set(showWordsOfChrist, forKey: Keys.wordsOfChrist) }
-    }
-    /// Light/dark/system override for the native surface (the web view
-    /// keeps the web app's own theme).
-    var theme: ThemeChoice {
-        didSet { store.set(theme.rawValue, forKey: Keys.theme) }
     }
     /// Daily-tab plan selection, mirroring the web's `usePlanSelection`:
     /// persisted, and never empty — clearing the last plan snaps back to
@@ -109,8 +87,6 @@ final class ReaderSettings {
         // Off by default: matches the ESV API default and the web UI.
         crossReferences = store.bool(forKey: Keys.crossReferences, default: false)
         showWordsOfChrist = store.bool(forKey: Keys.wordsOfChrist, default: true)
-        theme = store.string(forKey: Keys.theme)
-            .flatMap(ThemeChoice.init(rawValue:)) ?? .system
         let storedPlans = (store.stringArray(forKey: Keys.plans) ?? [])
             .compactMap(PlanOption.init(rawValue:))
         selectedPlans = storedPlans.isEmpty ? [.bibleYear] : storedPlans

@@ -44,16 +44,5 @@ struct ReaderRootView: View {
                 selection = .daily
             }
         }
-        .preferredColorScheme(colorScheme)
-    }
-
-    /// The web view keeps the web app's own theme; this override applies
-    /// only to the native surface.
-    private var colorScheme: ColorScheme? {
-        switch settings.theme {
-        case .system: return nil
-        case .light: return .light
-        case .dark: return .dark
-        }
     }
 }
