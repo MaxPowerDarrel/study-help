@@ -50,7 +50,7 @@ struct SettingsView: View {
             }
 
             Section {
-                Toggle("Native reader (beta)", isOn: $settings.useNativeReader)
+                Toggle("Native reader", isOn: $settings.useNativeReader)
             } footer: {
                 Text("Turning this off returns to the embedded web reader, which has its own settings.")
             }
@@ -89,7 +89,7 @@ struct ReaderModeSheet: View {
         NavigationStack {
             Form {
                 Section {
-                    Toggle("Native reader (beta)", isOn: $settings.useNativeReader)
+                    Toggle("Native reader", isOn: $settings.useNativeReader)
                 } footer: {
                     Text("Renders passages natively instead of loading the web app. You can switch back anytime from the native Settings tab.")
                 }

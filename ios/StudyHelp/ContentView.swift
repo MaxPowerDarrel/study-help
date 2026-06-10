@@ -1,10 +1,10 @@
 import SwiftUI
 
 /// Root switch between the two reading surfaces (`specs/native-reader.md`):
-/// the embedded SPA (default until the native reader reaches parity) and
-/// the native SwiftUI reader behind the opt-in beta switch. While the web
-/// view is the surface it gains exactly one piece of native chrome — a
-/// gear button opening the sheet that hosts the switch.
+/// the native SwiftUI reader (the default since parity) and the embedded
+/// SPA, kept as a fallback escape hatch. While the web view is the surface
+/// it carries exactly one piece of native chrome — a gear button opening
+/// the sheet that hosts the switch back.
 struct ContentView: View {
     @State private var settings = ReaderSettings()
     @State private var reloadToken = 0

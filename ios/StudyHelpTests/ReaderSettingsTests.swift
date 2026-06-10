@@ -22,7 +22,7 @@ final class ReaderSettingsTests: XCTestCase {
 
     func testDefaultsMatchWebClient() {
         let settings = ReaderSettings(store: store)
-        XCTAssertFalse(settings.useNativeReader, "beta switch must default off")
+        XCTAssertTrue(settings.useNativeReader, "native reader is the default since parity (phase ⑥)")
         XCTAssertEqual(settings.translation, .esv)
         XCTAssertTrue(settings.headings)
         XCTAssertTrue(settings.footnotes)

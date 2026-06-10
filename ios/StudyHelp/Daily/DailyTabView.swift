@@ -5,7 +5,14 @@ import SwiftUI
 /// passage — the native counterpart of the web's `DailyPanel`.
 struct DailyTabView: View {
     @Bindable var settings: ReaderSettings
-    @State private var model = DailyViewModel()
+    @State private var model: DailyViewModel
+    private let restore: SessionRestore
+
+    init(settings: ReaderSettings, restore: SessionRestore = SessionRestore()) {
+        self.settings = settings
+        self.restore = restore
+        _model = State(initialValue: DailyViewModel(selectedDate: restore.storedDailyDate()))
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -13,6 +20,9 @@ struct DailyTabView: View {
             Divider()
             content
             AttributionFooter(translation: settings.translation)
+        }
+        .onChange(of: model.selectedDate) {
+            restore.saveDailyDate(model.selectedDate)
         }
         .task(id: loadKey) {
             await model.load(

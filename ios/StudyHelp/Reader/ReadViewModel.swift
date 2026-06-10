@@ -25,8 +25,9 @@ final class ReadViewModel {
     /// Server-normalized reference for the loaded passage (e.g. "John 3").
     private(set) var canonical = ""
 
-    /// Defaults to John 3, the web reader's starting passage.
-    var location = Canon.ChapterRef(bookIndex: 42, chapter: 3)
+    /// Seeded from session restore; defaults to John 3, the web reader's
+    /// starting passage.
+    var location: Canon.ChapterRef
     /// End chapter for a range within the same book (e.g. Genesis 1–3).
     var rangeEnd: Int?
 
@@ -34,8 +35,12 @@ final class ReadViewModel {
     @ObservationIgnored private let cache = NSCache<NSString, CacheEntry>()
     @ObservationIgnored private var fetchID = 0
 
-    init(api: PassageAPI = PassageAPI()) {
+    init(
+        api: PassageAPI = PassageAPI(),
+        location: Canon.ChapterRef = SessionRestore.defaultReadRef
+    ) {
         self.api = api
+        self.location = location
     }
 
     /// `GET /api/passage` query for the current location, e.g. `"John 3"`

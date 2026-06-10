@@ -6,8 +6,15 @@ import SwiftUI
 /// toggle re-renders without refetching, exactly like the web.
 struct ReadTabView: View {
     @Bindable var settings: ReaderSettings
-    @State private var model = ReadViewModel()
+    @State private var model: ReadViewModel
     @State private var showPicker = false
+    private let restore: SessionRestore
+
+    init(settings: ReaderSettings, restore: SessionRestore = SessionRestore()) {
+        self.settings = settings
+        self.restore = restore
+        _model = State(initialValue: ReadViewModel(location: restore.storedReadRef()))
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -15,6 +22,9 @@ struct ReadTabView: View {
             Divider()
             content
             AttributionFooter(translation: settings.translation)
+        }
+        .onChange(of: model.location) {
+            restore.saveReadRef(model.location)
         }
         .task(id: loadKey) {
             await model.load(
