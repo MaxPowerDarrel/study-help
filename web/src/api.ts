@@ -10,7 +10,9 @@ export type FetchResult =
 export type DailyPassage = {
   book: string;
   chapters: string;
-  testament: "OT" | "NT" | "";
+  // Track label the server tags each passage with: testament for the
+  // OT/NT tracks, "Psalm" for a plan's daily-Psalm track.
+  testament: "OT" | "NT" | "Psalm" | "";
 };
 
 export type DailyPlanResult = {

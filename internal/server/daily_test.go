@@ -171,6 +171,33 @@ func TestDailyHandlerSpecificPlan(t *testing.T) {
 	}
 }
 
+func TestDailyHandlerStudyPlan(t *testing.T) {
+	c := &DailyCounter{}
+	h := dailyReadingHandler(c)
+	req := httptest.NewRequest(http.MethodGet,
+		"/api/daily-reading?tz=UTC&date=2026-01-01&plans=study", nil)
+	w := httptest.NewRecorder()
+	h(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body=%s", w.Code, w.Body.String())
+	}
+	got := decode(t, w)
+	if len(got.Plans) != 1 || got.Plans[0].ID != "study" {
+		t.Fatalf("got %+v, want one study plan", got.Plans)
+	}
+	// Study plan, Jan 1: Genesis 1-2 (OT), Matthew 1-2 (NT), Psalm 1.
+	want := map[string]string{"OT": "Genesis 1-2", "NT": "Matthew 1-2", "Psalm": "Psalms 1"}
+	if len(got.Plans[0].Passages) != len(want) {
+		t.Fatalf("got %d passages, want %d: %+v", len(got.Plans[0].Passages), len(want), got.Plans[0].Passages)
+	}
+	for _, p := range got.Plans[0].Passages {
+		if ref := p.Book + " " + p.Chapters; want[p.Testament] != ref {
+			t.Errorf("%s track = %q, want %q", p.Testament, ref, want[p.Testament])
+		}
+	}
+}
+
 func TestDailyHandlerMultiplePlans(t *testing.T) {
 	c := &DailyCounter{}
 	h := dailyReadingHandler(c)

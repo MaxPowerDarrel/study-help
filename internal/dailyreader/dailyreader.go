@@ -21,7 +21,7 @@ const DefaultPlanID = "bible-year"
 type Passage struct {
 	Book      string
 	Chapters  string
-	Testament string // "OT" or "NT"
+	Testament string // track label: "OT", "NT", or "Psalm"
 }
 
 // Day is the lookup result for one plan on one date.
@@ -102,6 +102,7 @@ func (p *plan) get() (map[string]planEntry, error) {
 var plans = []*plan{
 	{id: "bible-year", name: "Bible in One Year", parse: parseBibleYear},
 	{id: "hope", name: "Hope (2026)", parse: parseHope},
+	{id: "study", name: "Study Plan", parse: parseStudy},
 }
 
 func findPlan(id string) *plan {

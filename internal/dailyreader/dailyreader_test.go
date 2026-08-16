@@ -140,6 +140,28 @@ func TestTodayMultiplePlans(t *testing.T) {
 	}
 }
 
+func TestTodayStudyPlan(t *testing.T) {
+	got, err := Today([]string{"study"}, "UTC", mustTime(t, time.RFC3339, "2026-01-01T12:00:00Z"))
+	if err != nil {
+		t.Fatalf("Today: %v", err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("got %d Days, want 1", len(got))
+	}
+	d := got[0]
+	if d.PlanName != "Study Plan" {
+		t.Errorf("plan name = %q, want %q", d.PlanName, "Study Plan")
+	}
+	if len(d.Passages) != 3 {
+		t.Fatalf("got %d passages, want OT + NT + Psalm: %+v", len(d.Passages), d.Passages)
+	}
+	if !hasPassage(d.Passages, "OT", "Genesis 1-2") ||
+		!hasPassage(d.Passages, "NT", "Matthew 1-2") ||
+		!hasPassage(d.Passages, "Psalm", "Psalms 1") {
+		t.Errorf("unexpected passages: %+v", d.Passages)
+	}
+}
+
 func TestTodayLeapDayFallsBackToMessage(t *testing.T) {
 	got, err := Today([]string{"bible-year"}, "UTC", mustTime(t, time.RFC3339, "2028-02-29T12:00:00Z"))
 	if err != nil {
@@ -151,7 +173,7 @@ func TestTodayLeapDayFallsBackToMessage(t *testing.T) {
 }
 
 func TestRoundTripEveryRowValidates(t *testing.T) {
-	for _, planID := range []string{"bible-year", "hope"} {
+	for _, planID := range []string{"bible-year", "hope", "study"} {
 		t.Run(planID, func(t *testing.T) {
 			p := findPlan(planID)
 			if p == nil {

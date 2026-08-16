@@ -2,7 +2,7 @@
 // `internal/dailyreader/dailyreader.go`. Adding a plan is a two-line
 // change: register it server-side and add an entry here.
 
-export type PlanID = "bible-year" | "hope";
+export type PlanID = "bible-year" | "hope" | "study";
 
 export type PlanCatalogEntry = {
   id: PlanID;
@@ -12,6 +12,7 @@ export type PlanCatalogEntry = {
 export const PLANS: PlanCatalogEntry[] = [
   { id: "bible-year", name: "Bible in One Year" },
   { id: "hope", name: "Hope (2026)" },
+  { id: "study", name: "Study Plan" },
 ];
 
 export const DEFAULT_PLAN_IDS: PlanID[] = ["bible-year"];

@@ -148,7 +148,7 @@ func TestParseHopeCellMessageFallback(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.in, func(t *testing.T) {
-			ps, msg := parseHopeCell(tc.in)
+			ps, msg := parsePassageCell(tc.in)
 			if len(ps) != 0 {
 				t.Errorf("got passages %+v, want none", ps)
 			}
@@ -171,13 +171,13 @@ func TestParseHopePassageBookOnly(t *testing.T) {
 		{"James", "James", "1-5"},
 	}
 	for _, c := range cases {
-		p, ok := parseHopePassage(c.in)
+		p, ok := parsePassageRef(c.in)
 		if !ok {
-			t.Errorf("parseHopePassage(%q) returned false", c.in)
+			t.Errorf("parsePassageRef(%q) returned false", c.in)
 			continue
 		}
 		if p.Book != c.book || p.Chapters != c.chaps {
-			t.Errorf("parseHopePassage(%q) = %q / %q, want %q / %q", c.in, p.Book, p.Chapters, c.book, c.chaps)
+			t.Errorf("parsePassageRef(%q) = %q / %q, want %q / %q", c.in, p.Book, p.Chapters, c.book, c.chaps)
 		}
 	}
 }
