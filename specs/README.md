@@ -27,6 +27,7 @@ and why it was retired.
 | [pwa-install](./pwa-install.md) | Shipped | Install-only PWA: Web App Manifest + Apple meta tags so the app can be added to the iPad/Android home screen and launched standalone; no service worker |
 | [reader-ui-refresh](./reader-ui-refresh.md) | Shipped | iPad/Safari touch polish, light + dark theme, design tokens; rides a Vite/React/TS bump |
 | [restore-last-location](./restore-last-location.md) | Shipped | Reopen the app to the last-viewed tab + read passage + daily date (per device, localStorage) |
+| [study-plan](./study-plan.md) | Shipped | Generated third plan: whole OT across the year, whole NT each quarter, a daily Psalm; Psalm 119 doubles as that day's OT reading |
 
 ## Archive
 

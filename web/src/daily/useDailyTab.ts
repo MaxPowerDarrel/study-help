@@ -21,7 +21,7 @@ export function todayString(): string {
   }
 }
 
-export type Testament = "OT" | "NT" | "";
+export type Testament = "OT" | "NT" | "Psalm" | "";
 
 export type DailyPill = {
   planID: PlanID;
